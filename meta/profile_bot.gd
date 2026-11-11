@@ -1,7 +1,7 @@
 class_name ProfileBot
 extends RefCounted
 ## Builds test profiles for sims (tools/sim.gd profile=...):
-##   veteran(n): a player after n bot runs (sims: experienced = 10, veteran = 25), opening every pack and spending
+##   veteran(n): a player after n bot runs (sims: experienced = 10, veteran = 39), opening every pack and spending
 ##               rep/dust the way a sensible player would (rig ranks, firmware).
 ##   maxed():    every card owned, every rig rank, every card in firmware with a
 ##               baked mod, max starting picks.
@@ -16,7 +16,7 @@ const MOD_ORDER := ["overclocked", "looped", "hardened_payload", "buffered", "sh
 	"boosted_daemon", "swarm_hook", "persistent", "leech", "preloaded", "lean_build", "volatile_payload"]
 
 
-static func veteran(db: CardDB, runs: int = 25, seed_in: int = 7) -> Profile:
+static func veteran(db: CardDB, runs: int = 39, seed_in: int = 7) -> Profile:
 	var p := Profile.new_player(db)
 	var jobs := Jobs.board(db)
 	for i in runs:

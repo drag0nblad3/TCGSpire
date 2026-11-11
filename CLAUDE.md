@@ -8,8 +8,8 @@ Original design only: don't copy cards, names, characters or look from existing 
 - `scripts/cards.sh [filter]` — every card as one line with generated rules text.
 - `scripts/sim.sh [n=200] [deck=a,b] [enc=mites,golem]` — bot plays seeded fights, one line per encounter.
 - `scripts/sim.sh mode=run [n=100] [heat=0] [job=ember|all] [profile=new|experienced|veteran|max]` — bot plays whole runs: win %, avg floor,
-  top killers. `profile=experienced`/`veteran` = save after 10/25 bot runs with likely spending, `max` = everything owned/bought (`meta/profile_bot.gd`).
-- `scripts/sim_matrix.sh` — the standard balance check Tyler wants: 150 runs per cell, new heat 0-2, experienced 1-4, veteran 2-5, max 3-6.
+  top killers. `profile=experienced`/`veteran` = save after 10/39 bot runs with likely spending, `max` = everything owned/bought (`meta/profile_bot.gd`).
+- `scripts/sim_matrix.sh` — the standard balance check Tyler wants: 150 runs per cell, new heat 0-2, experienced 1-3, veteran 2-5, max 4-6.
 - `scripts/shot.sh screen=<name|all> out=/tmp/x.png [plays=2] [end_turn=1] [theme=archive]` — real render to PNG (xvfb).
   Screens: hub map combat reward rest shop event collection picker pack end inspect rules jobs rig perk tinker crew firmware recompile. Uses a throwaway profile.
 - Godot binary: `godot` on PATH, or set `GODOT=/path/to/godot`. Cloud sessions: download
@@ -63,7 +63,7 @@ Original design only: don't copy cards, names, characters or look from existing 
 - New talisman/event/mod/perk = JSON only (`mods.json`, `perks.json`; perk mod keys in `Perks.MODS`). Talisman triggers: combat_start, turn_start, turn_end,
   card_played (filters card_type, every), kill. Event outcomes use `RunOutcomes.OPS`.
 - Balance check after content changes: `scripts/sim.sh mode=run n=400 job=all` (~20 s). Bot baseline at heat 0
-  on jobs (new profile, 3 acts): ~30% clear act 1, ~5% win; experienced (10 runs) ~37% win at heat 1, ~5% at heat 2; veteran (25 runs) ~47% at heat 2,
+  on jobs (new profile, 3 acts): ~30% clear act 1, ~5% win; experienced (10 runs) ~37% win at heat 1, ~5% at heat 2; veteran (25 runs, now 39) ~47% at heat 2,
   ~15% at heat 3; max ~89% at heat 3, ~33% at heat 6 (Tyler is fine with lower rates since Act 3). Heat `enemy_hp_pct`/`enemy_dmg_pct` compound per level (`RunState.heat_mult`), the main lever.
   Runs pay `packs_per_boss`. Humans should do much
   better. Watch the killers list. `core/bot.gd` values (card, target) pairs from live state (no search/copies);

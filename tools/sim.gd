@@ -4,7 +4,7 @@ extends SceneTree
 ##   godot --headless --path . -s res://tools/sim.gd -- [n=200] [deck=a,b,c] [enc=mites,golem]
 ##   ... -- mode=run [n=100] [heat=0] [job=ember|all]   (whole runs: win rate, floor reached, top killers;
 ##          job=all rotates through every faction job; profile=new|experienced|veteran|max picks the save:
-##          experienced = after 10 bot runs spending what they earned, veteran = after 25, max = every upgrade)
+##          experienced = after 10 bot runs spending what they earned, veteran = after 39, max = every upgrade)
 ## Default deck = base deck + default starter picks.
 
 
@@ -57,7 +57,7 @@ func _sim_runs(db: CardDB, n: int, heat: int, job: String = "", which: String = 
 	if which == "experienced":
 		profile = ProfileBot.veteran(db, 10)
 	elif which == "veteran":
-		profile = ProfileBot.veteran(db, 25)
+		profile = ProfileBot.veteran(db, 39)
 	elif which == "max":
 		profile = ProfileBot.maxed(db)
 	if which != "new":
