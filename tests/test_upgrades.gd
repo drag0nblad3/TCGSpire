@@ -365,3 +365,19 @@ func test_runs_pay_a_pack_per_boss() -> void:
 	var before := profile.packs_unopened
 	profile.finish_run(db, r)
 	eq(profile.packs_unopened - before, 2 * int(db.balance["run_rewards"]["packs_per_boss"]))
+
+
+func test_double_cross_turns_client_in_final_act() -> void:
+	var targets := Jobs.targets(db, "ember", 0, GameRng.new(1))
+	var r := RunState.start(db, profile, RunState.default_picks(db, profile, "ember", targets), 1, 6, "ember", targets)
+	check(not r.double_crossed, "loyal at first")
+	while r.act < r.total_acts():
+		r._next_act()
+	check(r.double_crossed, "client sells you out in the last act")
+	check("ember" in r.banned, "client crew now a target")
+	var boss: Dictionary = r.map.nodes.back()
+	eq(str(db.encounters[boss["encounter"]].get("faction", "")), "ember", "client's Core guards the top")
+	var r0 := RunState.start(db, profile, RunState.default_picks(db, profile, "ember", targets), 1, 5, "ember", targets)
+	while r0.act < r0.total_acts():
+		r0._next_act()
+	check(not r0.double_crossed, "only at heat 6")

@@ -195,6 +195,8 @@ func _on_combat_finished(_won: bool) -> void:
 		lines.append("Nanites repair %d HP" % int(rewards["healed"]))
 	if rewards.has("act_started"):
 		lines.push_front("Layer %d breached. You reboot (now %d/%d HP)." % [rewards["act_started"], run.hp, run.max_hp])
+		if run.double_crossed and int(rewards["act_started"]) == run.total_acts():
+			lines.insert(1, "Double cross! %s sold you out. Their crew now hunts you, and their Core guards the last layer." % Jobs.info(db, run.job).get("client", Lexicon.faction(run.job)))
 	var tals: Array = []
 	if rewards["talisman"] != "":
 		run.add_talisman(rewards["talisman"])

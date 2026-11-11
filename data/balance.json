@@ -172,11 +172,12 @@
    }
   },
   {
-   "desc": "Enemies get another 20% HP and damage. Safehouses repair 10% less.",
+   "desc": "Enemies get another 20% HP and damage. Safehouses repair 10% less. Double cross: in the last layer your client sells you out. Their crew hunts you, their programs stop showing up, and their Core waits at the top.",
    "mods": {
     "enemy_hp_pct": 0.2,
     "enemy_dmg_pct": 0.2,
-    "rest_heal_pct": -0.1
+    "rest_heal_pct": -0.1,
+    "double_cross": 1
    }
   }
  ],
@@ -232,7 +233,7 @@
    "mythic": 1600
   }
  },
- "acts": 2,
+ "acts": 3,
  "act_heal_pct": 0.5,
  "default_picks": [
   "kindle",

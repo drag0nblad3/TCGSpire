@@ -28,7 +28,8 @@ Original design only: don't copy cards, names, characters or look from existing 
   `jobs.gd`: every run is a job for one client faction (data/factions.json, 6 crews in 3 rival pairs) run
   against targets (the rival, plus heat mod "extra_targets"): >= half the picks the client's, targets banned
   from picks and offers, targets' enemies (`data/enemies/factions.json`, encounters with "faction") fill
-  ~60% of fights/elites and 75% of bosses (12 crew bosses), pays the client's rep. Firmware tier 2 bakes a mod
+  ~60% of fights/elites and 75% of bosses (18 crew bosses, 3 acts). Heat 6 "double_cross": the client joins the targets
+  for the last act and its Core is the final boss, pays the client's rep. Firmware tier 2 bakes a mod
   into a card (`Profile.bake_firmware_mod`). `perks.gd`: scope "run" = subroutines (picked after
   elites/act boss), scope "rig" = permanent ranks bought with the perk's faction rep. Firmware
   (`Profile.flash_firmware`) permanently upgrades a card id: rep for faction cards, dust for Street/starter.
@@ -62,8 +63,8 @@ Original design only: don't copy cards, names, characters or look from existing 
 - New talisman/event/mod/perk = JSON only (`mods.json`, `perks.json`; perk mod keys in `Perks.MODS`). Talisman triggers: combat_start, turn_start, turn_end,
   card_played (filters card_type, every), kill. Event outcomes use `RunOutcomes.OPS`.
 - Balance check after content changes: `scripts/sim.sh mode=run n=400 job=all` (~20 s). Bot baseline at heat 0
-  on jobs (new profile): ~26% clear act 1, ~10% win. Targets Tyler set: `profile=veteran` ~50% win at heat 2, `profile=max`
-  wins sometimes (~10%) at heat 6. Heat `enemy_hp_pct`/`enemy_dmg_pct` compound per level (`RunState.heat_mult`), the main lever.
+  on jobs (new profile, 3 acts): ~30% clear act 1, ~5% win; veteran ~70% win at heat 1, ~35% at heat 2; max ~50% at heat 3,
+  ~0.5% at heat 6 (Tyler is fine with lower rates since Act 3). Heat `enemy_hp_pct`/`enemy_dmg_pct` compound per level (`RunState.heat_mult`), the main lever.
   Runs pay `packs_per_boss`. Humans should do much
   better. Watch the killers list. `core/bot.gd` values (card, target) pairs from live state (no search/copies);
   `meta/run_bot.gd` uses static `card_value` for picks/upgrades/shop and scores event outcomes. Keep both cheap.

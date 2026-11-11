@@ -22,6 +22,8 @@ var elites_won := 0
 var boss_won := false
 var act := 1
 var acts_cleared := 0
+## Heat mod "double_cross": the client turns on you for the final act.
+var double_crossed := false
 var over := false
 var card_plays: Dictionary = {}
 var remove_cost := 0
@@ -247,7 +249,14 @@ func _next_act() -> void:
 	act += 1
 	node_id = -1
 	path = []
-	map = RunMap.generate(db, rng.fork("map:%d" % act), act, banned)
+	var boss_faction := ""
+	if act == total_acts() and job != "" and float(heat_mod("double_cross", 0.0)) > 0.0 and job not in banned:
+		# The client sells you out: their crew joins the targets, their programs
+		# stop showing up, and the final Core is theirs.
+		double_crossed = true
+		banned.append(job)
+		boss_faction = job
+	map = RunMap.generate(db, rng.fork("map:%d" % act), act, banned, boss_faction)
 	var before := hp
 	hp = mini(max_hp, hp + int((max_hp - hp) * float(db.balance.get("act_heal_pct", 0.5))))
 	if hp < before:

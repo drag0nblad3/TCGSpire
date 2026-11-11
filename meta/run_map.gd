@@ -15,7 +15,8 @@ var act := 1
 ## targets: crews the job runs against; their faction encounters replace a share
 ## (balance.jobs.faction_encounter_share) of fights and elites, and most bosses
 ## (faction_boss_share).
-static func generate(db: CardDB, rng: GameRng, act: int = 1, targets: Array = []) -> RunMap:
+## boss_faction: if set (and that crew has a boss this act), the boss is always theirs.
+static func generate(db: CardDB, rng: GameRng, act: int = 1, targets: Array = [], boss_faction: String = "") -> RunMap:
 	var cfg: Dictionary = db.balance.get("map", {})
 	var m := RunMap.new()
 	var n_rows := int(cfg.get("rows", 12))
@@ -35,7 +36,7 @@ static func generate(db: CardDB, rng: GameRng, act: int = 1, targets: Array = []
 	m.rows.append([boss["id"]])
 	m._link(rng)
 	m.act = act
-	m._assign_encounters(db, rng, targets)
+	m._assign_encounters(db, rng, targets, boss_faction)
 	return m
 
 
@@ -95,7 +96,7 @@ func _add_link(node: Dictionary, to_id: int) -> void:
 		node["next"].sort()
 
 
-func _assign_encounters(db: CardDB, rng: GameRng, targets: Array = []) -> void:
+func _assign_encounters(db: CardDB, rng: GameRng, targets: Array = [], boss_faction: String = "") -> void:
 	var jcfg: Dictionary = db.balance.get("jobs", {})
 	for node in nodes:
 		var kind := ""
@@ -111,6 +112,7 @@ func _assign_encounters(db: CardDB, rng: GameRng, targets: Array = []) -> void:
 		var tier := 1 if node["row"] < 4 else 2
 		var pool: Array = []
 		var crew: Array = []
+		var forced: Array = []
 		for id in db.encounters:
 			var enc: Dictionary = db.encounters[id]
 			if int(enc.get("act", 1)) != act:
@@ -121,8 +123,14 @@ func _assign_encounters(db: CardDB, rng: GameRng, targets: Array = []) -> void:
 					pool.append(id)
 				elif f in targets:
 					crew.append(id)
+				if kind == "boss" and f != "" and f == boss_faction:
+					forced.append(id)
 		pool.sort()
 		crew.sort()
+		forced.sort()
+		if not forced.is_empty():
+			node["encounter"] = str(rng.pick(forced))
+			continue
 		var share := float(jcfg.get("faction_boss_share" if kind == "boss" else "faction_encounter_share", 0.6))
 		if not crew.is_empty() and (pool.is_empty() or rng.chance(share)):
 			pool = crew

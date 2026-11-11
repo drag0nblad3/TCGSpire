@@ -65,10 +65,13 @@ func _sim_runs(db: CardDB, n: int, heat: int, job: String = "", which: String = 
 	var stuck := 0
 	var killers := {}
 	var act1 := 0
+	var act2 := 0
 	for i in n:
 		var r := RunBot.play(db, profile, i, heat, jobs[i % jobs.size()] if job == "all" else job)
 		if r["run"].acts_cleared >= 1:
 			act1 += 1
+		if r["run"].acts_cleared >= 2:
+			act2 += 1
 		if r["won"]:
 			wins += 1
 		floors += r["floor"]
@@ -81,4 +84,4 @@ func _sim_runs(db: CardDB, n: int, heat: int, job: String = "", which: String = 
 	var parts: Array[String] = []
 	for k in top.slice(0, 5):
 		parts.append("%s %d" % [k, killers[k]])
-	print("[%s] runs %d heat %d  act1 %5.1f%%  win %5.1f%%  avg floor %4.1f  stuck %d  killers: %s" % [which, n, heat, 100.0 * act1 / n, 100.0 * wins / n, float(floors) / n, stuck, ", ".join(parts)])
+	print("[%s] runs %d heat %d  act1 %5.1f%%  act2 %5.1f%%  win %5.1f%%  avg floor %4.1f  stuck %d  killers: %s" % [which, n, heat, 100.0 * act1 / n, 100.0 * act2 / n, 100.0 * wins / n, float(floors) / n, stuck, ", ".join(parts)])
