@@ -6,6 +6,7 @@ signal start_pressed(heat: int)
 signal collection_pressed
 signal packs_pressed
 signal theme_pressed
+signal rig_pressed
 
 var db: CardDB
 var profile: Profile
@@ -42,7 +43,7 @@ func _ready() -> void:
 	var lvl := profile.level()
 	var have := profile.xp - Profile.xp_for_level(lvl)
 	var need := Profile.xp_for_level(lvl + 1) - Profile.xp_for_level(lvl)
-	v.add_child(UiKit.label("Level %d   ·   XP %d / %d" % [lvl, have, need], 18, Palette.ENERGY))
+	v.add_child(UiKit.label(("Level %d (max)" % lvl) if lvl >= Profile.LEVEL_CAP else ("Level %d   ·   XP %d / %d" % [lvl, have, need]), 18, Palette.ENERGY))
 	var bar := ProgressBar.new()
 	bar.custom_minimum_size = Vector2(400, 14)
 	bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -54,6 +55,10 @@ func _ready() -> void:
 	v.add_child(UiKit.label("Runs %d   Wins %d   Best floor %d   Cards %d   %s %d" % [
 		int(s.get("runs", 0)), int(s.get("wins", 0)), int(s.get("best_floor", 0)),
 		profile.collection.owned_ids().size(), Palette.w("dust"), profile.collection.dust], 15, Palette.TEXT_DIM))
+	var reps: Array[String] = []
+	for f in Jobs.board(db):
+		reps.append("%s %d" % [Jobs.rep_name(db, f), profile.rep_of(f)])
+	v.add_child(UiKit.label("   ".join(reps), 14, Palette.TEXT_DIM, true))
 
 	var heat_row := UiKit.hbox(16)
 	heat_row.add_child(UiKit.button("<", func() -> void: _set_heat(heat - 1), Vector2(56, 48)))
@@ -66,11 +71,12 @@ func _ready() -> void:
 	v.add_child(_heat_desc)
 	_set_heat(heat)
 
-	v.add_child(UiKit.button("Jack in", func() -> void: start_pressed.emit(heat), Vector2(300, 72), 24))
+	v.add_child(UiKit.button("Take a job", func() -> void: start_pressed.emit(heat), Vector2(300, 72), 24))
 	v.add_child(UiKit.button("Program library", func() -> void: collection_pressed.emit(), Vector2(300, 60)))
 	var pk := UiKit.button("Open %s (%d)" % [Palette.w("packs").to_lower(), profile.packs_unopened], func() -> void: packs_pressed.emit(), Vector2(300, 60))
 	pk.disabled = profile.packs_unopened <= 0
 	v.add_child(pk)
+	v.add_child(UiKit.button("Rig upgrades", func() -> void: rig_pressed.emit(), Vector2(300, 60)))
 	var row := UiKit.hbox(12)
 	row.add_child(UiKit.button("How to play", func() -> void: Rules.open(self), Vector2(200, 52), 16))
 	row.add_child(UiKit.button("Look: %s" % Themes.ALL[Palette.theme_id]["name"], func() -> void: theme_pressed.emit(), Vector2(300, 52), 16))

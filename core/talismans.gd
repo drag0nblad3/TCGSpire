@@ -18,8 +18,9 @@ const LABEL := {
 }
 
 
+## Fires implants, then subroutines (perks share the trigger format).
 static func fire(c: Combat, on: String, ctx: Dictionary = {}) -> void:
-	for t in c.talismans:
+	for t in c.talismans + c.perks:
 		var tid: String = t.get("id", "")
 		for i in t.get("triggers", []).size():
 			var trig: Dictionary = t["triggers"][i]

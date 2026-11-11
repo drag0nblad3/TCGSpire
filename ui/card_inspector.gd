@@ -19,7 +19,7 @@ static func show_for(host: Node, card: CardInstance) -> void:
 static func glossary(card: CardInstance) -> Array[String]:
 	var out: Array[String] = []
 	out.append(str(CardDef.TYPE_DESC.get(card.def.type, "")))
-	for k in card.def.get_keywords(card.upgraded):
+	for k in card.keywords():
 		out.append("%s: %s" % [Lexicon.keyword(str(k)), CardDef.KEYWORD_DESC.get(k, "")])
 	var seen := {}
 	for e in card.effects():
@@ -34,12 +34,14 @@ static func glossary(card: CardInstance) -> Array[String]:
 		if op == "summon" and not seen.has("unit"):
 			seen["unit"] = true
 			out.append(Rules.UNITS)
-	if card.upgraded:
-		out.append("Upgraded: recompiled at a safehouse.")
-	else:
-		var up := CardInstance.new(card.def, true)
-		if up.text() != card.text() or up.cost() != card.cost():
-			out.append("Upgraded (%d): %s" % [up.cost(), up.text()])
+	if not card.mod.is_empty():
+		out.append("Mod: %s. %s" % [card.mod_name(), CardMods.describe(card.mod)])
+	if card.fw > 0:
+		out.append("Firmware v%d: its numbers are %d%% higher." % [card.fw, roundi((card.fw_mult() - 1.0) * 100)])
+	if card.def.rarity != "curse":
+		out.append("Upgrades climb v1 (+%d%%), v2 (+%d%%), then (+): %s Recompile at a safehouse for this run, or flash firmware for good. (+) opens once the rest of your deck is v2." % [25, 50, card.def.upgrade_summary()] if card.fw_scale.size() < 3 else "Upgrades climb v1 (+%d%%), v2 (+%d%%), then (+): %s Recompile at a safehouse for this run, or flash firmware for good. (+) opens once the rest of your deck is v2." % [roundi((float(card.fw_scale[1]) - 1.0) * 100), roundi((float(card.fw_scale[2]) - 1.0) * 100), card.def.upgrade_summary()])
+		if card.upgraded:
+			out.append("This copy is fully upgraded (+).")
 	return out
 
 

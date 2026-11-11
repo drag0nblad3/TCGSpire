@@ -29,15 +29,21 @@ var encounter_id := ""
 var talismans: Array = []
 ## Per-talisman counters for "every N" triggers.
 var talisman_counters: Dictionary = {}
+## Subroutine (run perk) defs with triggers; they fire like talismans.
+var perks: Array = []
+## Firewall gained when combat starts (perks).
+var start_ward := 0
 var _unit_counter := 0
 var _enemy_counter := 0
 ## Difficulty modifiers from heat levels (see RunState.combat_opts).
 var enemy_hp_mult := 1.0
 var enemy_might := 0
+var enemy_dmg_mult := 1.0
 
 
 ## deck: Array of CardInstance (copied, not mutated). hp < 0 means full HP.
-## opts (all optional): max_hp, talismans (Array of ids), enemy_hp_mult, enemy_might.
+## opts (all optional): max_hp, talismans (Array of ids), perks (Array of perk dicts),
+## start_ward, enemy_hp_mult, enemy_might, enemy_dmg_mult, extra_energy, extra_hand, extra_slots.
 static func create(db_in: CardDB, deck: Array, encounter_id: String, rng_in: GameRng, hp: int = -1, opts: Dictionary = {}) -> Combat:
 	var c := Combat.new()
 	c.db = db_in
@@ -45,13 +51,20 @@ static func create(db_in: CardDB, deck: Array, encounter_id: String, rng_in: Gam
 	var p: Dictionary = db_in.balance.get("player", {})
 	c.max_energy = int(p.get("max_energy", 3))
 	c.hand_size = int(p.get("hand_size", 5))
-	c.board_slots = int(db_in.balance.get("board_slots", 3))
+	c.board_slots = int(db_in.balance.get("board_slots", 3)) + int(opts.get("extra_slots", 0))
+	c.max_energy += int(opts.get("extra_energy", 0))
+	c.hand_size += int(opts.get("extra_hand", 0))
 	var max_hp := int(opts.get("max_hp", p.get("max_hp", 60)))
 	c.enemy_hp_mult = float(opts.get("enemy_hp_mult", 1.0))
 	c.enemy_might = int(opts.get("enemy_might", 0))
+	c.enemy_dmg_mult = float(opts.get("enemy_dmg_mult", 1.0))
 	for tid in opts.get("talismans", []):
 		if db_in.talismans.has(tid):
 			c.talismans.append(db_in.talismans[tid])
+	for pd in opts.get("perks", []):
+		if not pd.get("triggers", []).is_empty():
+			c.perks.append(pd)
+	c.start_ward = int(opts.get("start_ward", 0))
 	c.player = Fighter.make("player", "You", max_hp)
 	if hp > 0:
 		c.player.hp = mini(hp, max_hp)
@@ -80,6 +93,7 @@ func _make_enemy(eid: String) -> Fighter:
 	for s in d.get("statuses", {}):
 		f.add_status(s, int(d["statuses"][s]))
 	f.def_id = eid
+	f.dmg_mult = enemy_dmg_mult
 	f.moves = d.get("moves", [])
 	if d.get("random_start", false) and not f.moves.is_empty():
 		f.move_idx = rng.range_i(0, f.moves.size() - 1)
@@ -109,6 +123,8 @@ func _start_player_turn() -> void:
 	emit("turn_start", {"turn": turn})
 	if turn == 1:
 		# After the Ward reset, so start-of-combat Ward sticks for turn 1.
+		if start_ward > 0:
+			Effects.resolve(self, {"op": "ward", "amount": start_ward}, player, null)
 		Talismans.fire(self, "combat_start")
 	Statuses.on_turn_start(self, player)
 	_check_end()

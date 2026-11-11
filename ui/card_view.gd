@@ -132,8 +132,13 @@ func _draw() -> void:
 	Sigil.draw(self, art.get_center(), 19.0, d.id, Color(fc, dim), t)
 
 	# Type line.
-	draw_string(font, rect.position + Vector2(6, 88), "%s · %s" % [Lexicon.type_name(d.type), Lexicon.faction(d.faction)],
-		HORIZONTAL_ALIGNMENT_CENTER, SIZE.x - 12, 10, Color(Palette.CARD_TEXT_DIM, dim))
+	# Type line; a modded card shows its mod there instead.
+	if card.mod.is_empty():
+		draw_string(font, rect.position + Vector2(6, 88), "%s · %s" % [Lexicon.type_name(d.type), Lexicon.faction(d.faction)],
+			HORIZONTAL_ALIGNMENT_CENTER, SIZE.x - 12, 10, Color(Palette.CARD_TEXT_DIM, dim))
+	else:
+		draw_string(font, rect.position + Vector2(6, 88), "[ %s ]" % card.mod_name(),
+			HORIZONTAL_ALIGNMENT_CENTER, SIZE.x - 12, 10, Color(Palette.UPGRADED, dim))
 
 	# Rules text, auto-sized to fit the text box.
 	var box := Rect2(rect.position + Vector2(6, 94), Vector2(SIZE.x - 12, SIZE.y - 94 - 16))

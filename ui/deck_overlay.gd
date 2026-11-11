@@ -1,7 +1,8 @@
 class_name DeckOverlay
 extends Control
 ## Full-screen card grid on top of everything. on_pick(index) gets the tapped
-## card's index (or -1 for the button). Used for deck view, upgrade and removal.
+## card's index (or -1 for the button). Used for deck view, upgrade, removal and
+## installing a mod (only cards that fit it can be picked; they preview with it).
 
 var _title := ""
 var _cards: Array = []
@@ -9,9 +10,11 @@ var _button := ""
 var _on_pick: Callable
 var _preview_upgrade := false
 var _pickable := false
+var _mod: Dictionary = {}
 
 
-func setup(title: String, cards: Array, button_text: String, on_pick: Callable, pickable: bool = false, preview_upgrade: bool = false) -> DeckOverlay:
+func setup(title: String, cards: Array, button_text: String, on_pick: Callable, pickable: bool = false, preview_upgrade: bool = false, mod: Dictionary = {}) -> DeckOverlay:
+	_mod = mod
 	_title = title
 	_cards = cards
 	_button = button_text
@@ -36,16 +39,40 @@ func _ready() -> void:
 	inner.add_child(grid)
 	if _cards.is_empty():
 		inner.add_child(UiKit.label("No cards here yet.", 18, Palette.TEXT_DIM))
+	var maxed := RunState.deck_maxed(_cards)
 	for i in _cards.size():
 		var src: CardInstance = _cards[i]
 		var shown := src
-		if _preview_upgrade and not src.upgraded:
-			shown = CardInstance.new(src.def, true)
+		var ok := true
+		if _preview_upgrade:
+			ok = src.can_level_up(maxed)
+			if ok:
+				shown = src.copy()
+				shown.level_up()
+		if not _mod.is_empty():
+			ok = CardMods.can_apply(_mod, src)
+			if ok:
+				shown = src.copy()
+				shown.mod = _mod
 		var cv := CardView.new().setup(shown)
-		cv.playable = not _pickable or (not _preview_upgrade or (not src.upgraded and src.def.rarity != "curse"))
+		cv.playable = not _pickable or ok
 		if _pickable and cv.playable:
 			cv.pressed.connect(func(_v: CardView) -> void: _close(i))
-		grid.add_child(cv)
+		if _preview_upgrade or not _mod.is_empty():
+			# Under each card: what the upgrade or mod would change, or why it can't.
+			var cell := UiKit.vbox(4, BoxContainer.ALIGNMENT_BEGIN)
+			cell.add_child(cv)
+			var why := ""
+			if _preview_upgrade:
+				why = src.level_up_text() if ok else ("Fully upgraded." if src.upgraded else ("Max the rest of your deck to v2 first." if src.fw >= src.fw_scale.size() - 1 and src.def.rarity != "curse" and not src.def.upgrade.is_empty() else "Can't be upgraded."))
+			else:
+				why = CardMods.describe(_mod) if ok else ("Has %s." % src.mod_name() if not src.mod.is_empty() else "Doesn't fit.")
+			var l := UiKit.label(why, 12, Palette.UPGRADED if ok else Palette.TEXT_DIM, true)
+			l.custom_minimum_size = Vector2(CardView.SIZE.x, 0)
+			cell.add_child(l)
+			grid.add_child(cell)
+		else:
+			grid.add_child(cv)
 	v.add_child(UiKit.button(_button, func() -> void: _close(-1)))
 
 

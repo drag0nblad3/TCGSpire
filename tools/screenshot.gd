@@ -5,7 +5,7 @@ extends SceneTree
 ##                   [out=/tmp/shot.png] [frames=30] [plays=2] [seed=1] [theme=archive] [end_turn=1]
 ## Under --headless it still runs (smoke test for script errors) but writes no image.
 
-const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "end", "inspect", "rules"]
+const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile"]
 
 
 func _initialize() -> void:
@@ -64,7 +64,7 @@ func _idle(cs) -> void:
 
 func _go(main: Control, scr: String, seed_in: int) -> void:
 	var db: CardDB = main.db
-	if scr not in ["hub", "collection", "picker", "pack", "inspect", "rules"]:
+	if scr not in ["hub", "collection", "picker", "pack", "inspect", "rules", "jobs", "rig", "firmware"]:
 		var p: Profile = main.profile
 		main.run = RunState.start(db, p, RunState.default_picks(db, p), seed_in)
 		main.run.add_talisman("oak_token")
@@ -85,13 +85,43 @@ func _go(main: Control, scr: String, seed_in: int) -> void:
 			main.show_hub()
 			main.get("_screen").collection_pressed.emit()
 		"picker":
-			main._show_picker(0)
+			main._show_picker(0, "ember")
+		"jobs":
+			main.profile.max_heat = 6
+			main._show_jobs(6)
+		"rig":
+			main.profile.rep = {"ember": 60, "tide": 25, "bloom": 90, "void": 10}
+			main.profile.rig = {"chassis": 1}
+			main.show_hub()
+			main.get("_screen").rig_pressed.emit()
+		"perk":
+			main.run.add_perk("nanite_mesh")
+			main.run.install_mod(main.run.mod_targets("overclocked")[0], "overclocked")
+			main._show_perk_pick(main.run.perk_choices(3, GameRng.new(seed_in)))
+		"tinker":
+			main.run.install_mod(main.run.mod_targets("hardened_payload")[0], "hardened_payload")
+			main._pick_mod_target("cached", func(_i: int) -> void: pass)
 		"pack":
 			main._show_pack()
 		"map":
 			main.show_map()
 		"combat":
 			main._start_combat({"type": "fight", "encounter": "wisp_court"})
+		"crew":
+			main.run = RunState.start(db, main.profile, RunState.default_picks(db, main.profile, "noise"), seed_in, 0, "noise")
+			main._start_combat({"type": "boss", "encounter": "chrome_a1b"})
+		"recompile":
+			main._show_rest()
+			main.add_child(DeckOverlay.new().setup("Choose a program to recompile", main.run.deck, "Cancel", func(_i: int) -> void: pass, true, true))
+		"firmware":
+			main.profile.collection.add("drone_swarm", 1)
+			main.profile.firmware = {"drone_swarm": 2}
+			main.profile.firmware_mods = {"drone_swarm": "swarm_hook"}
+			main.profile.mastery["drone_swarm"] = 35
+			main.profile.rep = {"chrome": 120}
+			main.show_hub()
+			main.get("_screen").collection_pressed.emit()
+			main.get("_screen")._show_detail("drone_swarm")
 		"reward":
 			main._show_reward(["+15 gold", "Found Bone Dice"], ["bone_dice"], main.run.reward_choices("elite"))
 		"rest":

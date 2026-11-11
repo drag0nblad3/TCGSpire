@@ -31,7 +31,7 @@ func setup(f: Fighter, c: Combat, kind_in: String) -> FighterView:
 	fighter = f
 	combat = c
 	kind = kind_in
-	custom_minimum_size = Vector2(200, 260) if kind == "enemy" else (Vector2(120, 130) if kind == "unit" else Vector2(340, 70))
+	custom_minimum_size = Vector2(200, 274) if kind == "enemy" else (Vector2(120, 130) if kind == "unit" else Vector2(340, 70))
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	return self
 
@@ -157,25 +157,33 @@ func _draw() -> void:
 func _draw_intents(font: Font, w: float, y: float) -> float:
 	var items := intents()
 	if items.is_empty() or fighter.is_dead():
-		return y + 30
-	var fs := 15
+		return y + 44
+	# Big, bordered pill so the enemy's plan reads at a glance on a phone.
+	var fs := 21
+	var ir := 15.0
 	var widths: Array = []
 	var total := 0.0
 	for it in items:
 		var lw := font.get_string_size(IntentIcon.label(it), HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		widths.append(24 + lw + 6)
+		widths.append(ir * 2 + 6 + lw + 10)
 		total += widths[-1]
 	var x := (w - total) / 2
+	var main_col := IntentIcon.color(items[0]["kind"])
+	var pulse := 0.55 + 0.25 * sin(Time.get_ticks_msec() / 1000.0 * 3.0)
 	var pill := StyleBoxFlat.new()
-	pill.bg_color = Color(Palette.CARD_BG, 0.8)
-	pill.set_corner_radius_all(13)
-	draw_style_box(pill, Rect2(x - 6, y, total + 12, 26))
+	pill.bg_color = Color(Palette.CARD_BG, 0.92)
+	pill.border_color = Color(main_col, pulse)
+	pill.set_border_width_all(2)
+	pill.set_corner_radius_all(19)
+	pill.shadow_color = Color(main_col, 0.35)
+	pill.shadow_size = 6
+	draw_style_box(pill, Rect2(x - 8, y, total + 16, 40))
 	for i in items.size():
 		var it: Dictionary = items[i]
-		IntentIcon.draw(self, Vector2(x + 11, y + 13), 10, it["kind"])
-		draw_string(Palette.display(), Vector2(x + 24, y + 19), IntentIcon.label(it), HORIZONTAL_ALIGNMENT_LEFT, -1, fs, IntentIcon.color(it["kind"]))
+		IntentIcon.draw(self, Vector2(x + ir, y + 20), ir, it["kind"])
+		draw_string(Palette.display(), Vector2(x + ir * 2 + 6, y + 28), IntentIcon.label(it), HORIZONTAL_ALIGNMENT_LEFT, -1, fs, IntentIcon.color(it["kind"]))
 		x += widths[i]
-	return y + 30
+	return y + 44
 
 
 ## Text for the inspect popup.

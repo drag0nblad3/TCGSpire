@@ -34,6 +34,7 @@ static func modify_attack(base: int, attacker: Fighter, defender: Fighter) -> in
 		dmg += attacker.status("might")
 		if attacker.status("weaken") > 0:
 			dmg *= 0.75
+		dmg *= attacker.dmg_mult
 	if defender != null and defender.status("brittle") > 0:
 		dmg *= 1.5
 	return maxi(int(floor(dmg)), 0)

@@ -1,0 +1,17 @@
+[
+{"id":"overclocked","name":"Overclocked","rarity":"rare","cost":-1,"min_cost":1},
+{"id":"cached","name":"Cached","rarity":"common","keywords_add":["retain"]},
+{"id":"preloaded","name":"Preloaded","rarity":"common","keywords_add":["innate"]},
+{"id":"persistent","name":"Persistent","rarity":"uncommon","keywords_remove":["exhaust","ethereal"],"needs_keyword":["exhaust","ethereal"]},
+{"id":"hardened_payload","name":"Hollow-point","rarity":"common","types":["attack"],"bump":{"op":"damage","amount":2}},
+{"id":"shielded","name":"Shielded","rarity":"common","types":["skill","unit","power"],"effects_add":[{"op":"ward","amount":3}]},
+{"id":"looped","name":"Prefetch","rarity":"uncommon","effects_add":[{"op":"draw","amount":1}]},
+{"id":"infected","name":"Infected","rarity":"common","target":"enemy","effects_add":[{"op":"apply","status":"burn","stacks":2}]},
+{"id":"exposing","name":"Port Scan","rarity":"uncommon","target":"enemy","effects_add":[{"op":"apply","status":"brittle","stacks":1}]},
+{"id":"boosted_daemon","name":"Tuned","rarity":"uncommon","types":["unit"],"bump":{"op":"summon","atk":1,"hp":2}},
+{"id":"leech","name":"Leech","rarity":"common","types":["attack"],"effects_add":[{"op":"heal","amount":2,"to":"self"}]},
+{"id":"buffered","name":"Buffered","rarity":"uncommon","effects_add":[{"op":"apply","status":"charge","stacks":2,"to":"self"}]},
+{"id":"swarm_hook","name":"Swarm Hook","rarity":"uncommon","types":["unit","skill"],"effects_add":[{"op":"rally","amount":1}]},
+{"id":"volatile_payload","name":"Volatile Payload","rarity":"common","types":["attack"],"bump":{"op":"damage","amount":4},"keywords_add":["ethereal"]},
+{"id":"lean_build","name":"Lean Build","rarity":"uncommon","cost":-1,"min_cost":2,"keywords_add":["exhaust"]}
+]

@@ -21,7 +21,13 @@ func _ready() -> void:
 	if run.heat > 0:
 		top.add_child(UiKit.label("Heat %d" % run.heat, 18, Palette.HP))
 	top.add_child(UiKit.button("Deck %d" % run.deck.size(), func() -> void: _show_deck(), Vector2(110, 40), 15))
+	if not run.perks.is_empty():
+		top.add_child(UiKit.button("Subs %d" % run.perks.size(), func() -> void:
+			UiKit.toast(get_tree().root, perk_text(run), 4.0), Vector2(96, 40), 15))
 	add_child(top)
+	if run.job != "":
+		var against: Array = run.banned.map(func(x: String) -> String: return Lexicon.faction(x))
+		add_child(UiKit.label("Job for %s  ·  against %s" % [Jobs.info(run.db, run.job).get("client", run.job), " + ".join(against)], 14, Palette.faction(run.job)))
 	if not run.talismans.is_empty():
 		var row := UiKit.hbox(6)
 		for tid in run.talismans:
@@ -34,3 +40,12 @@ func _ready() -> void:
 func _show_deck() -> void:
 	var overlay := DeckOverlay.new().setup("Your deck", run.deck, "Close", func(_i: int) -> void: pass)
 	get_tree().root.add_child(overlay)
+
+
+## One line per loaded subroutine.
+static func perk_text(r: RunState) -> String:
+	var lines: Array[String] = []
+	for pid in r.perks:
+		var p: Dictionary = r.db.perks[pid]
+		lines.append("%s: %s" % [p["name"], Perks.describe(p)])
+	return "\n".join(lines)

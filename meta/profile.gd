@@ -7,8 +7,11 @@ extends RefCounted
 ##   xp/level  -> each level grants packs and unlocks (balance.levels)
 ##   mastery   -> playing a card N times grants dust, then a foil copy
 ##   max_heat  -> beating the boss at heat N unlocks heat N+1
+##   rep       -> each run is a faction job (Jobs) that pays that faction's rep
+##   rig       -> rep buys ranks of that faction's rig upgrades (permanent perks)
+##   firmware  -> rep (dust for Street/starter cards) permanently upgrades a card
 
-const SAVE_VERSION := 2
+const SAVE_VERSION := 4
 const DEFAULT_PATH := "user://profile.json"
 
 var collection := Collection.new()
@@ -22,6 +25,14 @@ var max_heat := 0
 var last_picks: Array = []
 ## UI preferences, e.g. {"theme": "archive"}. Optional field, no migration needed.
 var settings: Dictionary = {}
+## Faction rep (job currency): faction id -> amount.
+var rep: Dictionary = {}
+## Rig upgrades (permanent perks): perk id -> rank.
+var rig: Dictionary = {}
+## Firmware cards: card id -> true. Every copy starts runs upgraded.
+var firmware: Dictionary = {}
+## Firmware tier 2: card id -> mod id baked in (needs firmware + mastery tier 2).
+var firmware_mods: Dictionary = {}
 
 
 static func new_player(db: CardDB) -> Profile:
@@ -34,7 +45,10 @@ static func new_player(db: CardDB) -> Profile:
 
 # --- progression ------------------------------------------------------------
 
-## Level from total XP. Level n needs xp_per_level * n * (n - 1) / 2 total XP.
+const LEVEL_CAP := 20
+
+
+## Level from total XP. Level n needs 100 * n * (n - 1) / 2 total XP, up to LEVEL_CAP.
 func level() -> int:
 	return level_for_xp(xp)
 
@@ -42,7 +56,7 @@ func level() -> int:
 static func level_for_xp(total: int) -> int:
 	var per := 100
 	var lvl := 1
-	while total >= per * lvl * (lvl + 1) / 2:
+	while lvl < LEVEL_CAP and total >= per * lvl * (lvl + 1) / 2:
 		lvl += 1
 	return lvl
 
@@ -52,7 +66,25 @@ static func xp_for_level(lvl: int) -> int:
 
 
 func starter_picks(db: CardDB) -> int:
-	return int(db.balance.get("starter_picks", 4)) + int(unlocks.get("extra_picks", 0))
+	return int(db.balance.get("starter_picks", 4)) + int(unlocks.get("extra_picks", 0)) + int(unlocks.get("swap_picks", 0))
+
+
+## The run's basic cards: balance.base_deck minus one basic per swap pick,
+## alternating between the basic kinds (Jab, Brace, Jab, ...).
+func base_deck(db: CardDB) -> Array:
+	var deck: Array = db.balance.get("base_deck", []).map(func(x: Variant) -> String: return str(x))
+	var kinds: Array = []
+	for id in deck:
+		if id not in kinds:
+			kinds.append(id)
+	for k in int(unlocks.get("swap_picks", 0)):
+		for j in kinds.size():
+			var id: String = kinds[(k + j) % kinds.size()]
+			var at := deck.rfind(id)
+			if at >= 0:
+				deck.remove_at(at)
+				break
+	return deck
 
 
 ## Applies the end of a run. Returns lines describing everything gained.
@@ -70,10 +102,14 @@ func finish_run(db: CardDB, run: RunState) -> Array:
 		+ run.acts_cleared * int(cfg.get("xp_per_act", 40))
 	if run.boss_won:
 		gained_xp += int(cfg.get("xp_boss", 60))
-	gained_xp = int(gained_xp * (1.0 + 0.1 * run.heat))
-	var packs := run.combats_won / maxi(int(cfg.get("combats_per_pack", 3)), 1) + (int(cfg.get("boss_packs", 2)) if run.boss_won else 0)
+	gained_xp = int(gained_xp * (1.0 + 0.1 * run.heat) * float(cfg.get("xp_mult", 1.0)))
+	var packs := run.acts_cleared * int(cfg.get("packs_per_boss", 1))
 	packs_unopened += packs
 	lines.append("+%d XP, +%d pack%s" % [gained_xp, packs, "" if packs == 1 else "s"])
+	var rep_gain := Jobs.rep_reward(db, run)
+	if rep_gain > 0:
+		rep[run.job] = rep_of(run.job) + rep_gain
+		lines.append("+%d %s from %s" % [rep_gain, Jobs.rep_name(db, run.job), Jobs.info(db, run.job).get("client", run.job)])
 	lines.append_array(add_xp(db, gained_xp))
 	lines.append_array(add_mastery(db, run.card_plays))
 	return lines
@@ -86,18 +122,20 @@ func add_xp(db: CardDB, amount: int) -> Array:
 	var rewards: Dictionary = db.balance.get("levels", {})
 	for lvl in range(before + 1, level() + 1):
 		lines.append("Level %d!" % lvl)
-		var r: Dictionary = rewards.get(str(lvl), rewards.get("default", {}))
-		if r.has("packs"):
-			packs_unopened += int(r["packs"])
-			lines.append("  +%d pack%s" % [int(r["packs"]), "" if int(r["packs"]) == 1 else "s"])
-		if r.has("dust"):
-			collection.dust += int(r["dust"])
-			lines.append("  +%d dust" % int(r["dust"]))
-		if r.has("extra_picks"):
-			unlocks["extra_picks"] = int(unlocks.get("extra_picks", 0)) + int(r["extra_picks"])
+		var packs := int(rewards.get("packs", 1))
+		if packs > 0:
+			packs_unopened += packs
+			lines.append("  +%d pack%s" % [packs, "" if packs == 1 else "s"])
+		var dust := int(rewards.get("dust_per_level", 0)) * lvl
+		if dust > 0:
+			collection.dust += dust
+			lines.append("  +%d dust" % dust)
+		if rewards.get("extra_picks", []).any(func(x: Variant) -> bool: return int(x) == lvl):
+			unlocks["extra_picks"] = int(unlocks.get("extra_picks", 0)) + 1
 			lines.append("  +1 starting pick")
-		if r.has("note"):
-			lines.append("  " + str(r["note"]))
+		if rewards.get("swap_picks", []).any(func(x: Variant) -> bool: return int(x) == lvl):
+			unlocks["swap_picks"] = int(unlocks.get("swap_picks", 0)) + 1
+			lines.append("  A basic program in your starting deck becomes a pick")
 	return lines
 
 
@@ -131,6 +169,163 @@ func mastery_tier(db: CardDB, id: String) -> int:
 	return tier
 
 
+# --- rig upgrades (permanent perks) ---------------------------------------------
+
+func rep_of(faction: String) -> int:
+	return int(rep.get(faction, 0))
+
+
+## Rep price of the next rank (base cost x next rank).
+func rig_cost(db: CardDB, id: String) -> int:
+	return rank_cost(db, id, int(rig.get(id, 0)) + 1)
+
+
+## Price of rank k (1-based): base cost x balance.rig_rank_cost[k-1].
+static func rank_cost(db: CardDB, id: String, k: int) -> int:
+	var mults: Array = db.balance.get("rig_rank_cost", [1, 2, 3])
+	return int(db.perks.get(id, {}).get("cost", 0)) * int(mults[clampi(k - 1, 0, mults.size() - 1)])
+
+
+func can_buy_rig(db: CardDB, id: String) -> bool:
+	var p: Dictionary = db.perks.get(id, {})
+	return p.get("scope", "") == "rig" and int(rig.get(id, 0)) < int(p.get("max_rank", 0)) \
+		and rep_of(str(p.get("faction", ""))) >= rig_cost(db, id) and capstone_ready(db, id)
+
+
+## Capstones unlock once every other rig upgrade of their crew is maxed.
+func capstone_ready(db: CardDB, id: String) -> bool:
+	var p: Dictionary = db.perks.get(id, {})
+	if not p.get("capstone", false):
+		return true
+	for other in db.perks:
+		var o: Dictionary = db.perks[other]
+		if other != id and o.get("scope", "") == "rig" and o.get("faction", "") == p.get("faction", "") \
+				and int(rig.get(other, 0)) < int(o.get("max_rank", 0)):
+			return false
+	return true
+
+
+func buy_rig(db: CardDB, id: String) -> bool:
+	if not can_buy_rig(db, id):
+		return false
+	var f := str(db.perks[id]["faction"])
+	rep[f] = rep_of(f) - rig_cost(db, id)
+	rig[id] = int(rig.get(id, 0)) + 1
+	return true
+
+
+## Refunds every rank's rep (free respec).
+func reset_rig(db: CardDB) -> void:
+	for id in rig:
+		var p: Dictionary = db.perks.get(id, {})
+		var f := str(p.get("faction", ""))
+		for k in range(1, int(rig[id]) + 1):
+			rep[f] = rep_of(f) + rank_cost(db, id, k)
+	rig = {}
+
+
+# --- firmware (permanent card upgrades) ------------------------------------------
+
+## {"amount": n, "faction": id}; faction "" means it costs dust (Street and starter cards).
+func firmware_price(db: CardDB, id: String) -> Dictionary:
+	var c := db.card(id)
+	if c == null:
+		return {"amount": 0, "faction": ""}
+	var cfg: Dictionary = db.balance.get("firmware", {})
+	var mults: Array = cfg.get("level_cost_mult", [1, 2])
+	var mult := float(mults[mini(firmware_level(id), mults.size() - 1)])
+	if c.rarity != "starter" and db.factions.has(c.faction):
+		return {"amount": int(int(cfg.get("rep_cost", {}).get(c.rarity, 0)) * mult), "faction": c.faction}
+	return {"amount": int(int(cfg.get("cost", {}).get(c.rarity, 0)) * mult), "faction": ""}
+
+
+func firmware_level(id: String) -> int:
+	return int(firmware.get(id, 0))
+
+
+static func firmware_max(db: CardDB) -> int:
+	return db.balance.get("firmware", {}).get("plays", [10, 50]).size()
+
+
+## Plays needed for the next firmware level of id (0 once maxed).
+func firmware_plays_needed(db: CardDB, id: String) -> int:
+	var plays: Array = db.balance.get("firmware", {}).get("plays", [10, 50])
+	var lvl := firmware_level(id)
+	return int(plays[lvl]) if lvl < plays.size() else 0
+
+
+## "" if it can be flashed, else the reason why not.
+func firmware_block(db: CardDB, id: String) -> String:
+	var c := db.card(id)
+	if c == null or c.rarity == "curse":
+		return "Malware can't be flashed."
+	if firmware_level(id) >= firmware_max(db):
+		return "Firmware maxed."
+	if not collection.owns(id) and c.rarity != "starter":
+		return "Own a copy first."
+	var need := firmware_plays_needed(db, id)
+	if c.rarity != "starter" and int(mastery.get(id, 0)) < need:
+		return "Run it %d times first (%d so far)." % [need, int(mastery.get(id, 0))]
+	var price := firmware_price(db, id)
+	var have := collection.dust if price["faction"] == "" else rep_of(price["faction"])
+	if have < int(price["amount"]):
+		return "Not enough %s." % ("dust" if price["faction"] == "" else Jobs.rep_name(db, price["faction"]))
+	return ""
+
+
+func flash_firmware(db: CardDB, id: String) -> bool:
+	if firmware_block(db, id) != "":
+		return false
+	var price := firmware_price(db, id)
+	if price["faction"] == "":
+		collection.dust -= int(price["amount"])
+	else:
+		rep[price["faction"]] = rep_of(price["faction"]) - int(price["amount"])
+	firmware[id] = firmware_level(id) + 1
+	return true
+
+
+## Price of baking a mod into a firmware card: the card's crew rep, or dust.
+func firmware_mod_price(db: CardDB, id: String, mod_id: String) -> Dictionary:
+	var cfg: Dictionary = db.balance.get("firmware", {})
+	var c := db.card(id)
+	var r := str(db.mod(mod_id).get("rarity", "common"))
+	if c != null and c.rarity != "starter" and db.factions.has(c.faction):
+		return {"amount": int(cfg.get("mod_rep_cost", {}).get(r, 60)), "faction": c.faction}
+	return {"amount": int(cfg.get("mod_dust_cost", {}).get(r, 120)), "faction": ""}
+
+
+## "" if the mod can be baked into this card's firmware, else why not.
+func firmware_mod_block(db: CardDB, id: String, mod_id: String) -> String:
+	var c := db.card(id)
+	if c == null or not firmware.has(id):
+		return "Flash it to firmware first."
+	if not CardMods.can_apply(db.mod(mod_id), CardInstance.new(c, true)):
+		return "That mod doesn't fit."
+	var need := int(db.balance.get("firmware", {}).get("mod_mastery_tier", 2))
+	if c.rarity != "starter" and mastery_tier(db, id) < need:
+		var plays := int(db.balance.get("mastery", [])[need - 1].get("plays", 0))
+		return "Run it %d times to bake in a mod (%d so far)." % [plays, int(mastery.get(id, 0))]
+	var price := firmware_mod_price(db, id, mod_id)
+	var have := collection.dust if price["faction"] == "" else rep_of(price["faction"])
+	if have < int(price["amount"]):
+		return "Not enough %s." % ("dust" if price["faction"] == "" else Jobs.rep_name(db, price["faction"]))
+	return ""
+
+
+## Bakes (or replaces) the mod every copy of this card starts runs with.
+func bake_firmware_mod(db: CardDB, id: String, mod_id: String) -> bool:
+	if firmware_mod_block(db, id, mod_id) != "" or firmware_mods.get(id, "") == mod_id:
+		return false
+	var price := firmware_mod_price(db, id, mod_id)
+	if price["faction"] == "":
+		collection.dust -= int(price["amount"])
+	else:
+		rep[price["faction"]] = rep_of(price["faction"]) - int(price["amount"])
+	firmware_mods[id] = mod_id
+	return true
+
+
 func open_pack(db: CardDB, rng: GameRng) -> Array:
 	if packs_unopened <= 0:
 		return []
@@ -156,6 +351,10 @@ func to_dict() -> Dictionary:
 		"max_heat": max_heat,
 		"last_picks": last_picks,
 		"settings": settings,
+		"rep": rep,
+		"rig": rig,
+		"firmware": firmware,
+		"firmware_mods": firmware_mods,
 	}
 
 
@@ -173,6 +372,15 @@ static func from_dict(d: Dictionary) -> Profile:
 	p.max_heat = int(d.get("max_heat", 0))
 	p.last_picks = d.get("last_picks", [])
 	p.settings = d.get("settings", {})
+	for k in d.get("rep", {}):
+		p.rep[k] = int(d["rep"][k])
+	for k in d.get("rig", {}):
+		p.rig[k] = int(d["rig"][k])
+	var fw: Variant = d.get("firmware", {})
+	for id in fw:
+		p.firmware[str(id)] = int(fw[id]) if fw is Dictionary else 1
+	for id in d.get("firmware_mods", {}):
+		p.firmware_mods[str(id)] = str(d["firmware_mods"][id])
 	return p
 
 
@@ -184,6 +392,19 @@ static func _migrate(d: Dictionary) -> Dictionary:
 		d["mastery"] = {}
 		d["max_heat"] = 0
 		v = 2
+	if v < 3:
+		# v3 added faction rep, rig upgrades and firmware cards; all start empty.
+		d["rep"] = {}
+		d["rig"] = {}
+		d["firmware"] = []
+		v = 3
+	if v < 4:
+		# v4: firmware has levels (id -> 1 or 2). Old flashed cards become level 1.
+		var fw := {}
+		for id in d.get("firmware", []):
+			fw[str(id)] = 1
+		d["firmware"] = fw
+		v = 4
 	d["version"] = v
 	return d
 

@@ -82,8 +82,19 @@ func test_rest_heal_and_upgrade() -> void:
 	var r := _run()
 	r.hp = 10
 	check(r.rest_heal() > 0, "healed")
-	check(r.upgrade_card(0), "upgrade")
-	check(not r.upgrade_card(0), "double upgrade")
+	check(r.upgrade_card(0), "upgrade to v1")
+	eq(r.deck[0].fw, 1)
+	check(r.upgrade_card(0), "upgrade to v2")
+	eq(r.deck[0].fw, 2)
+	check(not r.upgrade_card(0), "(+) waits until the whole deck is v2")
+	var auto := RunState.upgrade_candidates(r.deck)
+	check(auto.all(func(c: CardInstance) -> bool: return c.fw == 0), "random upgrades pick unupgraded cards first")
+	for i in r.deck.size():
+		while r.deck[i].fw < 2 and r.upgrade_card(i):
+			pass
+	check(r.upgrade_card(0), "(+) once the deck is maxed")
+	check(r.deck[0].upgraded, "designed upgrade applied")
+	check(not r.upgrade_card(0), "nothing past (+)")
 
 
 func test_shop_buy_and_remove() -> void:
@@ -124,8 +135,11 @@ func test_every_event_choice_applies() -> void:
 func test_heat_stacks() -> void:
 	var r0 := _run(1, 0)
 	var r2 := _run(1, 2)
-	check(r2.deck.size() == r0.deck.size() + 1, "heat 2 adds curse")
-	check(r2.combat_opts()["enemy_hp_mult"] > 1.0, "heat 1 hp")
+	check(r2.combat_opts()["enemy_hp_mult"] > r0.combat_opts()["enemy_hp_mult"], "heat raises enemy hp")
+	check(r2.combat_opts()["enemy_dmg_mult"] > r0.combat_opts()["enemy_dmg_mult"], "heat raises enemy damage")
+	r0.hp = 1
+	r2.hp = 1
+	check(r2.rest_heal_amount() < r0.rest_heal_amount(), "heat cuts safehouse repairs")
 
 
 func test_run_bot_completes_runs() -> void:
@@ -137,9 +151,10 @@ func test_run_bot_completes_runs() -> void:
 
 func test_progression_levels_and_mastery() -> void:
 	var r := _run()
-	r.floor_num = 13
+	r.floor_num = 39
 	r.boss_won = true
-	r.combats_won = 9
+	r.acts_cleared = 3
+	r.combats_won = 27
 	r.card_plays = {"kindle": 12}
 	var before_packs := profile.packs_unopened
 	var lines := profile.finish_run(db, r)
