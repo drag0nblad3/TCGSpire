@@ -7,3 +7,4 @@
 *.keystore
 # tool output
 /tmp/
+build/
