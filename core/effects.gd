@@ -18,6 +18,11 @@ const OPS := {
 	"energy": ["amount"],
 	"summon": ["name", "atk", "hp"],
 	"rally": ["amount"],
+	"grow": ["atk", "hp"],
+	"cleanse": ["to"],
+	"add_card": ["card", "amount", "upgraded"],
+	"spawn": ["enemy"],
+	"lose_hp": ["amount", "to"],
 }
 
 const TARGETS := ["target", "self", "all_enemies", "all_allies", "front"]
@@ -61,8 +66,42 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 			for u in c.units:
 				u.atk += n
 			c.emit("rally", {"amount": n})
+		"grow":
+			var ga := int(e.get("atk", 0))
+			var gh := int(e.get("hp", 0))
+			for u in c.units:
+				u.atk += ga
+				u.max_hp += gh
+				u.hp += gh
+			c.emit("grow", {"atk": ga, "hp": gh})
+		"cleanse":
+			for t in targets(c, e, src, target, "self"):
+				for s in Statuses.debuffs(t):
+					t.statuses.erase(s)
+				c.emit("cleanse", {"target": t.id})
+		"add_card":
+			for i in maxi(n, 1):
+				if c.hand.size() >= Combat.MAX_HAND:
+					break
+				var inst := c.db.instance(str(e.get("card", "")), bool(e.get("upgraded", false)))
+				if inst != null:
+					c.hand.append(inst)
+					c.emit("draw", {"card": inst.key(), "created": true})
+		"spawn":
+			c.spawn(str(e.get("enemy", "")))
+		"lose_hp":
+			for t in targets(c, e, src, target, "self"):
+				_lose_hp(c, t, n, src)
 		_:
 			push_error("Unknown effect op: %s" % op)
+
+
+## HP loss ignores Ward.
+static func _lose_hp(c: Combat, t: Fighter, n: int, src: Fighter) -> void:
+	var w := t.ward
+	t.ward = 0
+	c.deal_damage(t, n, src.id, "lose_hp")
+	t.ward = w
 
 
 static func targets(c: Combat, e: Dictionary, src: Fighter, target: Fighter, default_to: String) -> Array:
@@ -126,6 +165,17 @@ static func describe(e: Dictionary) -> String:
 			return "Summon %s (%d/%d)." % [e.get("name", "Unit"), int(e.get("atk", 0)), int(e.get("hp", 1))]
 		"rally":
 			return "Your units gain +%d attack." % n
+		"grow":
+			return "Your units gain +%d/+%d." % [int(e.get("atk", 0)), int(e.get("hp", 0))]
+		"cleanse":
+			return "Remove your debuffs."
+		"add_card":
+			var nm := str(e.get("card", "?")).capitalize() + ("+" if e.get("upgraded", false) else "")
+			return "Add %s to your hand." % nm if maxi(n, 1) == 1 else "Add %d %s to your hand." % [n, nm]
+		"spawn":
+			return "Summon a %s." % str(e.get("enemy", "?")).capitalize()
+		"lose_hp":
+			return "Lose %d HP." % n
 	return "?%s?" % op
 
 

@@ -9,9 +9,16 @@ const DEFS := {
 	"weaken": {"debuff": true, "desc": "Deals 25% less attack damage. Loses 1 at end of turn."},
 	"might": {"debuff": false, "desc": "Attacks deal +1 damage per stack."},
 	"overcharge": {"debuff": true, "desc": "Start next turn with 1 less energy per stack."},
+	"thorns": {"debuff": false, "desc": "When attacked, deal damage equal to stacks to the attacker."},
+	"regen": {"debuff": false, "desc": "Heal stacks at end of turn, then lose 1."},
+	"fortify": {"debuff": false, "desc": "Ward is not removed at the start of turn."},
 }
 
 const DECAYING := ["brittle", "weaken"]
+
+
+static func debuffs(f: Fighter) -> Array:
+	return f.statuses.keys().filter(func(k: String) -> bool: return DEFS.get(k, {}).get("debuff", false))
 
 
 static func is_known(n: String) -> bool:
@@ -36,7 +43,13 @@ static func on_turn_start(c: Combat, f: Fighter) -> void:
 		f.add_status("burn", -1)
 
 
-static func on_turn_end(_c: Combat, f: Fighter) -> void:
+static func on_turn_end(c: Combat, f: Fighter) -> void:
+	var regen := f.status("regen")
+	if regen > 0 and not f.is_dead():
+		var before := f.hp
+		f.hp = mini(f.max_hp, f.hp + regen)
+		c.emit("heal", {"target": f.id, "amount": f.hp - before})
+		f.add_status("regen", -1)
 	for s in DECAYING:
 		if f.status(s) > 0:
 			f.add_status(s, -1)

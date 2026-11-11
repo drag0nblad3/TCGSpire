@@ -5,8 +5,8 @@ extends RefCounted
 
 const TYPES := ["attack", "skill", "unit", "power"]
 const TARGETS := ["enemy", "none"]
-const RARITIES := ["starter", "common", "uncommon", "rare", "mythic"]
-const KEYWORDS := ["exhaust", "retain", "unplayable"]
+const RARITIES := ["starter", "common", "uncommon", "rare", "mythic", "curse"]
+const KEYWORDS := ["exhaust", "retain", "unplayable", "innate", "ethereal"]
 
 var id := ""
 var name := ""
@@ -80,6 +80,6 @@ func validate() -> Array[String]:
 				errs.append("%s: unknown keyword '%s'" % [where, k])
 		for e in get_effects(up):
 			errs.append_array(Effects.validate(e, where))
-	if upgrade.is_empty():
+	if upgrade.is_empty() and rarity != "curse":
 		errs.append("%s: missing upgrade" % where)
 	return errs
