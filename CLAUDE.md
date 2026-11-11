@@ -8,7 +8,7 @@ Original design only: don't copy cards, names, characters or look from existing 
 - `scripts/cards.sh [filter]` — every card as one line with generated rules text.
 - `scripts/sim.sh [n=200] [deck=a,b] [enc=mites,golem]` — bot plays seeded fights, one line per encounter.
 - `scripts/sim.sh mode=run [n=100] [heat=0] [job=ember|all] [profile=new|veteran|max]` — bot plays whole runs: win %, avg floor,
-  top killers. `profile=veteran` = save after 12 bot runs with likely spending, `max` = everything owned/bought (`meta/profile_bot.gd`).
+  top killers. `profile=veteran` = save after 10 bot runs with likely spending, `max` = everything owned/bought (`meta/profile_bot.gd`).
 - `scripts/sim_matrix.sh` — the standard balance check Tyler wants: 200 runs per cell, new heat 0-3, veteran 1-4, max 2-6.
 - `scripts/shot.sh screen=<name|all> out=/tmp/x.png [plays=2] [end_turn=1] [theme=archive]` — real render to PNG (xvfb).
   Screens: hub map combat reward rest shop event collection picker pack end inspect rules jobs rig perk tinker crew firmware recompile. Uses a throwaway profile.

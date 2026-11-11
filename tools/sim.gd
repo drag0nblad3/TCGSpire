@@ -4,7 +4,7 @@ extends SceneTree
 ##   godot --headless --path . -s res://tools/sim.gd -- [n=200] [deck=a,b,c] [enc=mites,golem]
 ##   ... -- mode=run [n=100] [heat=0] [job=ember|all]   (whole runs: win rate, floor reached, top killers;
 ##          job=all rotates through every faction job; profile=new|veteran|max picks the save:
-##          veteran = after 12 bot runs spending what they earned, max = every upgrade)
+##          veteran = after 10 bot runs spending what they earned, max = every upgrade)
 ## Default deck = base deck + default starter picks.
 
 

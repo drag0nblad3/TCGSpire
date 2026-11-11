@@ -15,7 +15,7 @@ const MOD_ORDER := ["overclocked", "looped", "hardened_payload", "buffered", "sh
 	"boosted_daemon", "swarm_hook", "persistent", "leech", "preloaded", "lean_build", "volatile_payload"]
 
 
-static func veteran(db: CardDB, runs: int = 12, seed_in: int = 7) -> Profile:
+static func veteran(db: CardDB, runs: int = 10, seed_in: int = 7) -> Profile:
 	var p := Profile.new_player(db)
 	var jobs := Jobs.board(db)
 	for i in runs:
