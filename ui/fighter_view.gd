@@ -132,7 +132,7 @@ func _draw() -> void:
 		chips.append(["ATK %d" % fighter.atk, Palette.ENERGY])
 	for k in fighter.statuses:
 		var debuff: bool = Statuses.DEFS.get(k, {}).get("debuff", false)
-		chips.append(["%s %d" % [str(k).capitalize(), fighter.statuses[k]], Palette.ENEMY if debuff else Palette.UPGRADED])
+		chips.append(["%s %d" % [Lexicon.status(str(k)), fighter.statuses[k]], Palette.ENEMY if debuff else Palette.UPGRADED])
 	var x := 6.0 if kind != "player" else bar.position.x
 	var cy := y if kind != "player" else bar.end.y + 4
 	if kind == "player":
@@ -185,9 +185,9 @@ func describe() -> String:
 	if kind == "enemy" and not fighter.is_dead():
 		lines.append("Next: " + Intents.explain(fighter))
 	if kind == "unit":
-		lines.append("Strikes the front enemy for %d at the end of your turn. Area attacks, and attacks aimed at the front, can hit it." % fighter.atk)
+		lines.append("Daemon: hits the front enemy for %d at the end of your turn. Area attacks, and attacks aimed at the front, can hit it." % fighter.atk)
 	if fighter.ward > 0:
-		lines.append("Ward %d: absorbs damage first." % fighter.ward)
+		lines.append("Firewall %d: absorbs damage first." % fighter.ward)
 	for k in fighter.statuses:
-		lines.append("%s %d: %s" % [str(k).capitalize(), fighter.statuses[k], Statuses.DEFS.get(k, {}).get("desc", "")])
+		lines.append("%s %d: %s" % [Lexicon.status(str(k)), fighter.statuses[k], Statuses.DEFS.get(k, {}).get("desc", "")])
 	return "\n".join(lines)

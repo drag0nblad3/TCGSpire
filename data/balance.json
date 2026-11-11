@@ -126,19 +126,19 @@
    }
   },
   {
-   "desc": "Start each run with a Doubt curse.",
+   "desc": "Start each run infected with Adware (malware).",
    "mods": {
     "start_curse": "doubt"
    }
   },
   {
-   "desc": "Rest sites heal a third less.",
+   "desc": "Safehouses repair a third less.",
    "mods": {
     "rest_heal_pct": -0.33
    }
   },
   {
-   "desc": "Enemies start combat with 1 Might.",
+   "desc": "Enemies start combat with 1 Boost.",
    "mods": {
     "enemy_might": 1
    }

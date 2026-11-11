@@ -20,14 +20,14 @@ static func glossary(card: CardInstance) -> Array[String]:
 	var out: Array[String] = []
 	out.append(str(CardDef.TYPE_DESC.get(card.def.type, "")))
 	for k in card.def.get_keywords(card.upgraded):
-		out.append("%s: %s" % [str(k).capitalize(), CardDef.KEYWORD_DESC.get(k, "")])
+		out.append("%s: %s" % [Lexicon.keyword(str(k)), CardDef.KEYWORD_DESC.get(k, "")])
 	var seen := {}
 	for e in card.effects():
 		var op := str(e.get("op", ""))
 		var st := str(e.get("status", ""))
 		if st != "" and not seen.has(st) and Statuses.DEFS.has(st):
 			seen[st] = true
-			out.append("%s: %s" % [st.capitalize(), Statuses.DEFS[st]["desc"]])
+			out.append("%s: %s" % [Lexicon.status(st), Statuses.DEFS[st]["desc"]])
 		if op in ["ward", "damage_per_ward"] and not seen.has("ward"):
 			seen["ward"] = true
 			out.append(Rules.WARD)
@@ -35,7 +35,7 @@ static func glossary(card: CardInstance) -> Array[String]:
 			seen["unit"] = true
 			out.append(Rules.UNITS)
 	if card.upgraded:
-		out.append("Upgraded: improved at a rest site.")
+		out.append("Upgraded: recompiled at a safehouse.")
 	else:
 		var up := CardInstance.new(card.def, true)
 		if up.text() != card.text() or up.cost() != card.cost():

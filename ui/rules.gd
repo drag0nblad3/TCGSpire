@@ -4,8 +4,8 @@ extends Control
 ## keyword text comes straight from Statuses.DEFS / CardDef.KEYWORD_DESC, so
 ## new content documents itself. Open with Rules.open(node).
 
-const WARD := "Ward: absorbs damage before HP. Your Ward is cleared at the start of your turn (unless you have Fortify)."
-const UNITS := "Units: allies on your board. Each strikes the front enemy at the end of your turn. Area attacks and attacks aimed at the front can hit them."
+const WARD := "Firewall: absorbs damage before HP. Your Firewall is cleared at the start of your turn (unless you are Hardened)."
+const UNITS := "Daemons: programs that stay on your board. Each hits the front enemy at the end of your turn. Area attacks and attacks aimed at the front can crash them."
 
 var _tap := Tap.new()
 
@@ -17,51 +17,50 @@ static func open(host: Node) -> void:
 ## [heading, [lines]] pairs. Data only so it is easy to test and extend.
 static func sections(db: CardDB) -> Array:
 	var p: Dictionary = db.balance.get("player", {})
-	var hero := Palette.w("hero")
+	var acts := int(db.balance.get("acts", 2))
 	var out: Array = []
-	if Palette.w("tagline") != "":
-		out.append([Palette.w("title").capitalize(), [Palette.w("tagline")]])
+	out.append(["The job", [
+		Palette.w("tagline"),
+		"Your deck is your rig's program library. Each card is a program: Exploits attack, Scripts defend and set up, Daemons stay on your board, Rootkits change the rules for the rest of the fight.",
+	]])
 	out.append(["The run", [
-		"Climb floor by floor on the map. Each act ends with a boss; beat %s to win." % ("both acts" if int(db.balance.get("acts", 2)) == 2 else "all %d acts" % int(db.balance.get("acts", 2))),
-		"Your HP carries over between fights. Rest sites, some events and talismans heal you.",
-		"After a fight you choose one card to add to your deck (or skip). A lean deck draws its best cards more often.",
+		"Hack node by node up the network map. Each layer ends with a Core guarded by a boss; breach %s to own the Stack." % ("both layers" if acts == 2 else "all %d layers" % acts),
+		"Your HP is your rig's integrity and carries over between fights. Safehouses, some signals and implants repair it.",
+		"After a fight you rip one program from the sentries into your deck (or skip). A lean deck runs its best programs more often.",
 	]])
 	out.append(["Your turn", [
-		"You start each turn with %d energy and draw %d cards. A card's cost is in its top-left orb." % [int(p.get("max_energy", 3)), int(p.get("hand_size", 5))],
-		"Tap a card to play it. If it needs a target and there are several enemies, tap the enemy next. Tap the card again to cancel.",
-		"Press and hold any card to read it large, with every keyword explained. Hold an enemy to read its next move.",
-		"End turn: your units strike, then the cards left in your hand are discarded. When your draw pile runs out, the discard pile is shuffled back in.",
-		"The buttons above the battlefield show your draw pile (in random order), discard pile, exhausted cards and whole deck.",
+		"You have %d RAM each turn and draw %d programs. A program's RAM cost is in its top-left chip." % [int(p.get("max_energy", 3)), int(p.get("hand_size", 5))],
+		"Tap a program to run it. If it needs a target and there are several enemies, tap the enemy next. Tap the program again to cancel.",
+		"Press and hold any program to read it large, with every keyword explained. Hold an enemy to read its next move.",
+		"End turn: your daemons hit, then programs left in your hand are discarded. When your draw pile runs dry, the discard pile is shuffled back in.",
+		"The buttons at the top show your draw pile (in random order), discard pile, wiped programs and whole deck.",
 	]])
-	out.append(["Enemy intents", ["Each enemy shows what it will do on its turn. The icons:"]])
+	out.append(["Reading the sentries", ["Each enemy shows what it will do on its turn. The icons:"]])
 	out.append(["Defence", [WARD, UNITS]])
 	var st: Array = []
 	for k in Statuses.DEFS:
-		st.append("%s%s: %s" % [str(k).capitalize(), " (harmful)" if Statuses.DEFS[k]["debuff"] else "", Statuses.DEFS[k]["desc"]])
+		st.append("%s%s: %s" % [Lexicon.status(k), " (harmful)" if Statuses.DEFS[k]["debuff"] else "", Statuses.DEFS[k]["desc"]])
 	out.append(["Statuses", st])
 	var kw: Array = []
 	for t in CardDef.TYPE_DESC:
 		kw.append(CardDef.TYPE_DESC[t])
 	for k in CardDef.KEYWORD_DESC:
-		kw.append("%s: %s" % [str(k).capitalize(), CardDef.KEYWORD_DESC[k]])
-	out.append(["Cards and keywords", kw])
-	var factions: Array[String] = []
-	for f in ["ember", "tide", "bloom", "void"]:
-		factions.append(Palette.faction_name(f))
+		kw.append("%s: %s" % [Lexicon.keyword(k), CardDef.KEYWORD_DESC[k]])
+	out.append(["Programs and keywords", kw])
 	out.append(["Between fights", [
-		"Elites are tougher fights that drop talismans. Talismans are passive items that trigger on their own.",
-		"%s: rest to heal or upgrade a card. %s: buy cards and talismans, or remove a card. Events (?) are choices with risks." % [Palette.w("rest"), Palette.w("shop")],
+		"Black sentries (X) are tougher fights that drop implants. Implants are passive cyberware that trigger on their own.",
+		"Safehouse (H): reboot to repair HP, or recompile (upgrade) a program. Fixer ($): buy programs and implants, or delete a program. Signals (?) are choices with risks. Caches (C) hold an implant.",
 	]])
-	out.append(["Collection", [
-		"Your deck is built from cards you own. Before each run you pick extra cards from your collection.",
-		"Runs earn XP and %s. Open them to collect new cards (rarer cards add complexity, not raw power)." % Palette.w("packs").to_lower(),
-		"Disenchant spare cards into %s and craft the ones you want. Playing a card often raises its mastery." % Palette.w("dust").to_lower(),
-		"Factions: %s, plus %s (neutral) cards that fit any deck." % [", ".join(factions), Palette.faction_name("neutral")],
-		"%s: beat the boss to unlock harder runs with extra modifiers." % "Heat",
+	out.append(["Your library", [
+		"Your deck is built from programs you own. Before each run you load extra programs from your library.",
+		"Runs earn XP and %s. Crack them open for new programs (rarer programs add complexity, not raw power)." % Palette.w("packs").to_lower(),
+		"Scrap spare copies for %s and compile the programs you want. Running a program often raises its mastery." % Palette.w("dust").to_lower(),
+		"Crews: Burner (viruses and overclocking), Flux (data flow and firewalls), Wetware (bio-daemons and patches), Null (glitches, buffers and loops), plus Street programs that fit any rig.",
+		"Heat: breach the final Core to unlock harder runs with extra modifiers.",
 	]])
 	out.append(["Tips", [
-		"An enemy's attack number already includes its Might, its Weaken and your Brittle, so you can Ward exactly enough.",
-		"The %s's HP bar sits under the battlefield. Ward shows as a blue shield beside it." % hero,
+		"An enemy's attack number already includes its Boost, its Throttle and your Exposed, so you can raise exactly enough Firewall.",
+		"Your HP bar sits under the battlefield. Firewall shows as a shield beside it.",
 	]])
 	return out
 
@@ -88,7 +87,7 @@ func _ready() -> void:
 			l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			l.custom_minimum_size.x = 0
 			inner.add_child(l)
-		if sec[0] == "Enemy intents":
+		if sec[0] == "Reading the sentries":
 			inner.add_child(_legend())
 	v.add_child(UiKit.button("Close", queue_free, Vector2(200, 56)))
 

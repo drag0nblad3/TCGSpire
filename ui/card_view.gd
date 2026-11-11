@@ -101,6 +101,8 @@ func _draw() -> void:
 	sb.shadow_color = Color(fc, 0.35 if playable else 0.0)
 	sb.shadow_size = 6
 	draw_style_box(sb, rect)
+	if Palette.FRAME == "circuit":
+		_draw_circuit(rect, Color(fc if not selected else Palette.ENERGY, dim))
 
 	# Name (shrinks to fit) + cost orb.
 	var name_w := SIZE.x - 36
@@ -120,10 +122,13 @@ func _draw() -> void:
 	band.set_corner_radius_all(maxi(Palette.RADIUS - 4, 0))
 	draw_style_box(band, art)
 	var t := Time.get_ticks_msec() / 1000.0 if d.rarity in ["rare", "mythic"] else 0.0
+	if Palette.FRAME == "circuit":
+		for yy in range(int(art.position.y) + 2, int(art.end.y), 3):
+			draw_line(Vector2(art.position.x, yy), Vector2(art.end.x, yy), Color(fc, 0.07 * dim), 1.0)
 	Sigil.draw(self, art.get_center(), 19.0, d.id, Color(fc, dim), t)
 
 	# Type line.
-	draw_string(font, rect.position + Vector2(6, 88), "%s · %s" % [d.type.capitalize(), Palette.faction_name(d.faction)],
+	draw_string(font, rect.position + Vector2(6, 88), "%s · %s" % [Lexicon.type_name(d.type), Lexicon.faction(d.faction)],
 		HORIZONTAL_ALIGNMENT_CENTER, SIZE.x - 12, 10, Color(Palette.CARD_TEXT_DIM, dim))
 
 	# Rules text, auto-sized to fit the text box.
@@ -148,6 +153,29 @@ func _draw() -> void:
 
 	if _holo != null:
 		_holo.position = Vector2(6, 6) + lift
+
+
+## Corner brackets, edge traces and a glass sheen (Glassnet skin).
+func _draw_circuit(r: Rect2, col: Color) -> void:
+	var L := 14.0
+	var i := 4.0
+	var w := 2.0
+	var c := [r.position + Vector2(i, i), Vector2(r.end.x - i, r.position.y + i), r.end - Vector2(i, i), Vector2(r.position.x + i, r.end.y - i)]
+	var dirs := [Vector2(1, 1), Vector2(-1, 1), Vector2(-1, -1), Vector2(1, -1)]
+	for k in 4:
+		draw_line(c[k], c[k] + Vector2(dirs[k].x * L, 0), col, w)
+		draw_line(c[k], c[k] + Vector2(0, dirs[k].y * L), col, w)
+	var faint := Color(col, col.a * 0.45)
+	for side in [0, 1]:
+		var x: float = r.position.x + 2.5 if side == 0 else r.end.x - 2.5
+		var sx := 1.0 if side == 0 else -1.0
+		var y0 := r.position.y + 100.0
+		var pts := PackedVector2Array([Vector2(x, y0), Vector2(x, y0 + 26), Vector2(x + sx * 5, y0 + 31), Vector2(x + sx * 5, y0 + 44)])
+		draw_polyline(pts, faint, 1.0, true)
+		draw_circle(pts[3], 1.8, faint)
+	var sheen := PackedVector2Array([r.position + Vector2(SIZE.x * 0.55, 2), r.position + Vector2(SIZE.x * 0.75, 2),
+		r.position + Vector2(SIZE.x * 0.25, SIZE.y * 0.55), r.position + Vector2(SIZE.x * 0.05, SIZE.y * 0.55)])
+	draw_colored_polygon(sheen, Color(1, 1, 1, 0.035))
 
 
 func _draw_back() -> void:

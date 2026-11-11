@@ -138,16 +138,16 @@ func _rebuild() -> void:
 	var sep := 6 if n <= 1 else mini(6, int((avail - n * CardView.SIZE.x) / (n - 1)))
 	_hand_row.add_theme_constant_override("separation", sep)
 	_energy.queue_redraw()
-	_floor_label.text = "Act %d · Floor %d   ·   Gold %d   ·   Turn %d" % [run.act if run else 1, run.floor_num if run else 0, run.gold if run else 0, combat.turn]
+	_floor_label.text = "Layer %d · Node %d   ·   %d creds   ·   Turn %d" % [run.act if run else 1, run.floor_num if run else 0, run.gold if run else 0, combat.turn]
 	_pile_btns["draw"].text = "Draw %d" % combat.draw_pile.size()
 	_pile_btns["discard"].text = "Discard %d" % combat.discard_pile.size()
-	_pile_btns["exhaust"].text = "Exhaust %d" % combat.exhaust_pile.size()
+	_pile_btns["exhaust"].text = "Wiped %d" % combat.exhaust_pile.size()
 	_pile_btns["deck"].text = "Deck %d" % _all_cards().size()
 	var inc := combat.incoming_damage()
 	if _selected >= 0:
 		_hint.text = "Tap an enemy to target\n(tap the card again to cancel)"
 	else:
-		_hint.text = ("Incoming %d damage" % inc if inc > 0 else "No attacks incoming") + ("  ·  Ward %d" % combat.player.ward if combat.player.ward > 0 else "")
+		_hint.text = ("Incoming %d damage" % inc if inc > 0 else "No attacks incoming") + ("  ·  Firewall %d" % combat.player.ward if combat.player.ward > 0 else "")
 	_end_btn.disabled = combat.phase != Combat.Phase.PLAYER or _busy
 
 
@@ -198,7 +198,7 @@ func _show_pile(which: String) -> void:
 			title = "Discard pile (%d)" % cards.size()
 		"exhaust":
 			cards = combat.exhaust_pile.duplicate()
-			title = "Exhausted this fight (%d)" % cards.size()
+			title = "Wiped this fight (%d)" % cards.size()
 		_:
 			cards = _all_cards()
 			title = "Your deck (%d)" % cards.size()
@@ -225,7 +225,7 @@ func _on_card_pressed(_view: CardView, idx: int) -> void:
 		if c.has_keyword("unplayable"):
 			UiKit.toast(self, "%s can't be played." % c.display_name())
 		elif c.cost() > combat.energy:
-			UiKit.toast(self, "Not enough energy (%d needed)." % c.cost())
+			UiKit.toast(self, "Not enough RAM (%d needed)." % c.cost())
 		return
 	var card: CardInstance = combat.hand[idx]
 	if combat.needs_target(card) and combat.living(combat.enemies).size() > 1:
@@ -315,7 +315,7 @@ func _play_events(played: CardView) -> int:
 			"ward":
 				if v != null:
 					v.shown_ward = int(e.get("ward", v.fighter.ward))
-				_float_text(v, "+%d Ward" % e["amount"], Palette.WARD)
+				_float_text(v, "+%d Firewall" % e["amount"], Palette.WARD)
 				await _wait(0.12)
 			"heal":
 				if v != null:
@@ -324,7 +324,7 @@ func _play_events(played: CardView) -> int:
 				await _wait(0.12)
 			"status":
 				var debuff: bool = Statuses.DEFS.get(e["status"], {}).get("debuff", false)
-				_float_text(v, "%s %s%d" % [str(e["status"]).capitalize(), "+" if e["stacks"] >= 0 else "", e["stacks"]], Palette.ENEMY if debuff else Palette.UPGRADED)
+				_float_text(v, "%s %s%d" % [Lexicon.status(str(e["status"])), "+" if e["stacks"] >= 0 else "", e["stacks"]], Palette.ENEMY if debuff else Palette.UPGRADED)
 				await _wait(0.1)
 			"death":
 				if v != null:

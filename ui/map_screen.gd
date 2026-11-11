@@ -5,8 +5,8 @@ extends Control
 signal node_chosen(id: int)
 
 const ROW_H := 104.0
-const GLYPH := {"fight": "F", "elite": "E", "rest": "R", "shop": "$", "event": "?", "treasure": "T", "boss": "B"}
-const NAMES := {"fight": "Fight", "elite": "Elite", "rest": "Rest", "shop": "Shop", "event": "Event", "treasure": "Treasure", "boss": "Boss"}
+const GLYPH := {"fight": "S", "elite": "X", "rest": "H", "shop": "$", "event": "?", "treasure": "C", "boss": "B"}
+const NAMES := {"fight": "Sentry", "elite": "Black sentry", "rest": "Safehouse", "shop": "Fixer", "event": "Signal", "treasure": "Cache", "boss": "Core"}
 
 var run: RunState
 var _canvas: Control

@@ -6,13 +6,13 @@ extends RefCounted
 ## Pure data, no Nodes: the UI draws the icons, tests check the classification.
 
 const DESC := {
-	"attack": "Attacks you. The number is damage per hit after Might, Weaken and Brittle.",
-	"ward": "Gains Ward, which absorbs damage until its next turn.",
-	"buff": "Strengthens itself (for example Might or Thorns).",
-	"debuff": "Weakens you with a harmful status.",
-	"heal": "Restores HP.",
-	"summon": "Calls more enemies into the fight.",
-	"curse": "Shuffles a bad card into your deck or hand.",
+	"attack": "Attacks you. The number is damage per hit after Boost, Throttled and Exposed.",
+	"ward": "Raises its Firewall, which absorbs damage until its next turn.",
+	"buff": "Upgrades itself (for example Boost or Feedback).",
+	"debuff": "Infects you with a harmful status.",
+	"heal": "Repairs its HP.",
+	"summon": "Calls more sentries into the fight.",
+	"curse": "Uploads malware into your deck or hand.",
 	"unknown": "Does something unusual. Tap the enemy to read the move.",
 }
 

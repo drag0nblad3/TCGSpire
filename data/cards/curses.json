@@ -1,4 +1,4 @@
 [
-{"id":"doubt","name":"Doubt","faction":"neutral","rarity":"curse","type":"skill","cost":0,"keywords":["unplayable"],"effects":[]},
-{"id":"lingering_chill","name":"Lingering Chill","faction":"neutral","rarity":"curse","type":"skill","cost":0,"keywords":["unplayable","ethereal"],"effects":[]}
+{"id":"doubt","name":"Adware","faction":"neutral","rarity":"curse","type":"skill","cost":0,"keywords":["unplayable"],"effects":[]},
+{"id":"lingering_chill","name":"Memory Leak","faction":"neutral","rarity":"curse","type":"skill","cost":0,"keywords":["unplayable","ethereal"],"effects":[]}
 ]
