@@ -260,7 +260,7 @@ func deal_damage(t: Fighter, amount: int, source_id: String = "", kind: String =
 	t.ward -= blocked
 	var dealt := amount - blocked
 	t.hp = maxi(t.hp - dealt, 0)
-	emit("damage", {"target": t.id, "amount": dealt, "blocked": blocked, "source": source_id, "kind": kind})
+	emit("damage", {"target": t.id, "amount": dealt, "blocked": blocked, "source": source_id, "kind": kind, "hp": t.hp, "ward": t.ward})
 	if t.is_dead():
 		emit("death", {"target": t.id})
 		units.erase(t)

@@ -18,10 +18,11 @@ func setup(id: String, db: CardDB, big_in: bool = false) -> TalismanView:
 	return self
 
 
+var _tap := Tap.new()
+
+
 func _gui_input(event: InputEvent) -> void:
-	var tapped: bool = (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT) \
-		or (event is InputEventScreenTouch and event.pressed)
-	if tapped:
+	if _tap.feed(event) == "tap":
 		pressed.emit(tid)
 		accept_event()
 
