@@ -1,7 +1,10 @@
 class_name Bot
 extends RefCounted
-## Simple greedy autoplayer. Not smart, but consistent: it exists so balance
-## changes can be measured with tools/sim.gd instead of playing by hand.
+## Greedy autoplayer for sims and tests. Each step it values every playable
+## (card, target) pair from the real combat state and plays the best one per RAM.
+## No search or state copies, so it costs about the same as a plain greedy bot:
+## it just knows what damage, Firewall and statuses are actually worth right now
+## (lethal checks, incoming damage, Exposed/Throttled math, wasted Firewall).
 
 
 static func run_combat(c: Combat, max_turns: int = 50) -> Dictionary:
@@ -23,65 +26,172 @@ static func play_turn(c: Combat) -> void:
 	while c.phase == Combat.Phase.PLAYER and guard < 30:
 		guard += 1
 		var best := -1
+		var best_t := -1
 		var best_score := 0.0
 		for i in c.hand.size():
 			if not c.can_play(i):
 				continue
-			var s := score(c, c.hand[i])
-			if s > best_score:
-				best_score = s
-				best = i
+			var card: CardInstance = c.hand[i]
+			for t in _targets(c, card):
+				var s := score(c, card, t)
+				if s > best_score:
+					best_score = s
+					best = i
+					best_t = t
 		if best < 0:
 			break
-		c.play_card(best, _pick_target(c))
+		c.play_card(best, best_t)
 	if c.phase == Combat.Phase.PLAYER:
 		c.end_turn()
 
 
-static func score(c: Combat, card: CardInstance) -> float:
-	var need_ward := maxi(c.incoming_damage() - c.player.ward, 0)
-	var s := 0.0
-	for e in card.effects():
-		var n := float(e.get("amount", 0))
-		match str(e.get("op", "")):
-			"damage":
-				var mult := float(e.get("hits", 1))
-				if e.get("to", "") == "all_enemies":
-					mult *= c.living(c.enemies).size()
-				s += n * mult
-			"damage_per_ward":
-				s += c.player.ward * float(e.get("mult", 1.0))
-			"ward":
-				s += minf(n, need_ward) * 1.2 + n * 0.2
-			"damage_per_status":
-				var amt := float(e.get("base", 0)) + c.player.status(str(e.get("status", ""))) * float(e.get("mult", 1.0))
-				s += amt * (c.living(c.enemies).size() if e.get("to", "") == "all_enemies" else 1)
-			"apply":
-				var st := str(e.get("status", ""))
-				if st == "echo":
-					s += 6.0
-				elif st == "overcharge":
-					s -= 2.0
-				else:
-					s += float(e.get("stacks", 1)) * (1.5 if st == "charge" else 2.5)
-			"draw", "energy":
-				s += n * 4.0
-			"summon":
-				s += float(e.get("atk", 0)) * 3.0 + float(e.get("hp", 0)) * 0.5
-			"rally":
-				s += n * c.units.size() * 2.0
-			"heal":
-				s += minf(n, c.player.max_hp - c.player.hp)
-	# Free cards are always worth it; otherwise prefer value per energy.
-	return s / maxf(card.cost(), 0.5) + 0.01
-
-
-static func _pick_target(c: Combat) -> int:
-	var best := -1
+static func _targets(c: Combat, card: CardInstance) -> Array:
+	if not c.needs_target(card):
+		return [-1]
+	var out: Array = []
 	for i in c.enemies.size():
-		var e: Fighter = c.enemies[i]
-		if e.is_dead():
-			continue
-		if best < 0 or e.hp < c.enemies[best].hp:
-			best = i
-	return best
+		if not c.enemies[i].is_dead():
+			out.append(i)
+	return out
+
+
+## Value of playing `card` at enemy index t (-1 = no target), per RAM spent.
+static func score(c: Combat, card: CardInstance, t: int = -1) -> float:
+	var target: Fighter = c.enemies[t] if t >= 0 else null
+	if target == null and c.needs_target(card):
+		var alive := c.living(c.enemies)
+		target = alive[0] if not alive.is_empty() else null
+	var v := 0.0
+	var loops := 2 if c.player.status("echo") > 0 else 1
+	for e in card.effects():
+		v += _effect_value(c, card, e, target)
+	v *= loops
+	# Free cards are always worth it; otherwise prefer value per RAM.
+	return v / maxf(card.cost(), 0.6) + 0.01
+
+
+static func _effect_value(c: Combat, card: CardInstance, e: Dictionary, target: Fighter) -> float:
+	var n := float(e.get("amount", 0))
+	var to := str(e.get("to", ""))
+	var foes := c.living(c.enemies)
+	match str(e.get("op", "")):
+		"damage":
+			var hits := int(e.get("hits", 1))
+			if to == "all_enemies":
+				var s := 0.0
+				for f in foes:
+					s += _hit_value(c, f, int(n), hits)
+				return s
+			return _hit_value(c, target, int(n), hits) if target != null else 0.0
+		"damage_per_ward":
+			var amt := int(c.player.ward * float(e.get("mult", 1.0)))
+			return _hit_value(c, target, amt, 1) if target != null else 0.0
+		"damage_per_status":
+			var amt := int(float(e.get("base", 0)) + c.player.status(str(e.get("status", ""))) * float(e.get("mult", 1.0)))
+			var s := 0.0
+			for f in (foes if to == "all_enemies" else ([target] if target != null else [])):
+				s += _hit_value(c, f, amt, 1)
+			if e.get("consume", false):
+				s -= c.player.status(str(e.get("status", ""))) * 0.8
+			return s
+		"ward":
+			var gain := n * (0.75 if c.player.status("frail") > 0 else 1.0)
+			var need := maxf(c.incoming_damage() - c.player.ward, 0.0)
+			var keeps := c.player.status("fortify") > 0
+			return minf(gain, need) * 1.15 + maxf(gain - need, 0.0) * (0.45 if keeps else 0.08)
+		"apply":
+			var st := str(e.get("status", ""))
+			var stacks := float(e.get("stacks", 1))
+			if to == "self":
+				return _self_status_value(c, st, stacks)
+			if to == "all_enemies":
+				var s := 0.0
+				for f in foes:
+					s += _enemy_status_value(c, f, st, stacks)
+				return s
+			return _enemy_status_value(c, target, st, stacks) if target != null else 0.0
+		"draw":
+			return n * 3.5 if c.hand.size() + int(n) <= Combat.MAX_HAND else 1.0
+		"energy":
+			return n * 4.5
+		"summon":
+			if c.units.size() >= c.board_slots:
+				return 0.0
+			return float(e.get("atk", 0)) * 3.0 + float(e.get("hp", 0)) * 0.6
+		"rally":
+			return n * c.units.size() * 2.5
+		"grow":
+			return c.units.size() * (float(e.get("atk", 0)) * 2.5 + float(e.get("hp", 0)) * 0.6)
+		"heal":
+			return minf(n, c.player.max_hp - c.player.hp) * 0.9
+		"lose_hp":
+			return -n * (0.5 + 1.0 * (1.0 - float(c.player.hp) / maxf(c.player.max_hp, 1.0)))
+		"cleanse":
+			return Statuses.debuffs(c.player).size() * 3.0
+		"add_card":
+			return 2.0 * maxf(n, 1.0)
+	return 0.0
+
+
+## Worth of hitting f for `amount` (before modifiers) `hits` times.
+static func _hit_value(c: Combat, f: Fighter, amount: int, hits: int) -> float:
+	if f == null or f.is_dead():
+		return 0.0
+	var per := Statuses.modify_attack(amount, c.player, f)
+	var hp := f.hp
+	var ward := f.ward
+	var v := 0.0
+	for i in hits:
+		var blocked := mini(ward, per)
+		ward -= blocked
+		var dealt := mini(per - blocked, hp)
+		hp -= dealt
+		v += dealt + blocked * 0.25
+		if f.status("thorns") > 0:
+			v -= f.status("thorns") * 0.8
+		if hp <= 0:
+			# Lethal: also removes that enemy's incoming attack.
+			v += 4.0 + c.intent_damage(f) * 1.2
+			break
+	return v
+
+
+static func _enemy_status_value(c: Combat, f: Fighter, st: String, stacks: float) -> float:
+	if f == null or f.is_dead():
+		return 0.0
+	match st:
+		"burn":
+			# Ticks stacks, stacks-1, ... but never more than its HP.
+			return minf(stacks * (stacks + 1.0) / 2.0 + f.status("burn") * 0.5, float(f.hp)) * 0.7
+		"brittle":
+			var attacks := c.hand.filter(func(k: CardInstance) -> bool: return k.def.type == "attack").size()
+			return stacks * (1.0 + attacks * 1.5 + c.units.size()) if f.status("brittle") == 0 else stacks * 1.2
+		"weaken":
+			return c.intent_damage(f) * 0.25 * minf(stacks, 2.0) + stacks * 0.8
+		"frail":
+			return stacks * 0.6
+	return stacks * 1.5
+
+
+static func _self_status_value(c: Combat, st: String, stacks: float) -> float:
+	match st:
+		"might":
+			return stacks * 2.5
+		"regen":
+			return minf(stacks * (stacks + 1.0) / 2.0, c.player.max_hp - c.player.hp) * 0.8
+		"thorns":
+			var hits := 0
+			for f in c.living(c.enemies):
+				for e in f.current_move().get("effects", []):
+					if e.get("op", "") == "damage":
+						hits += int(e.get("hits", 1))
+			return stacks * (hits + 1.5)
+		"fortify":
+			return 7.0 if c.player.status("fortify") == 0 else 0.5
+		"charge":
+			return stacks * 1.8
+		"echo":
+			return 6.0 * stacks
+		"overcharge":
+			return -3.0 * stacks
+	return stacks * 1.5

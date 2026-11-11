@@ -16,7 +16,7 @@ Original design only: don't copy cards, names, characters or look from existing 
 ## Layout
 - `core/` pure rules, no Nodes: `combat.gd` (turn flow, piles, events log), `effects.gd`
   (op vocabulary shared by cards AND enemy moves), `statuses.gd`, `card_db.gd` (loads data),
-  `game_rng.gd` (seeded, `fork(stream)`), `bot.gd` (greedy autoplayer for sims),
+  `game_rng.gd` (seeded, `fork(stream)`), `bot.gd` (state-aware greedy autoplayer for sims),
   `talismans.gd` (passive items: trigger hooks fired by Combat, effects use Effects ops),
   `card_mods.gd` (one mod per CardInstance: cost/keyword/effect changes, restrictions).
 - `meta/` between-run state: `profile.gd` (versioned save, `_migrate`), `collection.gd`
@@ -59,8 +59,10 @@ Original design only: don't copy cards, names, characters or look from existing 
   All randomness goes through `GameRng`; events hold ids/numbers only.
 - New talisman/event/mod/perk = JSON only (`mods.json`, `perks.json`; perk mod keys in `Perks.MODS`). Talisman triggers: combat_start, turn_start, turn_end,
   card_played (filters card_type, every), kill. Event outcomes use `RunOutcomes.OPS`.
-- Balance check after content changes: `scripts/sim.sh mode=run n=150 job=all`. Greedy bot baseline at heat 0
-  on jobs: ~9% clear act 1, ~3% win the full 2-act run (freelance, no job: ~16% / ~8%) (humans should do much better). Watch the killers list.
+- Balance check after content changes: `scripts/sim.sh mode=run n=400 job=all` (~20 s). Bot baseline at heat 0
+  on jobs: ~21% clear act 1, ~7% win the full 2-act run (heat 3 ~7% / 2%, heat 6 ~0%). Humans should do much
+  better. Watch the killers list. `core/bot.gd` values (card, target) pairs from live state (no search/copies);
+  `meta/run_bot.gd` uses static `card_value` for picks/upgrades/shop and scores event outcomes. Keep both cheap.
 - Save format change: bump `Profile.SAVE_VERSION` and add a step in `_migrate()`.
 - Packs are earned by play only. Rarity should add complexity, not raw power.
 - GDScript gotcha: `var x := untyped_value` fails to parse; write `var x: Type = ...`.
