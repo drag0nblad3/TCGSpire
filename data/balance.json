@@ -1,0 +1,13 @@
+{
+"player": {"max_hp": 60, "max_energy": 3, "hand_size": 5},
+"board_slots": 3,
+"base_deck": ["jab", "jab", "jab", "brace", "brace", "brace"],
+"starter_picks": 4,
+"starter_collection": {"jab": 3, "brace": 3, "kindle": 2, "ember_whelp": 1, "flare_volley": 1, "undertow": 2, "tidewall": 1, "low_tide": 1, "second_wind": 1},
+"pack": {"size": 5, "weights": {"common": 70, "uncommon": 24, "rare": 5.5, "mythic": 0.5}, "foil_chance": 0.04},
+"reward": {"choices": 3, "weights": {"common": 60, "uncommon": 32, "rare": 8}},
+"dust": {
+  "disenchant": {"common": 5, "uncommon": 20, "rare": 80, "mythic": 300},
+  "craft": {"common": 40, "uncommon": 100, "rare": 400, "mythic": 1600}
+}
+}

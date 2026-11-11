@@ -1,0 +1,9 @@
+[
+{"id":"kindle","name":"Kindle","faction":"ember","rarity":"common","type":"attack","target":"enemy","cost":1,"effects":[{"op":"damage","amount":4},{"op":"apply","status":"burn","stacks":3}],"upgrade":{"effects":[{"op":"damage","amount":6},{"op":"apply","status":"burn","stacks":4}]}},
+{"id":"flare_volley","name":"Flare Volley","faction":"ember","rarity":"common","type":"attack","cost":2,"effects":[{"op":"damage","amount":6,"to":"all_enemies"}],"upgrade":{"effects":[{"op":"damage","amount":9,"to":"all_enemies"}]}},
+{"id":"ember_whelp","name":"Ember Whelp","faction":"ember","rarity":"common","type":"unit","cost":1,"effects":[{"op":"summon","name":"Whelp","atk":3,"hp":5}],"upgrade":{"effects":[{"op":"summon","name":"Whelp","atk":4,"hp":7}]}},
+{"id":"searing_brand","name":"Searing Brand","faction":"ember","rarity":"uncommon","type":"skill","target":"enemy","cost":1,"effects":[{"op":"apply","status":"brittle","stacks":2},{"op":"apply","status":"burn","stacks":2}],"upgrade":{"effects":[{"op":"apply","status":"brittle","stacks":3},{"op":"apply","status":"burn","stacks":3}]}},
+{"id":"overclock","name":"Overclock","faction":"ember","rarity":"uncommon","type":"skill","cost":0,"effects":[{"op":"energy","amount":2},{"op":"apply","status":"overcharge","stacks":1,"to":"self"}],"upgrade":{"effects":[{"op":"energy","amount":2},{"op":"draw","amount":1},{"op":"apply","status":"overcharge","stacks":1,"to":"self"}]}},
+{"id":"blaze_heart","name":"Blaze Heart","faction":"ember","rarity":"rare","type":"power","cost":2,"effects":[{"op":"apply","status":"might","stacks":2,"to":"self"}],"upgrade":{"effects":[{"op":"apply","status":"might","stacks":3,"to":"self"}]}},
+{"id":"cinder_storm","name":"Cinder Storm","faction":"ember","rarity":"rare","type":"attack","cost":3,"effects":[{"op":"damage","amount":3,"hits":4,"to":"all_enemies"}],"upgrade":{"effects":[{"op":"damage","amount":4,"hits":4,"to":"all_enemies"}]}}
+]
