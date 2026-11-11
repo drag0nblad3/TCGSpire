@@ -66,7 +66,25 @@ static func xp_for_level(lvl: int) -> int:
 
 
 func starter_picks(db: CardDB) -> int:
-	return int(db.balance.get("starter_picks", 4)) + int(unlocks.get("extra_picks", 0))
+	return int(db.balance.get("starter_picks", 4)) + int(unlocks.get("extra_picks", 0)) + int(unlocks.get("swap_picks", 0))
+
+
+## The run's basic cards: balance.base_deck minus one basic per swap pick,
+## alternating between the basic kinds (Jab, Brace, Jab, ...).
+func base_deck(db: CardDB) -> Array:
+	var deck: Array = db.balance.get("base_deck", []).map(func(x: Variant) -> String: return str(x))
+	var kinds: Array = []
+	for id in deck:
+		if id not in kinds:
+			kinds.append(id)
+	for k in int(unlocks.get("swap_picks", 0)):
+		for j in kinds.size():
+			var id: String = kinds[(k + j) % kinds.size()]
+			var at := deck.rfind(id)
+			if at >= 0:
+				deck.remove_at(at)
+				break
+	return deck
 
 
 ## Applies the end of a run. Returns lines describing everything gained.
@@ -115,6 +133,9 @@ func add_xp(db: CardDB, amount: int) -> Array:
 		if rewards.get("extra_picks", []).any(func(x: Variant) -> bool: return int(x) == lvl):
 			unlocks["extra_picks"] = int(unlocks.get("extra_picks", 0)) + 1
 			lines.append("  +1 starting pick")
+		if rewards.get("swap_picks", []).any(func(x: Variant) -> bool: return int(x) == lvl):
+			unlocks["swap_picks"] = int(unlocks.get("swap_picks", 0)) + 1
+			lines.append("  A basic program in your starting deck becomes a pick")
 	return lines
 
 

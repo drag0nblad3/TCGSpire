@@ -191,9 +191,11 @@
  "levels": {
   "packs": 1,
   "dust_per_level": 10,
-  "extra_picks": [
-   3,
-   8
+  "swap_picks": [
+   5,
+   10,
+   15,
+   20
   ]
  },
  "mastery": [

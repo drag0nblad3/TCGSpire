@@ -76,7 +76,7 @@ func _ready() -> void:
 
 func _base_summary() -> String:
 	var counts := {}
-	for id in db.balance.get("base_deck", []):
+	for id in profile.base_deck(db):
 		counts[id] = int(counts.get(id, 0)) + 1
 	var parts: Array[String] = []
 	for id in counts:

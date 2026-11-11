@@ -82,8 +82,8 @@ static func maxed(db: CardDB) -> Profile:
 	for id in db.perks:
 		if db.perks[id].get("scope", "") == "rig":
 			p.rig[id] = int(db.perks[id]["max_rank"])
-	p.unlocks["extra_picks"] = 2
-	p.xp = Profile.xp_for_level(12)
+	p.unlocks["swap_picks"] = 4
+	p.xp = Profile.xp_for_level(Profile.LEVEL_CAP)
 	p.max_heat = db.balance.get("heat", []).size()
 	return p
 

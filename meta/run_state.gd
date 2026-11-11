@@ -63,7 +63,7 @@ static func start(db_in: CardDB, profile: Profile, picks: Array, seed_in: int, h
 	r.hp = r.max_hp
 	r.gold = int(db_in.balance.get("start_gold", 50)) + int(r.perk_mod("start_gold"))
 	r.remove_cost = int(db_in.balance.get("shop", {}).get("remove_base", 50))
-	for raw in db_in.balance.get("base_deck", []):
+	for raw in profile.base_deck(db_in):
 		var bid := str(raw)
 		r.deck.append(r.make_card(bid.trim_suffix("+"), bid.ends_with("+")))
 	var allowed := profile.starter_picks(db_in)
