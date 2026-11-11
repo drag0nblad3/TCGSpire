@@ -162,15 +162,18 @@ func test_job_pays_rep() -> void:
 
 func test_rig_costs_rep_and_refunds() -> void:
 	check(not profile.buy_rig(db, "chassis"), "no rep")
-	profile.rep["bloom"] = 80
+	var r1 := Profile.rank_cost(db, "chassis", 1)
+	var r2 := Profile.rank_cost(db, "chassis", 2)
+	check(r2 > r1, "ranks get pricier")
+	profile.rep["bloom"] = r1 + r2
 	check(profile.buy_rig(db, "chassis"), "rank 1")
-	eq(profile.rep_of("bloom"), 55)
-	check(profile.buy_rig(db, "chassis"), "rank 2 costs more")
-	eq(profile.rep_of("bloom"), 5)
+	eq(profile.rep_of("bloom"), r2)
+	check(profile.buy_rig(db, "chassis"), "rank 2")
+	eq(profile.rep_of("bloom"), 0)
 	var r := _run()
-	eq(r.max_hp, int(db.balance["player"]["max_hp"]) + 8, "rig max hp")
+	eq(r.max_hp, int(db.balance["player"]["max_hp"]) + 2 * int(db.perks["chassis"]["mods"]["max_hp"]), "rig max hp")
 	profile.reset_rig(db)
-	eq(profile.rep_of("bloom"), 80, "refund")
+	eq(profile.rep_of("bloom"), r1 + r2, "refund")
 	eq(profile.rig, {})
 
 
@@ -322,7 +325,7 @@ func test_firmware_mod_bakes_into_every_copy() -> void:
 func test_new_perk_keys() -> void:
 	profile.rig = {"pirate_coupons": 2, "wider_menu": 1, "contract_killer": 3}
 	var r := _run(1, "ember")
-	eq(r.remove_price(), int(db.balance["shop"]["remove_base"]) - 40, "deletion discount")
+	eq(r.remove_price(), int(db.balance["shop"]["remove_base"]) - 2 * int(db.perks["pirate_coupons"]["mods"]["remove_discount"]), "deletion discount")
 	r.floor_num = 10
 	var base := RunState.start(db, Profile.new_player(db), RunState.default_picks(db, profile, "ember"), 1, 0, "ember")
 	base.floor_num = 10
@@ -416,3 +419,23 @@ func test_level_rewards_and_cap() -> void:
 	var deck := profile.base_deck(db)
 	eq(deck.count("jab"), 2, "swaps alternate")
 	eq(deck.count("brace"), 2, "swaps alternate")
+
+
+func test_capstone_needs_crew_maxed_and_changes_combat() -> void:
+	profile.rep["ember"] = 10000
+	check(not profile.can_buy_rig(db, "thermal_runaway"), "locked until the crew is maxed")
+	for id in db.perks:
+		var p: Dictionary = db.perks[id]
+		if p.get("scope", "") == "rig" and p.get("faction", "") == "ember" and not p.get("capstone", false):
+			while profile.buy_rig(db, id):
+				pass
+	check(profile.buy_rig(db, "thermal_runaway"), "unlocked")
+	var r := RunState.start(db, profile, [], 1)
+	var c := r.start_combat(db.encounters.keys()[0])
+	eq(c.max_energy, int(db.balance["player"]["max_energy"]) + 1, "+1 RAM")
+	profile.rig["hive_link"] = 1
+	var r2 := RunState.start(db, profile, [], 1)
+	var c2 := r2.start_combat(db.encounters.keys()[0])
+	c2.start()
+	eq(c2.board_slots, int(db.balance["board_slots"]) + 1, "+1 daemon slot")
+	eq(c2.units.size(), 1, "capstone trigger summons a drone")

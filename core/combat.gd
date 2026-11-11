@@ -43,7 +43,7 @@ var enemy_dmg_mult := 1.0
 
 ## deck: Array of CardInstance (copied, not mutated). hp < 0 means full HP.
 ## opts (all optional): max_hp, talismans (Array of ids), perks (Array of perk dicts),
-## start_ward, enemy_hp_mult, enemy_might, enemy_dmg_mult.
+## start_ward, enemy_hp_mult, enemy_might, enemy_dmg_mult, extra_energy, extra_hand, extra_slots.
 static func create(db_in: CardDB, deck: Array, encounter_id: String, rng_in: GameRng, hp: int = -1, opts: Dictionary = {}) -> Combat:
 	var c := Combat.new()
 	c.db = db_in
@@ -51,7 +51,9 @@ static func create(db_in: CardDB, deck: Array, encounter_id: String, rng_in: Gam
 	var p: Dictionary = db_in.balance.get("player", {})
 	c.max_energy = int(p.get("max_energy", 3))
 	c.hand_size = int(p.get("hand_size", 5))
-	c.board_slots = int(db_in.balance.get("board_slots", 3))
+	c.board_slots = int(db_in.balance.get("board_slots", 3)) + int(opts.get("extra_slots", 0))
+	c.max_energy += int(opts.get("extra_energy", 0))
+	c.hand_size += int(opts.get("extra_hand", 0))
 	var max_hp := int(opts.get("max_hp", p.get("max_hp", 60)))
 	c.enemy_hp_mult = float(opts.get("enemy_hp_mult", 1.0))
 	c.enemy_might = int(opts.get("enemy_might", 0))

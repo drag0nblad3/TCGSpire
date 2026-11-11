@@ -177,13 +177,32 @@ func rep_of(faction: String) -> int:
 
 ## Rep price of the next rank (base cost x next rank).
 func rig_cost(db: CardDB, id: String) -> int:
-	return int(db.perks.get(id, {}).get("cost", 0)) * (int(rig.get(id, 0)) + 1)
+	return rank_cost(db, id, int(rig.get(id, 0)) + 1)
+
+
+## Price of rank k (1-based): base cost x balance.rig_rank_cost[k-1].
+static func rank_cost(db: CardDB, id: String, k: int) -> int:
+	var mults: Array = db.balance.get("rig_rank_cost", [1, 2, 3])
+	return int(db.perks.get(id, {}).get("cost", 0)) * int(mults[clampi(k - 1, 0, mults.size() - 1)])
 
 
 func can_buy_rig(db: CardDB, id: String) -> bool:
 	var p: Dictionary = db.perks.get(id, {})
 	return p.get("scope", "") == "rig" and int(rig.get(id, 0)) < int(p.get("max_rank", 0)) \
-		and rep_of(str(p.get("faction", ""))) >= rig_cost(db, id)
+		and rep_of(str(p.get("faction", ""))) >= rig_cost(db, id) and capstone_ready(db, id)
+
+
+## Capstones unlock once every other rig upgrade of their crew is maxed.
+func capstone_ready(db: CardDB, id: String) -> bool:
+	var p: Dictionary = db.perks.get(id, {})
+	if not p.get("capstone", false):
+		return true
+	for other in db.perks:
+		var o: Dictionary = db.perks[other]
+		if other != id and o.get("scope", "") == "rig" and o.get("faction", "") == p.get("faction", "") \
+				and int(rig.get(other, 0)) < int(o.get("max_rank", 0)):
+			return false
+	return true
 
 
 func buy_rig(db: CardDB, id: String) -> bool:
@@ -201,7 +220,7 @@ func reset_rig(db: CardDB) -> void:
 		var p: Dictionary = db.perks.get(id, {})
 		var f := str(p.get("faction", ""))
 		for k in range(1, int(rig[id]) + 1):
-			rep[f] = rep_of(f) + int(p.get("cost", 0)) * k
+			rep[f] = rep_of(f) + rank_cost(db, id, k)
 	rig = {}
 
 

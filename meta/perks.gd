@@ -4,7 +4,8 @@ extends RefCounted
 ##   "run": Subroutines. Picked from 3 after black sentries and Cores; last this run.
 ##          May have "mods", "triggers" (like implants) and "pickup" (run outcomes).
 ##   "rig": Rig upgrades. Bought with rig points between runs, saved in the profile,
-##          ranked 1..max_rank; each rank adds its "mods" again.
+##          ranked 1..max_rank; each rank adds its "mods" again. A "capstone" rig perk
+##          unlocks once every other rig perk of its crew is maxed, and may have triggers.
 ## Mods are numbers summed over every perk (RunState.perk_mod):
 const MODS := {
 	"max_hp": "Max HP",
@@ -21,6 +22,9 @@ const MODS := {
 	"rep_pct": "Rep from the job",
 	"perk_choices": "Subroutine choices",
 	"remove_discount": "Cheaper program deletion",
+	"max_energy": "RAM each turn",
+	"hand_size": "Programs drawn each turn",
+	"board_slots": "Daemon slots",
 }
 const SCOPES := ["run", "rig"]
 const PCT := ["gold_pct", "rest_heal_pct", "shop_discount_pct"]
@@ -63,6 +67,12 @@ static func describe_mod(k: String, v: float) -> String:
 			return "Start runs with %d random subroutine%s." % [int(v), "" if int(v) == 1 else "s"]
 		"rep_pct":
 			return "+%d%% rep from jobs." % roundi(v * 100)
+		"max_energy":
+			return "+%d %s every turn." % [int(v), Lexicon.term("energy")]
+		"hand_size":
+			return "Draw %d more program%s each turn." % [int(v), "" if int(v) == 1 else "s"]
+		"board_slots":
+			return "+%d daemon slot%s." % [int(v), "" if int(v) == 1 else "s"]
 		"perk_choices":
 			return "+%d subroutine choice%s." % [int(v), "" if int(v) == 1 else "s"]
 		"remove_discount":
@@ -90,8 +100,8 @@ static func validate(p: Dictionary) -> Array[String]:
 	if scope == "rig":
 		if int(p.get("max_rank", 0)) < 1 or int(p.get("cost", 0)) < 1:
 			errs.append("%s: rig perks need max_rank and cost >= 1" % where)
-		if p.has("triggers") or p.has("pickup"):
-			errs.append("%s: rig perks use mods only" % where)
+		if p.has("pickup") or (p.has("triggers") and not p.get("capstone", false)):
+			errs.append("%s: rig perks use mods only (capstones may add triggers)" % where)
 	for trig in p.get("triggers", []):
 		if trig.get("on", "") not in Talismans.TRIGGERS:
 			errs.append("%s: bad trigger '%s'" % [where, trig.get("on", "")])

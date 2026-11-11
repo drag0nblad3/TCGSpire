@@ -63,6 +63,12 @@ func _row(id: String) -> Control:
 	d.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	info.add_child(d)
 	row.add_child(info)
+	if p.get("capstone", false):
+		title.text = "Capstone: " + str(p["name"]) + ("   ·   owned" if rank > 0 else "")
+		if not profile.capstone_ready(db, id):
+			var lock := UiKit.label("Max every other %s upgrade to unlock." % Lexicon.faction(str(p.get("faction", ""))), 13, Palette.TEXT_DIM, true)
+			lock.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+			info.add_child(lock)
 	var b := UiKit.button("Maxed" if rank >= maxr else "+1  (%d rep)" % profile.rig_cost(db, id), func() -> void:
 		if profile.buy_rig(db, id):
 			changed.emit()

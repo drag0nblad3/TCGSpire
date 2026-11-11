@@ -290,5 +290,10 @@
   "rep_per_extra_target": 0.25,
   "faction_boss_share": 0.75,
   "rep_mult": 0.75
- }
+ },
+ "rig_rank_cost": [
+  2,
+  6,
+  12
+ ]
 }

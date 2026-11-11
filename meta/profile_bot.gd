@@ -9,7 +9,8 @@ extends RefCounted
 ## Rig perks in the order a player would likely buy them (cheap survival first).
 const RIG_ORDER := ["chassis", "hardpoint", "crowd_funding", "cred_stash", "field_clinic", "repair_drones", "boot_firewall",
 	"cooling_loop", "salvage_rights", "dividend_plan", "fence_network", "signal_jammer", "pirate_coupons", "contract_killer",
-	"mod_cache", "wider_scan", "wider_menu", "seed_subroutine"]
+	"mod_cache", "wider_scan", "wider_menu", "seed_subroutine",
+	"thermal_runaway", "liquidity_engine", "regrowth_protocol", "absolute_zero", "hive_link", "dead_air_protocol"]
 ## Mods worth baking, best first.
 const MOD_ORDER := ["overclocked", "looped", "hardened_payload", "buffered", "shielded", "cached", "infected", "exposing",
 	"boosted_daemon", "swarm_hook", "persistent", "leech", "preloaded", "lean_build", "volatile_payload"]

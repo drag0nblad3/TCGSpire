@@ -164,7 +164,11 @@ func combat_opts() -> Dictionary:
 	return {
 		"max_hp": max_hp,
 		"talismans": talismans,
-		"perks": perks.map(func(pid: String) -> Dictionary: return db.perks[pid]),
+		"perks": perks.map(func(pid: String) -> Dictionary: return db.perks[pid]) \
+			+ rig.keys().filter(func(pid: String) -> bool: return int(rig[pid]) > 0 and db.perks.get(pid, {}).has("triggers")).map(func(pid: String) -> Dictionary: return db.perks[pid]),
+		"extra_energy": int(perk_mod("max_energy")),
+		"extra_hand": int(perk_mod("hand_size")),
+		"extra_slots": int(perk_mod("board_slots")),
 		"start_ward": int(perk_mod("start_ward")),
 		"enemy_hp_mult": maxf(heat_mult("enemy_hp_pct") * (1.0 + perk_mod("enemy_hp_pct")), 0.5),
 		"enemy_might": int(heat_mod("enemy_might", 0)),
