@@ -13,7 +13,7 @@ LOG="${TMPDIR:-/tmp}/tcgspire-test.log"
 code=$?
 # UI smoke: boot the real main scene headless and auto-play a few cards (full run only).
 if [ $# -eq 0 ]; then
-  "$GODOT" --headless --path . -s res://tools/screenshot.gd -- plays=3 frames=10 >>"$LOG" 2>&1 || code=1
+  "$GODOT" --headless --path . -s res://tools/screenshot.gd -- screen=all plays=3 frames=5 >>"$LOG" 2>&1 || code=1
 fi
 if grep -qE "SCRIPT ERROR|Parse Error" "$LOG"; then code=1; fi
 if [ $code -eq 0 ]; then

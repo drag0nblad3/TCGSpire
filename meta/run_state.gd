@@ -16,6 +16,7 @@ var heat := 0
 var talismans: Array = []
 var map: RunMap
 var node_id := -1
+var path: Array = []
 var combats_won := 0
 var elites_won := 0
 var boss_won := false
@@ -112,6 +113,7 @@ func enter(id: int) -> Dictionary:
 		push_error("Node %d not reachable" % id)
 		return {}
 	node_id = id
+	path.append(id)
 	var node := map.node(id)
 	floor_num = int(node["row"]) + 1
 	return node

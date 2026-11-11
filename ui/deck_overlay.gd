@@ -1,0 +1,52 @@
+class_name DeckOverlay
+extends Control
+## Full-screen card grid on top of everything. on_pick(index) gets the tapped
+## card's index (or -1 for the button). Used for deck view, upgrade and removal.
+
+var _title := ""
+var _cards: Array = []
+var _button := ""
+var _on_pick: Callable
+var _preview_upgrade := false
+var _pickable := false
+
+
+func setup(title: String, cards: Array, button_text: String, on_pick: Callable, pickable: bool = false, preview_upgrade: bool = false) -> DeckOverlay:
+	_title = title
+	_cards = cards
+	_button = button_text
+	_on_pick = on_pick
+	_pickable = pickable
+	_preview_upgrade = preview_upgrade
+	return self
+
+
+func _ready() -> void:
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var bg := ColorRect.new()
+	bg.color = Color(0.02, 0.02, 0.05, 0.94)
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(bg)
+	var parts := UiKit.screen(14, BoxContainer.ALIGNMENT_BEGIN)
+	add_child(parts[0])
+	var v: VBoxContainer = parts[1]
+	v.add_child(UiKit.label(_title, 24))
+	var inner := UiKit.scroll(v)
+	var grid := UiKit.flow(10)
+	inner.add_child(grid)
+	for i in _cards.size():
+		var src: CardInstance = _cards[i]
+		var shown := src
+		if _preview_upgrade and not src.upgraded:
+			shown = CardInstance.new(src.def, true)
+		var cv := CardView.new().setup(shown)
+		cv.playable = not _pickable or (not _preview_upgrade or (not src.upgraded and src.def.rarity != "curse"))
+		if _pickable and cv.playable:
+			cv.pressed.connect(func(_v: CardView) -> void: _close(i))
+		grid.add_child(cv)
+	v.add_child(UiKit.button(_button, func() -> void: _close(-1)))
+
+
+func _close(i: int) -> void:
+	queue_free()
+	_on_pick.call(i)

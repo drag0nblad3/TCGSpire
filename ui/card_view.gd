@@ -10,9 +10,22 @@ const HOLO := preload("res://shaders/holo.gdshader")
 
 var card: CardInstance
 var playable := true
+## Small pill in the corner: owned count, price, "x2" etc.
+var badge := "":
+	set(v):
+		badge = v
+		queue_redraw()
 var selected := false:
 	set(v):
 		selected = v
+		queue_redraw()
+
+## Shows the card back (pack opening). Setting false reveals with a flip.
+var face_down := false:
+	set(v):
+		face_down = v
+		if _holo != null:
+			_holo.visible = not v
 		queue_redraw()
 
 var _holo: ColorRect
@@ -46,12 +59,15 @@ func _gui_input(event: InputEvent) -> void:
 
 
 func _process(_dt: float) -> void:
-	if card != null and card.def.rarity in ["rare", "mythic"]:
-		queue_redraw()  # animate the sigil on rares
+	if card != null and (face_down or card.def.rarity in ["rare", "mythic"]):
+		queue_redraw()  # animate the sigil on rares and card backs
 
 
 func _draw() -> void:
 	if card == null:
+		return
+	if face_down:
+		_draw_back()
 		return
 	var d := card.def
 	var fc := Palette.faction(d.faction)
@@ -100,5 +116,35 @@ func _draw() -> void:
 	# Rarity pip.
 	draw_circle(rect.position + Vector2(SIZE.x / 2, SIZE.y - 9), 3.5, Palette.rarity(d.rarity))
 
+	if badge != "":
+		var bw := font.get_string_size(badge, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 12
+		var pill := StyleBoxFlat.new()
+		pill.bg_color = Palette.ENERGY
+		pill.set_corner_radius_all(9)
+		var pr := Rect2(rect.position + Vector2(SIZE.x - bw - 4, SIZE.y - 22), Vector2(bw, 18))
+		draw_style_box(pill, pr)
+		draw_string(font, pr.position + Vector2(6, 13), badge, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Palette.CARD_BG)
+
 	if _holo != null:
 		_holo.position = Vector2(6, 6) + lift
+
+
+func _draw_back() -> void:
+	var rect := Rect2(Vector2.ZERO, SIZE)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color("#211a33")
+	sb.border_color = Palette.ENERGY
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(10)
+	draw_style_box(sb, rect)
+	var t := Time.get_ticks_msec() / 1000.0
+	Sigil.draw(self, rect.get_center(), 40.0, "card-back", Color(Palette.ENERGY, 0.8), t)
+	draw_string(Palette.font(), Vector2(0, SIZE.y - 16), "TCG SPIRE", HORIZONTAL_ALIGNMENT_CENTER, SIZE.x, 11, Palette.TEXT_DIM)
+
+
+## Flip animation: squash to 0 width, swap face, expand back.
+func flip_reveal() -> void:
+	var tw := create_tween()
+	tw.tween_property(self, "scale:x", 0.0, 0.12)
+	tw.tween_callback(func() -> void: face_down = false)
+	tw.tween_property(self, "scale:x", 1.0, 0.12)

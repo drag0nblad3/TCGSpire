@@ -41,6 +41,13 @@ func _ready() -> void:
 
 	_top = _label(16, Palette.TEXT_DIM)
 	col.add_child(_top)
+	if not combat.talismans.is_empty():
+		var trow := UiKit.hbox(6)
+		for t in combat.talismans:
+			var tv := TalismanView.new().setup(t["id"], combat.db)
+			tv.pressed.connect(func(id: String) -> void: UiKit.toast(self, TalismanView.text(combat.db, id)))
+			trow.add_child(tv)
+		col.add_child(trow)
 	var top_gap := _spacer()
 	top_gap.size_flags_stretch_ratio = 0.5
 	col.add_child(top_gap)
@@ -108,7 +115,7 @@ func _rebuild() -> void:
 		_hand_row.add_child(cv)
 	_hand_row.add_theme_constant_override("separation", -14 if combat.hand.size() > 5 else 6)
 	_energy.text = "Energy %d/%d" % [combat.energy, combat.max_energy]
-	_top.text = "Floor %d   Draw %d   Discard %d   Exhaust %d" % [run.floor_num if run else 0, combat.draw_pile.size(), combat.discard_pile.size(), combat.exhaust_pile.size()]
+	_top.text = "Floor %d   Gold %d   Draw %d   Discard %d   Exhaust %d" % [run.floor_num if run else 0, run.gold if run else 0, combat.draw_pile.size(), combat.discard_pile.size(), combat.exhaust_pile.size()]
 	_hint.text = "Choose a target" if _selected >= 0 else ("Incoming: %d" % combat.incoming_damage())
 	_end_btn.disabled = combat.phase != Combat.Phase.PLAYER
 
@@ -165,6 +172,11 @@ func _play_events() -> void:
 				_float_text(e["target"], "+%d ward" % e["amount"], Palette.WARD, delay)
 			"heal":
 				_float_text(e["target"], "+%d" % e["amount"], Palette.UPGRADED, delay)
+			"talisman":
+				_float_text("player", str(combat.db.talismans.get(e["id"], {}).get("name", "")), Palette.RARITY["rare"], delay)
+				delay += 0.15
+			"summon", "spawn":
+				pass
 			"status":
 				_float_text(e["target"], "%s %d" % [str(e["status"]).capitalize(), e["stacks"]], Palette.ENERGY, delay)
 	if delay > 0.0:
