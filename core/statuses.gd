@@ -4,17 +4,17 @@ extends RefCounted
 ## handle it in the hook(s) below, then add a test in tests/test_effects.gd.
 
 const DEFS := {
-	"burn": {"debuff": true, "desc": "Takes damage equal to stacks at turn start, then loses 1."},
-	"brittle": {"debuff": true, "desc": "Takes 50% more attack damage. Loses 1 at end of turn."},
-	"weaken": {"debuff": true, "desc": "Deals 25% less attack damage. Loses 1 at end of turn."},
-	"might": {"debuff": false, "desc": "Attacks deal +1 damage per stack."},
-	"overcharge": {"debuff": true, "desc": "Start next turn with 1 less energy per stack."},
-	"thorns": {"debuff": false, "desc": "When attacked, deal damage equal to stacks to the attacker."},
-	"regen": {"debuff": false, "desc": "Heal stacks at end of turn, then lose 1."},
-	"fortify": {"debuff": false, "desc": "Ward is not removed at the start of turn."},
-	"frail": {"debuff": true, "desc": "Gain 25% less Ward. Loses 1 at end of turn."},
-	"charge": {"debuff": false, "desc": "Stored power. Some cards spend it for big effects."},
-	"echo": {"debuff": false, "desc": "Your next card's effects happen twice. Uses 1 stack."},
+	"burn": {"debuff": true, "desc": "A virus eating your code: take damage equal to stacks at turn start, then lose 1."},
+	"brittle": {"debuff": true, "desc": "Exposed: takes 50% more attack damage. Loses 1 at end of turn."},
+	"weaken": {"debuff": true, "desc": "Throttled: deals 25% less attack damage. Loses 1 at end of turn."},
+	"might": {"debuff": false, "desc": "Boost: attacks deal +1 damage per stack."},
+	"overcharge": {"debuff": true, "desc": "Overheat: start next turn with 1 less RAM per stack."},
+	"thorns": {"debuff": false, "desc": "Feedback: when attacked, deal damage equal to stacks back to the attacker."},
+	"regen": {"debuff": false, "desc": "Patch: repair HP equal to stacks at end of turn, then lose 1."},
+	"fortify": {"debuff": false, "desc": "Hardened: your Firewall isn't cleared at the start of your turn."},
+	"frail": {"debuff": true, "desc": "Fragmented: gain 25% less Firewall. Loses 1 at end of turn."},
+	"charge": {"debuff": false, "desc": "Buffer: stored power. Some programs spend it for big effects."},
+	"echo": {"debuff": false, "desc": "Loop: your next program runs twice. Uses 1 stack."},
 }
 
 const DECAYING := ["brittle", "weaken", "frail"]

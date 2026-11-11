@@ -145,7 +145,7 @@ static func describe(e: Dictionary) -> String:
 		"all_enemies":
 			where = " to ALL enemies"
 		"all_allies":
-			where = " to you and your units"
+			where = " to you and your daemons"
 		"front":
 			where = " to the front enemy"
 	match op:
@@ -155,13 +155,13 @@ static func describe(e: Dictionary) -> String:
 		"damage_per_ward":
 			var mult := float(e.get("mult", 1.0))
 			var m := "" if mult == 1.0 else " x%s" % str(mult)
-			return "Deal damage equal to your Ward%s%s." % [m, where]
+			return "Deal damage equal to your Firewall%s%s." % [m, where]
 		"ward":
-			return "Gain %d Ward." % n
+			return "Gain %d Firewall." % n
 		"heal":
-			return "Heal %d." % n
+			return "Repair %d HP." % n
 		"apply":
-			var s := str(e.get("status", "")).capitalize()
+			var s := Lexicon.status(str(e.get("status", "")))
 			var stacks := int(e.get("stacks", 1))
 			if to == "self":
 				return "Gain %d %s." % [stacks, s]
@@ -169,28 +169,28 @@ static func describe(e: Dictionary) -> String:
 		"draw":
 			return "Draw %d card%s." % [n, "" if n == 1 else "s"]
 		"energy":
-			return "Gain %d energy." % n
+			return "Gain %d RAM." % n
 		"summon":
-			return "Summon %s (%d/%d)." % [e.get("name", "Unit"), int(e.get("atk", 0)), int(e.get("hp", 1))]
+			return "Run %s (%d/%d)." % [e.get("name", "Unit"), int(e.get("atk", 0)), int(e.get("hp", 1))]
 		"rally":
-			return "Your units gain +%d attack." % n
+			return "Your daemons gain +%d attack." % n
 		"grow":
-			return "Your units gain +%d/+%d." % [int(e.get("atk", 0)), int(e.get("hp", 0))]
+			return "Your daemons gain +%d/+%d." % [int(e.get("atk", 0)), int(e.get("hp", 0))]
 		"cleanse":
-			return "Remove your debuffs."
+			return "Purge your harmful statuses."
 		"add_card":
-			var nm := str(e.get("card", "?")).capitalize() + ("+" if e.get("upgraded", false) else "")
+			var nm := Lexicon.card_name(str(e.get("card", "?"))) + ("+" if e.get("upgraded", false) else "")
 			return "Add %s to your hand." % nm if maxi(n, 1) == 1 else "Add %d %s to your hand." % [n, nm]
 		"spawn":
-			return "Summon a %s." % str(e.get("enemy", "?")).capitalize()
+			return "Call in a %s." % Lexicon.enemy_name(str(e.get("enemy", "?")))
 		"lose_hp":
 			return "Lose %d HP." % n
 		"damage_per_status":
-			var st := str(e.get("status", "")).capitalize()
+			var st := Lexicon.status(str(e.get("status", "")))
 			var base := int(e.get("base", 0))
 			var mult := float(e.get("mult", 1.0))
-			var per := "%s per %s" % [str(int(mult)) if mult == int(mult) else str(mult), st]
-			var txt := ("Deal %d damage +%s%s." % [base, per, where]) if base > 0 else ("Deal %s damage%s." % [per, where])
+			var num := str(int(mult)) if mult == int(mult) else str(mult)
+			var txt := ("Deal %d damage +%s per %s%s." % [base, num, st, where]) if base > 0 else ("Deal %s damage per %s%s." % [num, st, where])
 			return txt + (" Spend all %s." % st if e.get("consume", false) else "")
 	return "?%s?" % op
 

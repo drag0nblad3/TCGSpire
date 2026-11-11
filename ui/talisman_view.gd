@@ -38,4 +38,4 @@ func _draw() -> void:
 
 static func text(db: CardDB, id: String) -> String:
 	var t: Dictionary = db.talismans.get(id, {})
-	return "%s (%s)\n%s" % [t.get("name", id), t.get("rarity", ""), Talismans.describe(t)]
+	return "%s (%s implant)\n%s" % [t.get("name", id), t.get("rarity", ""), Talismans.describe(t)]

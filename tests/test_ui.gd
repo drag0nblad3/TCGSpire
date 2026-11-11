@@ -68,7 +68,7 @@ func test_glossary_explains_keywords_and_statuses() -> void:
 		for line in CardInspector.glossary(inst):
 			check(not line.contains("?"), "%s: odd glossary line %s" % [id, line])
 		if inst.def.get_keywords(false).has("exhaust"):
-			found = found or CardInspector.glossary(inst).any(func(l: String) -> bool: return l.begins_with("Exhaust:"))
+			found = found or CardInspector.glossary(inst).any(func(l: String) -> bool: return l.begins_with(Lexicon.keyword("exhaust") + ":"))
 	check(found, "no exhaust explanation found")
 
 

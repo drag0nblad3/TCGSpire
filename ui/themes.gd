@@ -1,23 +1,32 @@
 class_name Themes
 extends RefCounted
-## Visual themes, one per world concept being explored. Each sets colors,
-## fonts, frame shape and the backdrop style. Add a theme = add an entry here.
+## Visual skins. The world (names, story) is always the cyberpunk Undercity;
+## see Palette.DEFAULT_WORDS and core/lexicon.gd. Each skin sets colors, fonts,
+## frame shape and backdrop style. Add a skin = add an entry here.
 
-const DEFAULT := "starforge"
-const ORDER := ["starforge", "archive", "cathedral", "undercity"]
+const DEFAULT := "glassnet"
+const ORDER := ["glassnet", "undercity", "cathedral", "starforge", "archive"]
 
 const ALL := {
+	"glassnet": {
+		"name": "Glassnet",
+		"blurb": "Shattered holo-glass with neon running through the cracks.",
+		"display_font": "res://assets/fonts/Orbitron.ttf",
+		"body_font": "res://assets/fonts/Rajdhani.ttf",
+		"radius": 12, "border": 2, "line": 2.0, "frame": "circuit",
+		"backdrop": {"style": 4, "top": "#081226", "bottom": "#020308", "glow": "#00e5ff", "glow2": "#ff2bd6"},
+		"colors": {
+			"card_bg": "#0a1122", "card_text": "#eafcff", "card_text_dim": "#8aa3bd",
+			"panel": "#050a18eb", "text": "#eafcff", "text_dim": "#8aa3bd",
+			"accent": "#2ef2ff", "hp": "#ff2b6a", "ward": "#6f8dff", "enemy": "#ff2bd6",
+			"button": "#0f1a36", "button_text": "#eafcff", "upgraded": "#39ff9e",
+		},
+		"faction": {"neutral": "#b8c4d6", "ember": "#ff7a1a", "tide": "#2ef2ff", "bloom": "#39ff9e", "void": "#b04dff"},
+		"node": {"fight": "#b8c4d6", "elite": "#ff2b6a", "rest": "#39ff9e", "shop": "#ffd23a", "event": "#2ef2ff", "treasure": "#ffd23a", "boss": "#ff2bd6"},
+	},
 	"starforge": {
 		"name": "Star-Forge",
 		"blurb": "Astral navy, constellations and gold.",
-		"words": {
-			"title": "STAR-FORGE", "hero": "Pilgrim",
-			"tagline": "A star fell and left its tether standing. Climb it, chart its constellations, and forge them into cards.",
-			"pack": "Star chart", "packs": "Star charts", "dust": "Stardust",
-			"rest": "Observatory", "rest_text": "You rest beneath slow constellations.",
-			"shop": "Comet trader", "treasure": "Fallen star", "camp": "Back to the foot of the tether",
-			"neutral": "Dust", "ember": "Solar", "tide": "Lunar", "bloom": "Nebula", "void": "Abyss",
-		},
 		"display_font": "res://assets/fonts/Cinzel.ttf",
 		"body_font": "res://assets/fonts/Nunito.ttf",
 		"radius": 10, "border": 2, "line": 2.0,
@@ -31,16 +40,8 @@ const ALL := {
 		"faction": {"neutral": "#d6d2c4", "ember": "#ff8a4c", "tide": "#4fd0ff", "bloom": "#8be879", "void": "#b49bff"},
 	},
 	"archive": {
-		"name": "Archive Spire",
+		"name": "Parchment",
 		"blurb": "Parchment, ink and illuminated margins.",
-		"words": {
-			"title": "THE ARCHIVE SPIRE", "hero": "Binder",
-			"tagline": "The tower's stories have slipped out of their books. You are a Binder: catch them, bind them into cards, and climb to the Unwritten.",
-			"pack": "Folio", "packs": "Folios", "dust": "Ink",
-			"rest": "Reading room", "rest_text": "Lamplight, a soft chair, and a book that stays put.",
-			"shop": "Bookseller", "treasure": "Lost chapter", "camp": "Back to the scriptorium",
-			"neutral": "Prose", "ember": "Pyre", "tide": "Ink", "bloom": "Margin", "void": "Erasure",
-		},
 		"display_font": "res://assets/fonts/Cinzel.ttf",
 		"body_font": "res://assets/fonts/EBGaramond.ttf",
 		"radius": 4, "border": 2, "line": 2.2,
@@ -56,16 +57,8 @@ const ALL := {
 		"node": {"fight": "#3a2a1c", "elite": "#a2391f", "rest": "#3f7a2a", "shop": "#b8860b", "event": "#1f5f8f", "treasure": "#b8860b", "boss": "#5b3c8c"},
 	},
 	"cathedral": {
-		"name": "Cathedral of Glass",
+		"name": "Cathedral Glass",
 		"blurb": "Jewel-toned glass held in heavy black leading.",
-		"words": {
-			"title": "CATHEDRAL OF GLASS", "hero": "Glazier",
-			"tagline": "A god shattered, and their cathedral with them. Gather the stained-glass shards and set them back into the windows.",
-			"pack": "Reliquary", "packs": "Reliquaries", "dust": "Glass dust",
-			"rest": "Quiet chapel", "rest_text": "Coloured light falls across the pews.",
-			"shop": "Pardoner", "treasure": "Reliquary chest", "camp": "Back to the nave",
-			"neutral": "Laity", "ember": "Flame", "tide": "Font", "bloom": "Garden", "void": "Eclipse",
-		},
 		"display_font": "res://assets/fonts/Marcellus.ttf",
 		"body_font": "res://assets/fonts/Nunito.ttf",
 		"radius": 16, "border": 4, "line": 3.0,
@@ -79,16 +72,8 @@ const ALL := {
 		"faction": {"neutral": "#e8e0c8", "ember": "#ff6a2b", "tide": "#2b8cff", "bloom": "#33d17a", "void": "#9b5cff"},
 	},
 	"undercity": {
-		"name": "Neon Undercity",
+		"name": "Neon Grid",
 		"blurb": "Black glass, cyan and magenta circuitry.",
-		"words": {
-			"title": "NEON UNDERCITY", "hero": "Runner",
-			"tagline": "Under the arcology, spells run as code. Jack in, rip spellware from rival covens, and reach the top of the stack.",
-			"pack": "Data cache", "packs": "Data caches", "dust": "Scrap",
-			"rest": "Safehouse", "rest_text": "A locked door, a cot, and a cooling rig.",
-			"shop": "Fixer", "treasure": "Loot crate", "camp": "Back to the hideout",
-			"neutral": "Street", "ember": "Burners", "tide": "Flux", "bloom": "Wetware", "void": "Null",
-		},
 		"display_font": "res://assets/fonts/Orbitron.ttf",
 		"body_font": "res://assets/fonts/Rajdhani.ttf",
 		"radius": 2, "border": 2, "line": 1.6,

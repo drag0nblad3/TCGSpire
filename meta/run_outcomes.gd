@@ -88,23 +88,23 @@ static func describe(o: Dictionary) -> String:
 	var n := int(o.get("amount", 0))
 	match str(o.get("op", "")):
 		"gold":
-			return "%s %d gold." % ["Gain" if n >= 0 else "Lose", absi(n)]
+			return "%s %d creds." % ["Gain" if n >= 0 else "Lose", absi(n)]
 		"heal":
-			return "Heal %d%% of max HP." % int(float(o["pct"]) * 100) if o.has("pct") else "Heal %d." % n
+			return "Repair %d%% of max HP." % int(float(o["pct"]) * 100) if o.has("pct") else "Heal %d." % n
 		"lose_hp":
 			return "Lose %d HP." % n
 		"max_hp":
 			return "%s %d max HP." % ["Gain" if n >= 0 else "Lose", absi(n)]
 		"add_card":
 			if o.has("card"):
-				return "Add %s to your deck." % str(o["card"]).capitalize()
-			return "Add a random %s%s card." % [o.get("rarity", "common"), (" " + str(o["faction"]).capitalize()) if o.has("faction") else ""]
+				return "Add %s to your deck." % Lexicon.card_name(str(o["card"]))
+			return "Add a random %s%s card." % [o.get("rarity", "common"), (" " + Lexicon.faction(str(o["faction"]))) if o.has("faction") else ""]
 		"remove_card":
 			return "Remove %d starter card%s." % [maxi(n, 1), "" if maxi(n, 1) == 1 else "s"]
 		"upgrade":
 			return "Upgrade %d random card%s." % [maxi(n, 1), "" if maxi(n, 1) == 1 else "s"]
 		"talisman":
-			return "Gain a %s talisman." % o.get("rarity", "random") if not o.has("id") else "Gain %s." % str(o["id"]).capitalize()
+			return "Gain a %s implant." % o.get("rarity", "random") if not o.has("id") else "Gain %s." % str(CardDB.shared().talismans.get(str(o["id"]), {}).get("name", o["id"]))
 	return "?"
 
 
