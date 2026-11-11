@@ -57,7 +57,7 @@ static func sections(db: CardDB) -> Array:
 		rivals.append("%s bans %s" % [Lexicon.faction(f), " and ".join(Jobs.banned(db, f).map(func(x: String) -> String: return Lexicon.faction(x)))])
 	out.append(["Jobs and rep", [
 		"Every run is a job for one crew. At least %d%% of the programs you load must be theirs, and their rivals' programs are banned: you can't load them and nobody offers them during the job (%s)." % [share, "; ".join(rivals)],
-		"A job also runs against its targets: their crew's own enforcers guard most fights and black sentries on the map, and usually the Core itself. From Heat %d, jobs run against extra crews too (still one client), and each extra target pays %d%% more rep." % [_first_heat(db, "extra_targets"), int(float(db.balance.get("jobs", {}).get("rep_per_extra_target", 0.25)) * 100)],
+		"A job also runs against its targets: their crew's own enforcers guard most fights and black sentries on the map, and usually the Core itself." + ((" From Heat %d, jobs run against extra crews too (still one client), and each extra target pays %d%% more rep." % [_first_heat(db, "extra_targets"), int(float(db.balance.get("jobs", {}).get("rep_per_extra_target", 0.25)) * 100)]) if _first_heat(db, "extra_targets") > 0 else ""),
 		"A job pays the client's rep when it ends, more the further you climb. Rep buys that crew's rig upgrades and flashes its programs to firmware.",
 	]])
 	var mods: Array[String] = []

@@ -130,51 +130,53 @@
  },
  "heat": [
   {
-   "desc": "Enemies have 23% more HP and deal 23% more damage.",
+   "desc": "Enemies get another 20% HP and damage. Safehouses repair 10% less.",
    "mods": {
-    "enemy_hp_pct": 0.23,
-    "enemy_dmg_pct": 0.23
+    "enemy_hp_pct": 0.2,
+    "enemy_dmg_pct": 0.2,
+    "rest_heal_pct": -0.1
    }
   },
   {
-   "desc": "Start each run infected with Adware (malware). Enemies get another 23% HP and damage.",
+   "desc": "Enemies get another 20% HP and damage. Safehouses repair 10% less. Jobs run against one more crew.",
    "mods": {
-    "start_curse": "doubt",
-    "enemy_hp_pct": 0.23,
-    "enemy_dmg_pct": 0.23
+    "enemy_hp_pct": 0.2,
+    "enemy_dmg_pct": 0.2,
+    "rest_heal_pct": -0.1,
+    "extra_targets": 1
    }
   },
   {
-   "desc": "Safehouses repair a third less. Jobs run against one more crew. Enemies get another 13% HP and damage.",
+   "desc": "Enemies get another 20% HP and damage. Safehouses repair 10% less.",
    "mods": {
-    "rest_heal_pct": -0.33,
-    "extra_targets": 1,
-    "enemy_hp_pct": 0.13,
-    "enemy_dmg_pct": 0.13
+    "enemy_hp_pct": 0.2,
+    "enemy_dmg_pct": 0.2,
+    "rest_heal_pct": -0.1
    }
   },
   {
-   "desc": "Enemies start combat with 1 Boost and get another 13% HP and damage.",
+   "desc": "Enemies get another 20% HP and damage. Safehouses repair 10% less. Jobs run against one more crew.",
    "mods": {
-    "enemy_might": 1,
-    "enemy_hp_pct": 0.13,
-    "enemy_dmg_pct": 0.13
+    "enemy_hp_pct": 0.2,
+    "enemy_dmg_pct": 0.2,
+    "rest_heal_pct": -0.1,
+    "extra_targets": 1
    }
   },
   {
-   "desc": "Start with 6 less max HP. Enemies get another 13% HP and damage.",
+   "desc": "Enemies get another 20% HP and damage. Safehouses repair 10% less.",
    "mods": {
-    "max_hp": -6,
-    "enemy_hp_pct": 0.13,
-    "enemy_dmg_pct": 0.13
+    "enemy_hp_pct": 0.2,
+    "enemy_dmg_pct": 0.2,
+    "rest_heal_pct": -0.1
    }
   },
   {
-   "desc": "Jobs run against another crew. Enemies get another 13% HP and damage.",
+   "desc": "Enemies get another 20% HP and damage. Safehouses repair 10% less.",
    "mods": {
-    "enemy_hp_pct": 0.13,
-    "extra_targets": 1,
-    "enemy_dmg_pct": 0.13
+    "enemy_hp_pct": 0.2,
+    "enemy_dmg_pct": 0.2,
+    "rest_heal_pct": -0.1
    }
   }
  ],

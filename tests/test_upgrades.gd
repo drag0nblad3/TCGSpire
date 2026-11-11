@@ -251,12 +251,11 @@ func test_map_uses_target_crew_enemies() -> void:
 
 func test_high_heat_adds_targets_with_one_client() -> void:
 	eq(Jobs.extra_targets(db, 0), 0)
-	check(Jobs.extra_targets(db, 6) >= 2, "two extra at max heat")
-	for offer in Jobs.offers(db, 6, GameRng.new(5)):
-		var t: Array = offer["targets"]
-		eq(t.size(), 1 + Jobs.extra_targets(db, 6), "targets for " + offer["client"])
-		check(offer["client"] not in t, "client never a target")
-		eq(t[0], Jobs.banned(db, offer["client"])[0], "rival first")
+	for f in Jobs.board(db):
+		var t := Jobs.targets(db, f, 2, GameRng.new(5))
+		eq(t.size(), 3, "targets for " + f)
+		check(f not in t, "client never a target")
+		eq(t[0], Jobs.banned(db, f)[0], "rival first")
 	var targets := Jobs.targets(db, "ember", 1, GameRng.new(2))
 	var r := RunState.start(db, profile, RunState.default_picks(db, profile, "ember", targets), 1, 3, "ember", targets)
 	eq(r.banned, targets, "run targets")

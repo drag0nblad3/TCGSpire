@@ -124,8 +124,11 @@ func test_every_event_choice_applies() -> void:
 func test_heat_stacks() -> void:
 	var r0 := _run(1, 0)
 	var r2 := _run(1, 2)
-	check(r2.deck.size() == r0.deck.size() + 1, "heat 2 adds curse")
-	check(r2.combat_opts()["enemy_hp_mult"] > 1.0, "heat 1 hp")
+	check(r2.combat_opts()["enemy_hp_mult"] > r0.combat_opts()["enemy_hp_mult"], "heat raises enemy hp")
+	check(r2.combat_opts()["enemy_dmg_mult"] > r0.combat_opts()["enemy_dmg_mult"], "heat raises enemy damage")
+	r0.hp = 1
+	r2.hp = 1
+	check(r2.rest_heal_amount() < r0.rest_heal_amount(), "heat cuts safehouse repairs")
 
 
 func test_run_bot_completes_runs() -> void:
