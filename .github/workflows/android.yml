@@ -1,0 +1,42 @@
+name: android-apk
+# Builds a debug APK. Manual only: run it from the Actions tab ("Run workflow").
+on:
+  workflow_dispatch:
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    env:
+      GODOT_VERSION: 4.4.1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Cache Godot + export templates
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot
+            ~/.local/share/godot/export_templates
+          key: godot-android-${{ env.GODOT_VERSION }}
+      - name: Download Godot and Android templates
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/godot && cd ~/godot
+          base=https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable
+          curl -sSL -o g.zip $base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip
+          unzip -q g.zip && mv Godot_v${GODOT_VERSION}-stable_linux.x86_64 godot && rm g.zip
+          curl -sSL -o t.tpz $base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz
+          unzip -q t.tpz templates/android_debug.apk templates/android_release.apk templates/version.txt
+          dest=~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+          mkdir -p $dest && mv templates/* $dest/ && rm -rf t.tpz templates
+      - name: Test
+        run: GODOT=~/godot/godot scripts/test.sh
+      - name: Build APK
+        run: GODOT=~/godot/godot scripts/build_apk.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tcgspire-debug-apk
+          path: build/tcgspire.apk
