@@ -9,6 +9,10 @@ signal finished(won: bool)
 
 ## Seconds per step; tests and the screenshot tool can set this to 0.
 var step_scale := 1.0
+## Hand cards are drawn larger than in menus so their text is easy to read:
+## as big as possible (up to HAND_ZOOM) while the hand still fits with little overlap.
+const HAND_ZOOM := 1.35
+const HAND_OVERLAP := 8.0
 var combat: Combat
 var run: RunState
 var _selected := -1
@@ -42,8 +46,8 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var col := VBoxContainer.new()
 	col.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	col.offset_left = 12
-	col.offset_right = -12
+	col.offset_left = 6
+	col.offset_right = -6
 	col.offset_top = 20
 	col.offset_bottom = -20
 	col.add_theme_constant_override("separation", 10)
@@ -98,7 +102,7 @@ func _ready() -> void:
 	col.add_child(bar)
 
 	_hand_row = _row(6)
-	_hand_row.custom_minimum_size.y = CardView.SIZE.y + 20
+	_hand_row.custom_minimum_size.y = CardView.SIZE.y * HAND_ZOOM + 20
 	col.add_child(_hand_row)
 
 	_fx = Control.new()
@@ -126,16 +130,17 @@ func _rebuild() -> void:
 		_add_enemy_view(e, i)
 	for u in combat.units:
 		_add_unit_view(u)
+	var zoom := _hand_zoom(combat.hand.size())
 	for i in combat.hand.size():
-		var cv := CardView.new().setup(combat.hand[i])
+		var cv := CardView.new().setup(combat.hand[i], zoom)
 		cv.playable = combat.can_play(i)
 		cv.selected = i == _selected
 		cv.pressed.connect(_on_card_pressed.bind(i))
 		_hand_row.add_child(cv)
 	# Overlap cards just enough that the whole hand fits on screen (every card stays tappable).
 	var n := combat.hand.size()
-	var avail := get_viewport_rect().size.x - 24
-	var sep := 6 if n <= 1 else mini(6, int((avail - n * CardView.SIZE.x) / (n - 1)))
+	var avail := get_viewport_rect().size.x - 12
+	var sep := 6 if n <= 1 else mini(6, int((avail - n * CardView.SIZE.x * zoom) / (n - 1)))
 	_hand_row.add_theme_constant_override("separation", sep)
 	_energy.queue_redraw()
 	_floor_label.text = "Layer %d · Node %d   ·   %d creds   ·   Turn %d" % [run.act if run else 1, run.floor_num if run else 0, run.gold if run else 0, combat.turn]
@@ -149,6 +154,13 @@ func _rebuild() -> void:
 	else:
 		_hint.text = ("Incoming %d damage" % inc if inc > 0 else "No attacks incoming") + ("  ·  Firewall %d" % combat.player.ward if combat.player.ward > 0 else "")
 	_end_btn.disabled = combat.phase != Combat.Phase.PLAYER or _busy
+
+
+func _hand_zoom(n: int) -> float:
+	var avail := get_viewport_rect().size.x - 12
+	if n <= 0:
+		return HAND_ZOOM
+	return clampf((avail + (n - 1) * HAND_OVERLAP) / (n * CardView.SIZE.x), 0.85, HAND_ZOOM)
 
 
 func _add_enemy_view(e: Fighter, i: int) -> FighterView:
@@ -395,9 +407,9 @@ func _fly_card(cv: CardView, target: Variant) -> void:
 	_fx.add_child(cv)
 	cv.global_position = start
 	cv.selected = false
-	var dest := size / 2 - CardView.SIZE / 2 + Vector2(0, -80)
+	var dest := size / 2 - cv.size / 2 + Vector2(0, -80)
 	if target is FighterView and is_instance_valid(target) and target != _player_view:
-		dest = target.global_position - global_position + target.size / 2 - CardView.SIZE / 2
+		dest = target.global_position - global_position + target.size / 2 - cv.size / 2
 	var tw := cv.create_tween().set_parallel()
 	tw.tween_property(cv, "position", dest, 0.25 * step_scale).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tw.tween_property(cv, "scale", Vector2(0.55, 0.55), 0.25 * step_scale)

@@ -31,20 +31,23 @@ var face_down := false:
 		queue_redraw()
 
 var _holo: ColorRect
+## Draw scale: the card is laid out at SIZE and drawn zoomed (hand cards in combat).
+var zoom := 1.0
 var _tap := Tap.new()
 
 
-func setup(c: CardInstance) -> CardView:
+func setup(c: CardInstance, zoom_in: float = 1.0) -> CardView:
 	card = c
-	custom_minimum_size = SIZE
-	size = SIZE
-	pivot_offset = SIZE / 2
+	zoom = zoom_in
+	custom_minimum_size = SIZE * zoom
+	size = SIZE * zoom
+	pivot_offset = size / 2
 	mouse_filter = Control.MOUSE_FILTER_PASS
 	if c.foil or c.def.rarity in ["rare", "mythic"]:
 		_holo = ColorRect.new()
 		_holo.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_holo.position = Vector2(6, 6)
-		_holo.size = SIZE - Vector2(12, 12)
+		_holo.position = Vector2(6, 6) * zoom
+		_holo.size = (SIZE - Vector2(12, 12)) * zoom
 		var mat := ShaderMaterial.new()
 		mat.shader = HOLO
 		mat.set_shader_parameter("strength", 0.5 if c.foil else 0.28)
@@ -81,6 +84,7 @@ static func fit_size(font: Font, text: String, width: float, height: float, max_
 func _draw() -> void:
 	if card == null:
 		return
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2(zoom, zoom))
 	if face_down:
 		_draw_back()
 		return
@@ -152,7 +156,7 @@ func _draw() -> void:
 		draw_string(font, pr.position + Vector2(6, 13), badge, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Palette.CARD_BG)
 
 	if _holo != null:
-		_holo.position = Vector2(6, 6) + lift
+		_holo.position = (Vector2(6, 6) + lift) * zoom
 
 
 ## Corner brackets, edge traces and a glass sheen (Glassnet skin).
