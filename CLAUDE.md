@@ -7,7 +7,8 @@ Original design only: don't copy cards, names, characters or look from existing 
 - `scripts/test.sh [filter] [-v]` — headless tests + UI smoke boot. Green = one `OK:` line.
 - `scripts/cards.sh [filter]` — every card as one line with generated rules text.
 - `scripts/sim.sh [n=200] [deck=a,b] [enc=mites,golem]` — bot plays seeded fights, one line per encounter.
-- `scripts/sim.sh mode=run [n=100] [heat=0] [job=ember|all]` — bot plays whole runs: win %, avg floor, top killers.
+- `scripts/sim.sh mode=run [n=100] [heat=0] [job=ember|all] [profile=new|veteran|max]` — bot plays whole runs: win %, avg floor,
+  top killers. `profile=veteran` = save after 12 bot runs with likely spending, `max` = everything owned/bought (`meta/profile_bot.gd`).
 - `scripts/shot.sh screen=<name|all> out=/tmp/x.png [plays=2] [end_turn=1] [theme=archive]` — real render to PNG (xvfb).
   Screens: hub map combat reward rest shop event collection picker pack end inspect rules jobs rig perk tinker crew firmware recompile. Uses a throwaway profile.
 - Godot binary: `godot` on PATH, or set `GODOT=/path/to/godot`. Cloud sessions: download
@@ -22,7 +23,7 @@ Original design only: don't copy cards, names, characters or look from existing 
 - `meta/` between-run state: `profile.gd` (versioned save, `_migrate`), `collection.gd`
   (counts, dust, craft/disenchant), `packs.gd`, `run_state.gd` (deck/HP/gold/talismans/heat,
   rest, shop, events), `run_map.gd` (seeded branching map), `run_outcomes.gd` (run-level ops for
-  events/pickups), `run_bot.gd` (plays whole runs for sims). Progression: XP levels, card mastery, heat.
+  events/pickups), `run_bot.gd` (plays whole runs for sims), `profile_bot.gd` (builds veteran/maxed saves for sims). Progression: XP levels, card mastery, heat.
   `jobs.gd`: every run is a job for one client faction (data/factions.json, 6 crews in 3 rival pairs) run
   against targets (the rival, plus heat mod "extra_targets"): >= half the picks the client's, targets banned
   from picks and offers, targets' enemies (`data/enemies/factions.json`, encounters with "faction") fill
@@ -59,8 +60,8 @@ Original design only: don't copy cards, names, characters or look from existing 
   All randomness goes through `GameRng`; events hold ids/numbers only.
 - New talisman/event/mod/perk = JSON only (`mods.json`, `perks.json`; perk mod keys in `Perks.MODS`). Talisman triggers: combat_start, turn_start, turn_end,
   card_played (filters card_type, every), kill. Event outcomes use `RunOutcomes.OPS`.
-- Balance check after content changes: `scripts/sim.sh mode=run n=400 job=all` (~20 s). Bot baseline at heat 0
-  on jobs: ~21% clear act 1, ~7% win the full 2-act run (heat 3 ~7% / 2%, heat 6 ~0%). Humans should do much
+- Balance check after content changes: `scripts/sim.sh mode=run n=400 job=all` (~20 s). Bot baseline (new profile) at heat 0
+  on jobs: ~26% clear act 1, ~10% win the full 2-act run (heat 3 ~7% / 2%, heat 6 ~1%). Humans should do much
   better. Watch the killers list. `core/bot.gd` values (card, target) pairs from live state (no search/copies);
   `meta/run_bot.gd` uses static `card_value` for picks/upgrades/shop and scores event outcomes. Keep both cheap.
 - Save format change: bump `Profile.SAVE_VERSION` and add a step in `_migrate()`.

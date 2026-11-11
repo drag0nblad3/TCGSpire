@@ -331,3 +331,16 @@ func test_every_card_explains_its_upgrade() -> void:
 		var t: String = db.cards[id].upgrade_summary()
 		check(t != "No change." and t != "" and not t.contains("?"), "upgrade text for %s: %s" % [id, t])
 	check(CardInspector.glossary(db.instance("kindle")).any(func(l: String) -> bool: return l.begins_with("Upgrade (+): Damage 4 → 6.")), "inspector shows the upgrade")
+
+
+func test_profile_bot_builds_sim_saves() -> void:
+	var v := ProfileBot.veteran(db, 2)
+	eq(int(v.stats["runs"]), 2, "two runs played")
+	eq(v.packs_unopened, 0, "packs opened")
+	var m := ProfileBot.maxed(db)
+	check(m.rig.size() == Perks.ids(db, "rig").size(), "every rig perk")
+	check(m.firmware.has("jab") and m.firmware_mods.size() > 20, "firmware everywhere")
+	for f in Jobs.board(db):
+		var picks := RunBot.best_picks(db, m, f, [])
+		eq(picks.size(), m.starter_picks(db), "full picks for " + f)
+		eq(Jobs.check(db, f, picks, m.starter_picks(db)), "", "legal picks for " + f)

@@ -8,7 +8,7 @@ extends RefCounted
 
 static func play(db: CardDB, profile: Profile, seed_in: int, heat: int = 0, job: String = "") -> Dictionary:
 	var targets := Jobs.targets(db, job, Jobs.extra_targets(db, heat), GameRng.new(seed_in).fork("job")) if job != "" else []
-	var run := RunState.start(db, profile, RunState.default_picks(db, profile, job, targets), seed_in, heat, job, targets)
+	var run := RunState.start(db, profile, best_picks(db, profile, job, targets), seed_in, heat, job, targets)
 	var died_to := ""
 	var steps := 0
 	while not run.over and steps < 80:
@@ -100,6 +100,32 @@ static func _choose_node(run: RunState, options: Array) -> int:
 			best_score = s
 			best = id
 	return best
+
+
+## Strongest legal picks from the collection: the client's best cards up to the
+## job's quota, then the best of the rest (firmware cards count as upgraded).
+static func best_picks(db: CardDB, profile: Profile, job: String, targets: Array) -> Array:
+	var n := profile.starter_picks(db)
+	var ban := targets if not targets.is_empty() else Jobs.banned(db, job)
+	var pool: Array = []
+	for id in profile.collection.owned_ids():
+		var c := db.card(id)
+		if c == null or c.rarity in ["starter", "curse"] or c.faction in ban:
+			continue
+		for k in mini(profile.collection.count(id), 2):
+			pool.append(id)
+	var val := func(id: String) -> float: return card_value(db.card(id), profile.firmware.has(id))
+	pool.sort_custom(func(a: String, b: String) -> bool: return val.call(a) > val.call(b))
+	var out: Array = []
+	for id in pool:
+		if out.size() < Jobs.required(db, job, n) and db.card(id).faction == job:
+			out.append(id)
+	for id in pool:
+		if out.size() >= n:
+			break
+		if out.count(id) < pool.count(id):
+			out.append(id)
+	return out
 
 
 ## Rough worth of a card per RAM, from its effects alone (no combat state).

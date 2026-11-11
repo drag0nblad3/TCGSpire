@@ -3,12 +3,13 @@ extends SceneTree
 ## encounter. Use it to check a balance change instead of playtesting by hand.
 ##   godot --headless --path . -s res://tools/sim.gd -- [n=200] [deck=a,b,c] [enc=mites,golem]
 ##   ... -- mode=run [n=100] [heat=0] [job=ember|all]   (whole runs: win rate, floor reached, top killers;
-##          job=all rotates through every faction job)
+##          job=all rotates through every faction job; profile=new|veteran|max picks the save:
+##          veteran = after 12 bot runs spending what they earned, max = every upgrade)
 ## Default deck = base deck + default starter picks.
 
 
 func _initialize() -> void:
-	var opts := {"n": "200", "deck": "", "enc": "", "mode": "fight", "heat": "0", "job": ""}
+	var opts := {"n": "200", "deck": "", "enc": "", "mode": "fight", "heat": "0", "job": "", "profile": "new"}
 	for a in OS.get_cmdline_user_args():
 		var kv := a.split("=", true, 1)
 		if kv.size() == 2:
@@ -20,7 +21,7 @@ func _initialize() -> void:
 		quit(1)
 		return
 	if opts["mode"] == "run":
-		_sim_runs(db, int(opts["n"]) if opts["n"] != "200" else 100, int(opts["heat"]), opts["job"])
+		_sim_runs(db, int(opts["n"]) if opts["n"] != "200" else 100, int(opts["heat"]), opts["job"], opts["profile"])
 		quit(0)
 		return
 	var deck_ids: Array = []
@@ -50,9 +51,15 @@ func _initialize() -> void:
 	quit(0)
 
 
-func _sim_runs(db: CardDB, n: int, heat: int, job: String = "") -> void:
+func _sim_runs(db: CardDB, n: int, heat: int, job: String = "", which: String = "new") -> void:
 	var jobs := Jobs.board(db)
 	var profile := Profile.new_player(db)
+	if which == "veteran":
+		profile = ProfileBot.veteran(db)
+	elif which == "max":
+		profile = ProfileBot.maxed(db)
+	if which != "new":
+		print("profile %s: %s" % [which, ProfileBot.summary(db, profile)])
 	var wins := 0
 	var floors := 0
 	var stuck := 0
@@ -74,4 +81,4 @@ func _sim_runs(db: CardDB, n: int, heat: int, job: String = "") -> void:
 	var parts: Array[String] = []
 	for k in top.slice(0, 5):
 		parts.append("%s %d" % [k, killers[k]])
-	print("runs %d heat %d  act1 %5.1f%%  win %5.1f%%  avg floor %4.1f  stuck %d  killers: %s" % [n, heat, 100.0 * act1 / n, 100.0 * wins / n, float(floors) / n, stuck, ", ".join(parts)])
+	print("[%s] runs %d heat %d  act1 %5.1f%%  win %5.1f%%  avg floor %4.1f  stuck %d  killers: %s" % [which, n, heat, 100.0 * act1 / n, 100.0 * wins / n, float(floors) / n, stuck, ", ".join(parts)])
