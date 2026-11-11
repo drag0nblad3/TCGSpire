@@ -67,12 +67,12 @@ static func apply(run: RunState, o: Dictionary) -> String:
 		"upgrade":
 			var names: Array[String] = []
 			for i in maxi(n, 1):
-				var up := run.deck.filter(func(c: CardInstance) -> bool: return not c.upgraded and c.def.rarity != "curse")
+				var up := RunState.upgrade_candidates(run.deck)
 				if up.is_empty():
 					break
 				var card: CardInstance = rng.pick(up)
-				card.upgraded = true
-				names.append(card.def.name)
+				card.level_up()
+				names.append(card.display_name())
 			return "Upgraded %s" % ", ".join(names)
 		"talisman":
 			var tid := str(o.get("id", ""))

@@ -82,8 +82,19 @@ func test_rest_heal_and_upgrade() -> void:
 	var r := _run()
 	r.hp = 10
 	check(r.rest_heal() > 0, "healed")
-	check(r.upgrade_card(0), "upgrade")
-	check(not r.upgrade_card(0), "double upgrade")
+	check(r.upgrade_card(0), "upgrade to v1")
+	eq(r.deck[0].fw, 1)
+	check(r.upgrade_card(0), "upgrade to v2")
+	eq(r.deck[0].fw, 2)
+	check(not r.upgrade_card(0), "(+) waits until the whole deck is v2")
+	var auto := RunState.upgrade_candidates(r.deck)
+	check(auto.all(func(c: CardInstance) -> bool: return c.fw == 0), "random upgrades pick unupgraded cards first")
+	for i in r.deck.size():
+		while r.deck[i].fw < 2 and r.upgrade_card(i):
+			pass
+	check(r.upgrade_card(0), "(+) once the deck is maxed")
+	check(r.deck[0].upgraded, "designed upgrade applied")
+	check(not r.upgrade_card(0), "nothing past (+)")
 
 
 func test_shop_buy_and_remove() -> void:

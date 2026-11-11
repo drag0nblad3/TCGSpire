@@ -274,6 +274,8 @@ func reward_choices(kind: String = "normal") -> Array:
 ## New card for this run's deck (firmware cards arrive with their firmware level).
 func make_card(id: String, upgraded: bool = false) -> CardInstance:
 	var c := db.instance(id, upgraded, int(firmware.get(id, 0)))
+	if c != null:
+		c.fw_scale = db.firmware_scale()
 	if c != null and firmware_mods.has(id) and CardMods.can_apply(db.mod(firmware_mods[id]), c):
 		c.mod = db.mod(firmware_mods[id])
 	return c
@@ -384,14 +386,31 @@ func rest_heal() -> int:
 	return amt
 
 
+## In-run upgrades climb the firmware ladder (v1, v2); the designed (+) upgrade
+## of a v2 card only opens once the whole deck is at v2.
 func upgrade_card(deck_idx: int) -> bool:
 	if deck_idx < 0 or deck_idx >= deck.size():
 		return false
 	var card: CardInstance = deck[deck_idx]
-	if card.upgraded or card.def.rarity == "curse":
+	if not card.can_level_up(deck_maxed(deck)):
 		return false
-	card.upgraded = true
+	card.level_up()
 	return true
+
+
+## True when no card in cards can still climb to v2.
+static func deck_maxed(cards: Array) -> bool:
+	return cards.all(func(c: CardInstance) -> bool: return c.def.rarity == "curse" or c.fw >= c.fw_scale.size() - 1)
+
+
+## Cards an automatic upgrade may pick: the lowest level that can still climb.
+static func upgrade_candidates(cards: Array) -> Array:
+	var maxed := deck_maxed(cards)
+	var ok := cards.filter(func(c: CardInstance) -> bool: return c.can_level_up(maxed))
+	if ok.is_empty():
+		return ok
+	var low: int = ok.map(func(c: CardInstance) -> int: return c.fw).min()
+	return ok.filter(func(c: CardInstance) -> bool: return c.fw == low)
 
 
 ## {"cards": [{"id", "price"}], "talismans": [{"id", "price"}], "remove": price}

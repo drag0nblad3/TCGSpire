@@ -39,15 +39,16 @@ func _ready() -> void:
 	inner.add_child(grid)
 	if _cards.is_empty():
 		inner.add_child(UiKit.label("No cards here yet.", 18, Palette.TEXT_DIM))
+	var maxed := RunState.deck_maxed(_cards)
 	for i in _cards.size():
 		var src: CardInstance = _cards[i]
 		var shown := src
 		var ok := true
 		if _preview_upgrade:
-			ok = not src.upgraded and src.def.rarity != "curse"
+			ok = src.can_level_up(maxed)
 			if ok:
 				shown = src.copy()
-				shown.upgraded = true
+				shown.level_up()
 		if not _mod.is_empty():
 			ok = CardMods.can_apply(_mod, src)
 			if ok:
@@ -63,7 +64,7 @@ func _ready() -> void:
 			cell.add_child(cv)
 			var why := ""
 			if _preview_upgrade:
-				why = src.def.upgrade_summary() if ok else ("Already upgraded." if src.upgraded else "Can't be upgraded.")
+				why = src.level_up_text() if ok else ("Fully upgraded." if src.upgraded else ("Max the rest of your deck to v2 first." if src.fw >= src.fw_scale.size() - 1 and src.def.rarity != "curse" and not src.def.upgrade.is_empty() else "Can't be upgraded."))
 			else:
 				why = CardMods.describe(_mod) if ok else ("Has %s." % src.mod_name() if not src.mod.is_empty() else "Doesn't fit.")
 			var l := UiKit.label(why, 12, Palette.UPGRADED if ok else Palette.TEXT_DIM, true)

@@ -260,7 +260,7 @@ func _show_rest() -> void:
 	v.add_child(UiKit.button("Reboot (+%d HP)" % run.rest_heal_amount(), func() -> void:
 		run.rest_heal()
 		show_map(), Vector2(320, 70), 22))
-	v.add_child(UiKit.button("Recompile a program\nUpgrade one card (+) for the rest of this run", func() -> void:
+	v.add_child(UiKit.button("Recompile a program\nRaise one card a level (v1, v2) for the rest of this run", func() -> void:
 		add_child(DeckOverlay.new().setup("Choose a program to recompile", run.deck, "Cancel", func(i: int) -> void:
 			if i >= 0 and run.upgrade_card(i):
 				show_map(), true, true)), Vector2(440, 78), 19))

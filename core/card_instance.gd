@@ -75,7 +75,31 @@ func mod_name() -> String:
 
 
 func display_name() -> String:
-	return def.name + ("+" if upgraded else "")
+	return def.name + (" v%d" % fw if fw > 0 else "") + ("+" if upgraded else "")
+
+
+## Upgrade ladder: firmware v1, v2, then the card's designed (+) upgrade.
+## deck_maxed: every upgradable card in the deck is at v2 (the (+) step waits for it).
+func can_level_up(deck_maxed: bool) -> bool:
+	if def.rarity == "curse" or upgraded:
+		return false
+	if fw < fw_scale.size() - 1:
+		return true
+	return deck_maxed and not def.upgrade.is_empty()
+
+
+func level_up() -> void:
+	if fw < fw_scale.size() - 1:
+		fw += 1
+	else:
+		upgraded = true
+
+
+## What the next level_up() changes, in words.
+func level_up_text() -> String:
+	if fw < fw_scale.size() - 1:
+		return "Firmware v%d: numbers +%d%% (from +%d%%)." % [fw + 1, roundi((float(fw_scale[fw + 1]) - 1.0) * 100), roundi((fw_mult() - 1.0) * 100)]
+	return "Recompile (+): " + def.upgrade_summary()
 
 
 func text() -> String:

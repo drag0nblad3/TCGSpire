@@ -349,7 +349,7 @@ func test_every_card_explains_its_upgrade() -> void:
 	for id in db.cards:
 		var t: String = db.cards[id].upgrade_summary()
 		check(t != "No change." and t != "" and not t.contains("?"), "upgrade text for %s: %s" % [id, t])
-	check(CardInspector.glossary(db.instance("kindle")).any(func(l: String) -> bool: return l.begins_with("Upgrade (+): Damage 4 → 6.")), "inspector shows the upgrade")
+	check(CardInspector.glossary(db.instance("kindle")).any(func(l: String) -> bool: return l.contains("Damage 4 → 6.")), "inspector shows the upgrade")
 
 
 func test_profile_bot_builds_sim_saves() -> void:

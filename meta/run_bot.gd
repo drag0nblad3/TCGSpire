@@ -171,13 +171,18 @@ static func card_value(c: CardDef, upgraded: bool = false) -> float:
 	return v / maxf(c.get_cost(upgraded), 0.6)
 
 
+## card_value of an instance, including its firmware level.
+static func _inst_value(c: CardInstance) -> float:
+	return card_value(c.def, c.upgraded) * c.fw_mult()
+
+
 ## Average worth of the deck's non-curse cards; new cards should beat it.
 static func _deck_bar(run: RunState) -> float:
 	var total := 0.0
 	var n := 0
 	for card in run.deck:
 		if card.def.rarity != "curse":
-			total += card_value(card.def, card.upgraded)
+			total += _inst_value(card)
 			n += 1
 	var bar := total / maxf(n, 1)
 	# Bigger decks dilute good draws: be pickier as the deck grows.
@@ -252,11 +257,14 @@ static func _best_perk(ids: Array) -> String:
 static func _upgrade_target(run: RunState) -> int:
 	var best := -1
 	var best_gain := 0.0
+	var maxed := RunState.deck_maxed(run.deck)
 	for i in run.deck.size():
 		var c: CardInstance = run.deck[i]
-		if c.upgraded or c.def.rarity == "curse" or c.def.upgrade.is_empty():
+		if not c.can_level_up(maxed):
 			continue
-		var gain := card_value(c.def, true) - card_value(c.def, false) + (0.5 if c.def.rarity != "starter" else 0.0)
+		var after := c.copy()
+		after.level_up()
+		var gain := _inst_value(after) - _inst_value(c) + (0.5 if c.def.rarity != "starter" else 0.0)
 		if gain > best_gain:
 			best_gain = gain
 			best = i
