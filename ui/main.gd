@@ -41,6 +41,7 @@ func apply_theme(id: String) -> void:
 	_bg_mat.set_shader_parameter("top_color", b["top"])
 	_bg_mat.set_shader_parameter("bottom_color", b["bottom"])
 	_bg_mat.set_shader_parameter("glow_color", b["glow"])
+	_bg_mat.set_shader_parameter("glow2_color", b["glow2"])
 
 
 func _save() -> void:
@@ -146,7 +147,7 @@ func _enter_node(id: int) -> void:
 		"treasure":
 			var tid := run.roll_talisman("", run.rng.fork("treasure:%d" % run.floor_num))
 			run.add_talisman(tid)
-			_show_message(Palette.w("treasure"), ["You found %s." % db.talismans[tid]["name"] if tid != "" else "The chest is empty."], [tid] if tid != "" else [])
+			_show_message(Palette.w("treasure"), ["You pull %s from the cache." % db.talismans[tid]["name"] if tid != "" else "The cache is empty."], [tid] if tid != "" else [])
 
 
 func _start_combat(node: Dictionary) -> void:
@@ -163,13 +164,13 @@ func _on_combat_finished(_won: bool) -> void:
 	if run.over:
 		_end_run()
 		return
-	var lines := ["+%d gold" % rewards["gold"]]
+	var lines := ["+%d creds" % rewards["gold"]]
 	if rewards.has("act_started"):
-		lines.push_front("Act %d begins. You catch your breath (now %d/%d HP)." % [rewards["act_started"], run.hp, run.max_hp])
+		lines.push_front("Layer %d breached. You reboot (now %d/%d HP)." % [rewards["act_started"], run.hp, run.max_hp])
 	var tals: Array = []
 	if rewards["talisman"] != "":
 		run.add_talisman(rewards["talisman"])
-		lines.append("Found %s" % db.talismans[rewards["talisman"]]["name"])
+		lines.append("Recovered implant: %s" % db.talismans[rewards["talisman"]]["name"])
 		tals.append(rewards["talisman"])
 	_show_reward(lines, tals, rewards["cards"])
 
@@ -178,11 +179,11 @@ func _show_reward(lines: Array, tals: Array, choices: Array) -> void:
 	var parts := UiKit.screen(20)
 	var v: VBoxContainer = parts[1]
 	v.add_child(RunHeader.new().setup(run))
-	v.add_child(UiKit.label("Victory", 34, Palette.ENERGY))
+	v.add_child(UiKit.label("Sentries crashed", 34, Palette.ENERGY))
 	for l in lines:
 		v.add_child(UiKit.label(l, 18))
 	_add_talisman_row(v, tals)
-	v.add_child(UiKit.label("Choose a card for your deck", 20, Palette.TEXT_DIM))
+	v.add_child(UiKit.label("Rip one program into your deck", 20, Palette.TEXT_DIM))
 	var row := UiKit.flow(12)
 	for id in choices:
 		var cv := CardView.new().setup(db.instance(id))
@@ -206,11 +207,11 @@ func _show_rest() -> void:
 	if Palette.w("rest_text") != "":
 		v.add_child(UiKit.label(Palette.w("rest_text"), 16, Palette.TEXT_DIM, true))
 	var heal_amt := mini(run.max_hp - run.hp, int(run.max_hp * float(db.balance.get("rest_heal_pct", 0.3)) * (1.0 + float(run.heat_mod("rest_heal_pct", 0.0)))))
-	v.add_child(UiKit.button("Rest (+%d HP)" % heal_amt, func() -> void:
+	v.add_child(UiKit.button("Reboot (+%d HP)" % heal_amt, func() -> void:
 		run.rest_heal()
 		show_map(), Vector2(320, 70), 22))
-	v.add_child(UiKit.button("Upgrade a card", func() -> void:
-		add_child(DeckOverlay.new().setup("Choose a card to upgrade", run.deck, "Cancel", func(i: int) -> void:
+	v.add_child(UiKit.button("Recompile a program", func() -> void:
+		add_child(DeckOverlay.new().setup("Choose a program to recompile", run.deck, "Cancel", func(i: int) -> void:
 			if i >= 0 and run.upgrade_card(i):
 				show_map(), true, true)), Vector2(320, 70), 22))
 	_show(parts[0])
@@ -225,7 +226,7 @@ func _show_shop(shop: Dictionary) -> void:
 	var cards := UiKit.flow(10)
 	for item in shop["cards"]:
 		var cv := CardView.new().setup(db.instance(item["id"]))
-		cv.badge = "sold" if item.get("sold", false) else "%dg" % item["price"]
+		cv.badge = "sold" if item.get("sold", false) else "%dc" % item["price"]
 		cv.playable = not item.get("sold", false) and run.gold >= int(item["price"])
 		cv.pressed.connect(func(_v: CardView) -> void:
 			if run.buy(item, false):
@@ -239,21 +240,21 @@ func _show_shop(shop: Dictionary) -> void:
 		tv.pressed.connect(func(id: String) -> void: UiKit.toast(self, TalismanView.text(db, id)))
 		box.add_child(tv)
 		var sold: bool = item.get("sold", false)
-		var b := UiKit.button("sold" if sold else "Buy %dg" % item["price"], func() -> void:
+		var b := UiKit.button("sold" if sold else "Buy %dc" % item["price"], func() -> void:
 			if run.buy(item, true):
 				_show_shop(shop), Vector2(120, 44), 15)
 		b.disabled = sold or run.gold < int(item["price"])
 		box.add_child(b)
 		trow.add_child(box)
 	v.add_child(trow)
-	var rm := UiKit.button("Remove a card (%dg)" % run.remove_cost, func() -> void:
-		add_child(DeckOverlay.new().setup("Choose a card to remove", run.deck, "Cancel", func(i: int) -> void:
+	var rm := UiKit.button("Delete a program (%dc)" % run.remove_cost, func() -> void:
+		add_child(DeckOverlay.new().setup("Choose a program to delete", run.deck, "Cancel", func(i: int) -> void:
 			if i >= 0 and run.remove_card(i):
 				shop["remove"] = run.remove_cost
 				_show_shop(shop), true)), Vector2(300, 56))
 	rm.disabled = run.gold < run.remove_cost or shop.get("removed", false)
 	v.add_child(rm)
-	v.add_child(UiKit.button("Leave", show_map))
+	v.add_child(UiKit.button("Jack out", show_map))
 	_show(parts[0])
 
 
@@ -312,8 +313,8 @@ func _end_run() -> void:
 	_save()
 	var parts := UiKit.screen(16)
 	var v: VBoxContainer = parts[1]
-	v.add_child(UiKit.label("Victory!" if run.boss_won else "Defeated on floor %d" % run.floor_num, 34, Palette.ENERGY if run.boss_won else Palette.HP))
-	v.add_child(UiKit.label("Fights won %d   Elites %d   Deck %d cards" % [run.combats_won, run.elites_won, run.deck.size()], 16, Palette.TEXT_DIM))
+	v.add_child(UiKit.label("Root access. You own the Stack." if run.boss_won else "Flatlined on node %d" % run.floor_num, 34, Palette.ENERGY if run.boss_won else Palette.HP))
+	v.add_child(UiKit.label("Fights won %d   Black sentries %d   Deck %d programs" % [run.combats_won, run.elites_won, run.deck.size()], 16, Palette.TEXT_DIM))
 	for l in lines:
 		v.add_child(UiKit.label(str(l), 17))
 	v.add_child(UiKit.button(Palette.w("camp"), show_hub, Vector2(360, 64)))

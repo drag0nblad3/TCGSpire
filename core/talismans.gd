@@ -10,11 +10,11 @@ extends RefCounted
 const TRIGGERS := ["combat_start", "turn_start", "turn_end", "card_played", "kill"]
 const RARITIES := ["common", "uncommon", "rare", "boss"]
 const LABEL := {
-	"combat_start": "Start of combat",
-	"turn_start": "Start of turn",
+	"combat_start": "When you jack in",
+	"turn_start": "Start of each turn",
 	"turn_end": "End of turn",
 	"card_played": "When you play a card",
-	"kill": "When an enemy dies",
+	"kill": "When you crash an enemy",
 }
 
 
@@ -49,11 +49,12 @@ static func describe(t: Dictionary) -> String:
 		var on: String = trig.get("on", "")
 		var when: String = LABEL.get(on, "?")
 		if trig.has("card_type"):
-			when = "When you play %s %s" % ["an" if str(trig["card_type"])[0] in "aeiou" else "a", trig["card_type"]]
+			var tn := Lexicon.type_name(str(trig["card_type"]))
+			when = "When you play %s %s" % ["an" if tn[0].to_lower() in "aeiou" else "a", tn]
 		if trig.has("every"):
-			var noun: String = {"card_played": "cards you play", "turn_start": "turns", "turn_end": "turns", "kill": "kills"}.get(on, "times")
+			var noun: String = {"card_played": "cards you play", "turn_start": "turns", "turn_end": "turns", "kill": "crashed enemies"}.get(on, "times")
 			if trig.has("card_type"):
-				noun = "%ss you play" % trig["card_type"]
+				noun = "%ss you play" % Lexicon.type_name(str(trig["card_type"]))
 			when = "Every %d %s" % [int(trig["every"]), noun]
 		if trig.has("turn"):
 			when = "On turn %d" % int(trig["turn"])

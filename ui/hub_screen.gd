@@ -27,13 +27,16 @@ func _ready() -> void:
 	add_child(parts[0])
 	var v: VBoxContainer = parts[1]
 	var logo := Control.new()
-	logo.custom_minimum_size = Vector2(200, 200)
+	logo.custom_minimum_size = Vector2(170, 170)
 	logo.draw.connect(func() -> void:
 		var t := Time.get_ticks_msec() / 1000.0
-		Sigil.draw(logo, logo.size / 2, 80.0, "tcg-spire-logo", Palette.ENERGY, t)
+		Sigil.draw(logo, logo.size / 2, 70.0, "tcg-spire-logo", Palette.ENERGY, t)
 		logo.queue_redraw())
 	v.add_child(logo)
-	v.add_child(UiKit.label(Palette.w("title"), 40, Palette.TEXT))
+	if Palette.FRAME == "circuit":
+		v.add_child(GlitchTitle.new().setup(Palette.w("title"), 38))
+	else:
+		v.add_child(UiKit.label(Palette.w("title"), 40, Palette.TEXT))
 	if Palette.w("tagline") != "":
 		v.add_child(UiKit.label(Palette.w("tagline"), 15, Palette.TEXT_DIM, true))
 	var lvl := profile.level()
@@ -63,14 +66,14 @@ func _ready() -> void:
 	v.add_child(_heat_desc)
 	_set_heat(heat)
 
-	v.add_child(UiKit.button("Start run", func() -> void: start_pressed.emit(heat), Vector2(300, 72), 24))
-	v.add_child(UiKit.button("Collection", func() -> void: collection_pressed.emit(), Vector2(300, 60)))
+	v.add_child(UiKit.button("Jack in", func() -> void: start_pressed.emit(heat), Vector2(300, 72), 24))
+	v.add_child(UiKit.button("Program library", func() -> void: collection_pressed.emit(), Vector2(300, 60)))
 	var pk := UiKit.button("Open %s (%d)" % [Palette.w("packs").to_lower(), profile.packs_unopened], func() -> void: packs_pressed.emit(), Vector2(300, 60))
 	pk.disabled = profile.packs_unopened <= 0
 	v.add_child(pk)
 	var row := UiKit.hbox(12)
 	row.add_child(UiKit.button("How to play", func() -> void: Rules.open(self), Vector2(200, 52), 16))
-	row.add_child(UiKit.button("World: %s" % Themes.ALL[Palette.theme_id]["name"], func() -> void: theme_pressed.emit(), Vector2(300, 52), 16))
+	row.add_child(UiKit.button("Look: %s" % Themes.ALL[Palette.theme_id]["name"], func() -> void: theme_pressed.emit(), Vector2(300, 52), 16))
 	v.add_child(row)
 
 
@@ -83,4 +86,4 @@ func _set_heat(h: int) -> void:
 		lines.append(str(levels[i]["desc"]))
 	_heat_desc.text = "No modifiers." if lines.is_empty() else " ".join(lines)
 	if heat == profile.max_heat and heat < levels.size():
-		_heat_desc.text += "\nBeat the boss to unlock Heat %d." % (heat + 1)
+		_heat_desc.text += "\nBreach the final Core to unlock Heat %d." % (heat + 1)

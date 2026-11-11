@@ -25,9 +25,13 @@ Original design only: don't copy cards, names, characters or look from existing 
 - `ui/` presentation only, built in code (no .tscn besides main). `main.gd` is the screen flow;
   `ui_kit.gd` has label/button/flow/scroll/toast helpers. Reads `combat.events` to animate.
   All art is code: `sigil.gd` (procedural glyphs), `intent_icon.gd`, `palette.gd` (all colors), `shaders/`.
-- Worlds/themes: `ui/themes.gd` (colors, fonts, frame shape, backdrop style, and `words`: title, hero,
-  pack/dust names, faction names). Read them via `Palette.*`, `Palette.w("dust")`, `Palette.faction_name(f)`;
-  never hardcode colors or world words in screens. Choice saved in `Profile.settings.theme`.
+- Setting: cyberpunk hacking sim ("Neon Undercity"). Player = Ghost, cards = programs, energy = RAM,
+  Ward = Firewall, units = daemons, talismans = implants, map = the Stack. Ids in JSON/code keep the old
+  generic names (burn, ward, exhaust...) so saves and tests stay stable; player-facing names live in
+  `core/lexicon.gd` (statuses, keywords, card types, factions) and `Palette.DEFAULT_WORDS`. New content:
+  name it in-world, write text with Lexicon terms.
+- Skins: `ui/themes.gd` (colors, fonts, frame "plain"/"circuit", backdrop style 0-4). Default "glassnet"
+  (shattered holo-glass + neon cracks). Read via `Palette.*`; never hardcode colors. Saved in `Profile.settings.theme`.
 - Input: custom controls use `Tap` (`ui/tap.gd`) for tap vs drag vs long-press. Never handle
   InputEventScreenTouch too (Android emulates mouse from touch: double events = select/deselect bug).
   Long-press a card = `CardInspector`; rules text lives in `Rules` (generated from Statuses.DEFS,

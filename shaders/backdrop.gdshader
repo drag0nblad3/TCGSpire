@@ -1,10 +1,12 @@
 shader_type canvas_item;
 // Procedural backdrop behind everything. Colors and style come from the theme:
-// style 0 = drifting nebula, 1 = paper grain, 2 = neon grid, 3 = glass shards.
+// style 0 = drifting nebula, 1 = paper grain, 2 = neon grid, 3 = glass shards,
+// 4 = glassnet: cracked holo-glass panes with neon data pulses in the cracks.
 uniform int style = 0;
 uniform vec4 top_color : source_color = vec4(0.09, 0.07, 0.15, 1.0);
 uniform vec4 bottom_color : source_color = vec4(0.02, 0.02, 0.05, 1.0);
 uniform vec4 glow_color : source_color = vec4(0.55, 0.28, 0.85, 1.0);
+uniform vec4 glow2_color : source_color = vec4(1.0, 0.17, 0.84, 1.0);
 
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 
@@ -59,6 +61,29 @@ void fragment() {
 		float line = smoothstep(0.47, 0.5, max(f.x, f.y));
 		col += glow_color.rgb * line * (0.25 + 0.75 * uv.y) * 0.5;
 		col += glow_color.rgb * 0.15 * pow(1.0 - uv.y, 3.0);
+	} else if (style == 4) {
+		vec2 cells = vec2(5.0, 9.0);
+		vec2 p = uv * cells + vec2(0.0, TIME * 0.01);
+		vec2 v = voronoi(p);
+		float gap = v.y - v.x;
+		float id = hash(floor(p + v.x * 0.5));
+		// Panes: dark glass faintly tinted cyan or magenta, with a diagonal sheen.
+		vec3 tint = mix(glow_color.rgb, glow2_color.rgb, step(0.62, id));
+		float sheen = smoothstep(0.0, 1.0, sin((uv.x + uv.y * 0.6) * 7.0 + id * 9.0 + TIME * 0.15) * 0.5 + 0.5);
+		vec3 pane = mix(col, tint, 0.03 + 0.05 * id + 0.03 * sheen);
+		// Digital rain inside a few panes.
+		vec2 rg = vec2(floor(uv.x * 90.0), floor(uv.y * 64.0 - TIME * (3.0 + 4.0 * hash(vec2(floor(uv.x * 90.0), 1.0)))));
+		float rain = step(0.93, hash(rg)) * step(0.7, id) * 0.5;
+		pane += tint * rain * 0.18;
+		// Cracks: heavy dark leading with a thin glowing core; pulses travel along it.
+		float lead = 1.0 - smoothstep(0.0, 0.07, gap);
+		float core = 1.0 - smoothstep(0.0, 0.018, gap);
+		float pulse = pow(0.5 + 0.5 * sin(TIME * 1.6 - (uv.y * 14.0 + uv.x * 6.0) + id * 6.28), 6.0);
+		vec3 neon = mix(glow_color.rgb, glow2_color.rgb, 0.5 + 0.5 * sin(uv.y * 3.0 + TIME * 0.3));
+		col = mix(pane, vec3(0.0), lead * 0.85);
+		col += neon * core * (0.25 + 0.9 * pulse);
+		// Scanlines.
+		col *= 0.93 + 0.07 * sin(FRAGCOORD.y * 2.1);
 	} else {
 		vec2 v = voronoi(uv * vec2(6.0, 10.0));
 		float edge = 1.0 - smoothstep(0.0, 0.06, v.y - v.x);

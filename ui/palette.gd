@@ -4,7 +4,7 @@ extends RefCounted
 ## switching theme (Palette.apply) restyles the whole game. Themes are defined
 ## in ui/themes.gd. Values below are the defaults ("starforge").
 
-static var theme_id := "starforge"
+static var theme_id := "glassnet"
 
 static var FACTION := {
 	"neutral": Color("#c9c2b0"),
@@ -50,14 +50,19 @@ static var BUTTON_TEXT := Color("#f2efe6")
 static var RADIUS := 10
 static var BORDER := 2
 static var LINE := 2.0
+## Card frame decoration: "plain" or "circuit" (corner brackets and traces).
+static var FRAME := "plain"
 ## Backdrop shader: style 0 nebula, 1 paper, 2 grid, 3 glass shards.
 static var BACKDROP := {"style": 0, "top": Color(0.09, 0.07, 0.15), "bottom": Color(0.02, 0.02, 0.05), "glow": Color(0.55, 0.28, 0.85)}
 
 ## World-specific words (title, hero, pack, dust, faction names...). See Palette.w().
 static var WORDS := {}
 const DEFAULT_WORDS := {
-	"title": "TCG SPIRE", "hero": "You", "tagline": "", "pack": "Pack", "packs": "Packs", "dust": "Dust",
-	"rest": "A quiet campfire", "rest_text": "", "shop": "Merchant", "treasure": "Treasure", "camp": "Back to camp",
+	"title": "NEON UNDERCITY", "hero": "Ghost",
+	"tagline": "Under the arcology, spells run as code and the covens run the street. You're a Ghost: jack in, rip programs from corporate sentries, and climb the Stack to its Core.",
+	"pack": "Data cache", "packs": "Data caches", "dust": "Scrap",
+	"rest": "Safehouse", "rest_text": "A locked door, a cot, and a cooling rig.",
+	"shop": "Fixer", "treasure": "Loot cache", "camp": "Jack out to the hideout",
 }
 
 static var _display_font: Font
@@ -71,7 +76,7 @@ static func w(key: String) -> String:
 
 ## Display name of a faction in the current world ("ember" -> "Pyre").
 static func faction_name(f: String) -> String:
-	return str(WORDS.get(f, f.capitalize()))
+	return Lexicon.faction(f)
 
 
 static func faction(f: String) -> Color:
@@ -107,9 +112,11 @@ static func apply(id: String) -> void:
 	RADIUS = int(t.get("radius", 10))
 	BORDER = int(t.get("border", 2))
 	LINE = float(t.get("line", 2.0))
+	FRAME = str(t.get("frame", "plain"))
 	var b: Dictionary = t.get("backdrop", {})
 	BACKDROP = {"style": int(b.get("style", 0)), "top": Color(b.get("top", "#171226")),
-		"bottom": Color(b.get("bottom", "#05050c")), "glow": Color(b.get("glow", "#8c47d9"))}
+		"bottom": Color(b.get("bottom", "#05050c")), "glow": Color(b.get("glow", "#8c47d9")),
+		"glow2": Color(b.get("glow2", b.get("glow", "#8c47d9")))}
 	_display_font = _load_font(t.get("display_font", ""))
 	_body_font = _load_font(t.get("body_font", ""))
 

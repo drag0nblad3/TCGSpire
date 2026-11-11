@@ -36,10 +36,10 @@ func _ready() -> void:
 	_header = UiKit.label("", 20, Palette.TEXT, true)
 	v.add_child(_header)
 	if pick_mode:
-		v.add_child(UiKit.label("Your run starts with the base deck (%s) plus the cards you pick here." % _base_summary(), 14, Palette.TEXT_DIM, true))
+		v.add_child(UiKit.label("Every run starts with your base rig (%s) plus the programs you pick here." % _base_summary(), 14, Palette.TEXT_DIM, true))
 	var filters := UiKit.hbox(8)
 	for f in FILTERS:
-		filters.add_child(UiKit.button("All" if f == "all" else Palette.faction_name(f), func() -> void: _set_filter(f), Vector2(96, 44), 14))
+		filters.add_child(UiKit.button("All" if f == "all" else Lexicon.faction(f), func() -> void: _set_filter(f), Vector2(96, 44), 14))
 	v.add_child(filters)
 	var inner := UiKit.scroll(v)
 	_grid = UiKit.flow(10)
@@ -86,7 +86,7 @@ func _refresh() -> void:
 	if pick_mode:
 		_header.text = "Pick your starting cards: %d / %d" % [picks.size(), profile.starter_picks(db)]
 	else:
-		_header.text = "Collection %d / %d   ·   %s %d" % [owned, total, Palette.w("dust"), col.dust]
+		_header.text = "Library %d / %d   ·   %s %d" % [owned, total, Palette.w("dust"), col.dust]
 	for n in _grid.get_children():
 		n.queue_free()
 	for id in _ids():

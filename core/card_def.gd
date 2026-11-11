@@ -9,17 +9,17 @@ const RARITIES := ["starter", "common", "uncommon", "rare", "mythic", "curse"]
 const KEYWORDS := ["exhaust", "retain", "unplayable", "innate", "ethereal"]
 ## Rules glossary for keywords (shown by the card inspector and the rules screen).
 const KEYWORD_DESC := {
-	"exhaust": "After you play it, the card is removed for the rest of this fight.",
-	"retain": "Stays in your hand at the end of your turn instead of being discarded.",
-	"unplayable": "Can't be played. It just takes up space in your hand.",
-	"innate": "Always starts the fight in your opening hand.",
-	"ethereal": "If it's still in your hand at the end of your turn, it is exhausted.",
+	"exhaust": "After it runs, the program is wiped for the rest of this fight.",
+	"retain": "Stays cached in your hand at the end of your turn instead of being discarded.",
+	"unplayable": "Locked: can't be run. It just clogs your hand.",
+	"innate": "Always loaded into your opening hand.",
+	"ethereal": "If it's still in your hand at the end of your turn, it is wiped.",
 }
 const TYPE_DESC := {
-	"attack": "Attack: usually deals damage to an enemy.",
-	"skill": "Skill: Ward, draw, statuses and other tricks.",
-	"unit": "Unit: summons an ally to your board. Units strike the front enemy at the end of your turn and can be attacked.",
-	"power": "Power: a lasting effect for the rest of the fight. Powers are removed after you play them.",
+	"attack": "Exploit: usually deals damage to an enemy.",
+	"skill": "Script: Firewall, draws, statuses and other tricks.",
+	"unit": "Daemon: runs a program that stays on your board. Daemons hit the front enemy at the end of your turn and can be attacked.",
+	"power": "Rootkit: a lasting effect for the rest of the fight. Rootkits are wiped after they run.",
 }
 
 var id := ""
@@ -72,7 +72,7 @@ func get_text(upgraded: bool) -> String:
 	for e in get_effects(upgraded):
 		parts.append(Effects.describe(e))
 	for k in get_keywords(upgraded):
-		parts.append(str(k).capitalize() + ".")
+		parts.append(Lexicon.keyword(str(k)) + ".")
 	return " ".join(parts)
 
 
