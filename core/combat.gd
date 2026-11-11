@@ -148,10 +148,18 @@ func play_card(hand_idx: int, target_idx: int = -1) -> bool:
 	hand.remove_at(hand_idx)
 	energy -= card.cost()
 	emit("play", {"card": card.key(), "target": target.id if target != null else ""})
-	for e in card.effects():
-		if is_over():
-			break
-		Effects.resolve(self, e, player, target)
+	var repeats := 1
+	if player.status("echo") > 0 and card.def.type != "power":
+		repeats = 2
+		player.add_status("echo", -1)
+		emit("echo", {"card": card.key()})
+	for r in repeats:
+		for e in card.effects():
+			if is_over():
+				break
+			if target != null and target.is_dead():
+				target = _first_living(enemies) if needs_target(card) else target
+			Effects.resolve(self, e, player, target)
 	if card.def.type == "power" or card.has_keyword("exhaust"):
 		exhaust_pile.append(card)
 	else:

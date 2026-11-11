@@ -13,5 +13,15 @@
 {"id":"everbloom","name":"Everbloom","rarity":"rare","unlock_level":4,"triggers":[{"on":"turn_start","effects":[{"op":"grow","atk":1,"hp":1}]}]},
 {"id":"first_light","name":"First Light","rarity":"rare","triggers":[{"on":"turn_start","turn":1,"effects":[{"op":"energy","amount":2},{"op":"draw","amount":2}]}]},
 {"id":"crown_of_embers","name":"Crown of Embers","rarity":"boss","pickup":[{"op":"add_card","card":"doubt"}],"triggers":[{"on":"turn_start","effects":[{"op":"energy","amount":1}]}]},
-{"id":"heart_of_tides","name":"Heart of Tides","rarity":"boss","triggers":[{"on":"turn_start","effects":[{"op":"ward","amount":5}]}]}
+{"id":"heart_of_tides","name":"Heart of Tides","rarity":"boss","triggers":[{"on":"turn_start","effects":[{"op":"ward","amount":5}]}]},
+{"id":"storm_capacitor","name":"Storm Capacitor","rarity":"common","triggers":[{"on":"combat_start","effects":[{"op":"apply","status":"charge","stacks":3,"to":"self"}]}]},
+{"id":"seed_pouch","name":"Seed Pouch","rarity":"common","triggers":[{"on":"turn_start","turn":2,"effects":[{"op":"add_card","card":"sprout"}]}]},
+{"id":"iron_will","name":"Iron Will","rarity":"common","pickup":[{"op":"max_hp","amount":5}],"triggers":[{"on":"combat_start","effects":[{"op":"ward","amount":4}]}]},
+{"id":"echo_shell","name":"Echo Shell","rarity":"uncommon","triggers":[{"on":"turn_start","turn":1,"effects":[{"op":"apply","status":"echo","stacks":1,"to":"self"}]}]},
+{"id":"ember_brazier","name":"Ember Brazier","rarity":"uncommon","triggers":[{"on":"turn_end","effects":[{"op":"apply","status":"burn","stacks":1,"to":"all_enemies"}]}]},
+{"id":"hunters_mark","name":"Hunter's Mark","rarity":"uncommon","triggers":[{"on":"combat_start","effects":[{"op":"apply","status":"brittle","stacks":1,"to":"all_enemies"}]}]},
+{"id":"quill_of_fate","name":"Quill of Fate","rarity":"rare","triggers":[{"on":"card_played","every":10,"effects":[{"op":"energy","amount":2},{"op":"draw","amount":2}]}]},
+{"id":"living_armor","name":"Living Armor","rarity":"rare","unlock_level":5,"triggers":[{"on":"combat_start","effects":[{"op":"apply","status":"fortify","stacks":1,"to":"self"}]}]},
+{"id":"void_heart","name":"Void Heart","rarity":"boss","triggers":[{"on":"turn_start","effects":[{"op":"apply","status":"charge","stacks":2,"to":"self"}]}]},
+{"id":"gilded_scale","name":"Gilded Scale","rarity":"boss","pickup":[{"op":"gold","amount":150},{"op":"max_hp","amount":10}]}
 ]

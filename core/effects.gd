@@ -23,6 +23,7 @@ const OPS := {
 	"add_card": ["card", "amount", "upgraded"],
 	"spawn": ["enemy"],
 	"lose_hp": ["amount", "to"],
+	"damage_per_status": ["status", "mult", "base", "consume", "to"],
 }
 
 const TARGETS := ["target", "self", "all_enemies", "all_allies", "front"]
@@ -42,8 +43,9 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 				c.attack(src, t, amt)
 		"ward":
 			for t in targets(c, e, src, target, "self"):
-				t.ward += n
-				c.emit("ward", {"target": t.id, "amount": n})
+				var w := int(n * 0.75) if t.status("frail") > 0 else n
+				t.ward += w
+				c.emit("ward", {"target": t.id, "amount": w})
 		"heal":
 			for t in targets(c, e, src, target, "self"):
 				var before: int = t.hp
@@ -89,6 +91,13 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 					c.emit("draw", {"card": inst.key(), "created": true})
 		"spawn":
 			c.spawn(str(e.get("enemy", "")))
+		"damage_per_status":
+			var st := str(e.get("status", ""))
+			var amt2 := int(e.get("base", 0)) + int(src.status(st) * float(e.get("mult", 1.0)))
+			for t in targets(c, e, src, target, "target"):
+				c.attack(src, t, amt2)
+			if e.get("consume", false):
+				src.statuses.erase(st)
 		"lose_hp":
 			for t in targets(c, e, src, target, "self"):
 				_lose_hp(c, t, n, src)
@@ -176,6 +185,13 @@ static func describe(e: Dictionary) -> String:
 			return "Summon a %s." % str(e.get("enemy", "?")).capitalize()
 		"lose_hp":
 			return "Lose %d HP." % n
+		"damage_per_status":
+			var st := str(e.get("status", "")).capitalize()
+			var base := int(e.get("base", 0))
+			var mult := float(e.get("mult", 1.0))
+			var per := "%s per %s" % [str(int(mult)) if mult == int(mult) else str(mult), st]
+			var txt := ("Deal %d damage +%s%s." % [base, per, where]) if base > 0 else ("Deal %s damage%s." % [per, where])
+			return txt + (" Spend all %s." % st if e.get("consume", false) else "")
 	return "?%s?" % op
 
 
@@ -190,6 +206,8 @@ static func validate(e: Dictionary, where: String) -> Array[String]:
 			errs.append("%s: op '%s' has unknown param '%s'" % [where, op, k])
 	if e.has("to") and str(e["to"]) not in TARGETS:
 		errs.append("%s: bad 'to' value '%s'" % [where, e["to"]])
+	if op == "damage_per_status" and not Statuses.is_known(str(e.get("status", ""))):
+		errs.append("%s: unknown status '%s'" % [where, e.get("status", "")])
 	if op == "apply" and not Statuses.is_known(str(e.get("status", ""))):
 		errs.append("%s: unknown status '%s'" % [where, e.get("status", "")])
 	return errs

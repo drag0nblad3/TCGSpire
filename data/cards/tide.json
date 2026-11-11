@@ -8,5 +8,8 @@
 {"id":"leviathan_call","name":"Leviathan's Call","faction":"tide","rarity":"mythic","type":"unit","cost":3,"effects":[{"op":"summon","name":"Leviathan","atk":6,"hp":24}],"upgrade":{"effects":[{"op":"summon","name":"Leviathan","atk":8,"hp":30}]}},
 {"id":"tidal_echo","name":"Tidal Echo","faction":"tide","rarity":"common","type":"skill","cost":1,"effects":[{"op":"ward","amount":6},{"op":"draw","amount":1}],"upgrade":{"effects":[{"op":"ward","amount":9},{"op":"draw","amount":1}]}},
 {"id":"bulwark_stance","name":"Bulwark Stance","faction":"tide","rarity":"uncommon","type":"power","cost":2,"effects":[{"op":"apply","status":"fortify","stacks":1,"to":"self"}],"upgrade":{"cost":1}},
-{"id":"maelstrom","name":"Maelstrom","faction":"tide","rarity":"rare","type":"attack","target":"enemy","cost":2,"keywords":["exhaust"],"effects":[{"op":"damage_per_ward","mult":2.0}],"upgrade":{"cost":1}}
+{"id":"maelstrom","name":"Maelstrom","faction":"tide","rarity":"rare","type":"attack","target":"enemy","cost":2,"keywords":["exhaust"],"effects":[{"op":"damage_per_ward","mult":2.0}],"upgrade":{"cost":1}},
+{"id":"current_shift","name":"Current Shift","faction":"tide","rarity":"common","type":"skill","cost":0,"effects":[{"op":"ward","amount":3},{"op":"draw","amount":1}],"upgrade":{"effects":[{"op":"ward","amount":5},{"op":"draw","amount":1}]}},
+{"id":"deep_pressure","name":"Deep Pressure","faction":"tide","rarity":"uncommon","type":"attack","target":"enemy","cost":2,"effects":[{"op":"damage","amount":10},{"op":"apply","status":"brittle","stacks":2}],"upgrade":{"effects":[{"op":"damage","amount":13},{"op":"apply","status":"brittle","stacks":3}]}},
+{"id":"kraken_spawn","name":"Kraken Spawn","faction":"tide","rarity":"rare","type":"unit","cost":3,"effects":[{"op":"summon","name":"Kraken","atk":4,"hp":16},{"op":"ward","amount":8}],"upgrade":{"effects":[{"op":"summon","name":"Kraken","atk":5,"hp":20},{"op":"ward","amount":10}]}}
 ]

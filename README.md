@@ -10,13 +10,13 @@ so there's very little hand-made art to maintain.
 ![Screens](docs/screens.png)
 
 ## Status
-Playable act 1 prototype:
+Playable prototype:
 - Branching seeded map with fights, elites, events, rest sites, shops, treasure and 2 bosses
-- 4 factions (Neutral, Ember, Tide, Bloom), 40 cards, units on a 3-slot board, 8 statuses
-- 15 talismans with trigger hooks, 6 events, curses
+- 2 acts, 5 factions (Neutral, Ember, Tide, Bloom, Void), 62 cards, units on a 3-slot board, 11 statuses
+- 25 talismans with trigger hooks, 11 events, curses, 4 bosses
 - Collection with crafting/disenchanting, pack opening, a pre-run deck picker
 - Long-term progression: account levels, card mastery (dust, then a foil copy), 6 heat levels
-Next: act 2, more factions, Android export.
+Next: act 3 and a final boss, card art polish, Android export.
 
 ## Develop
 Open the folder in Godot 4.4 and press Play, or from a shell:

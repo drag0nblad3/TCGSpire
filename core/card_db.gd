@@ -119,10 +119,11 @@ func validate() -> Array[String]:
 					errs.append("enemy '%s': spawns unknown enemy '%s'" % [id, e.get("enemy", "")])
 	var kinds := {}
 	for id in encounters:
-		kinds[str(encounters[id].get("kind", "normal"))] = true
-	for k in ["normal", "elite", "boss"]:
-		if not kinds.has(k):
-			errs.append("encounters: no '%s' encounter" % k)
+		kinds["%d:%s" % [int(encounters[id].get("act", 1)), encounters[id].get("kind", "normal")]] = true
+	for act in range(1, int(balance.get("acts", 1)) + 1):
+		for k in ["normal", "elite", "boss"]:
+			if not kinds.has("%d:%s" % [act, k]):
+				errs.append("encounters: act %d has no '%s' encounter" % [act, k])
 	for key in ["base_deck"]:
 		for cid in balance.get(key, []):
 			if not cards.has(str(cid).trim_suffix("+")):

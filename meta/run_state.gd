@@ -20,6 +20,8 @@ var path: Array = []
 var combats_won := 0
 var elites_won := 0
 var boss_won := false
+var act := 1
+var acts_cleared := 0
 var over := false
 var card_plays: Dictionary = {}
 var remove_cost := 0
@@ -54,7 +56,7 @@ static func start(db_in: CardDB, profile: Profile, picks: Array, seed_in: int, h
 	for tid in db_in.talismans:
 		if int(db_in.talismans[tid].get("unlock_level", 1)) > profile.level():
 			r.locked_talismans.append(tid)
-	r.map = RunMap.generate(db_in, r.rng.fork("map"))
+	r.map = RunMap.generate(db_in, r.rng.fork("map:1"), 1)
 	var start_t := str(db_in.balance.get("start_talisman", ""))
 	if start_t != "":
 		r.add_talisman(start_t)
@@ -64,7 +66,14 @@ static func start(db_in: CardDB, profile: Profile, picks: Array, seed_in: int, h
 ## Default picks for a quick start: first owned non-starter cards.
 static func default_picks(db_in: CardDB, profile: Profile) -> Array:
 	var out: Array = []
+	for id in db_in.balance.get("default_picks", []):
+		if profile.collection.count(id) > out.count(id):
+			out.append(id)
 	for id in profile.collection.owned_ids():
+		if out.size() >= profile.starter_picks(db_in):
+			break
+		if id in out:
+			continue
 		var c := db_in.card(id)
 		if c != null and c.rarity != "starter":
 			out.append(id)
@@ -115,7 +124,7 @@ func enter(id: int) -> Dictionary:
 	node_id = id
 	path.append(id)
 	var node := map.node(id)
-	floor_num = int(node["row"]) + 1
+	floor_num = (act - 1) * map.rows.size() + int(node["row"]) + 1
 	return node
 
 
@@ -145,9 +154,30 @@ func finish_combat(c: Combat) -> Dictionary:
 		elites_won += 1
 		rewards["talisman"] = roll_talisman("", rng.fork("elite_t:%d" % floor_num))
 	if kind == "boss":
-		boss_won = true
-		over = true
+		acts_cleared += 1
+		rewards["talisman"] = roll_talisman("boss", rng.fork("boss_t:%d" % act))
+		if act < total_acts():
+			_next_act()
+			rewards["act_started"] = act
+		else:
+			boss_won = true
+			over = true
 	return rewards
+
+
+func total_acts() -> int:
+	return int(db.balance.get("acts", 1))
+
+
+func _next_act() -> void:
+	act += 1
+	node_id = -1
+	path = []
+	map = RunMap.generate(db, rng.fork("map:%d" % act), act)
+	var before := hp
+	hp = mini(max_hp, hp + int((max_hp - hp) * float(db.balance.get("act_heal_pct", 0.5))))
+	if hp < before:
+		hp = before
 
 
 func reward_choices(kind: String = "normal") -> Array:
@@ -214,7 +244,7 @@ func make_shop() -> Dictionary:
 	var tal: Array = []
 	for i in 2:
 		var tid := roll_talisman("", r)
-		if tid != "" and tid not in tal.map(func(x: Dictionary) -> String: return x["id"]):
+		if tid != "" and db.talismans[tid]["rarity"] != "boss" and tid not in tal.map(func(x: Dictionary) -> String: return x["id"]):
 			var tp: Dictionary = cfg.get("talisman_price", {})
 			tal.append({"id": tid, "price": int(tp.get(db.talismans[tid]["rarity"], 150))})
 	return {"cards": cards, "talismans": tal, "remove": remove_cost}
@@ -266,4 +296,4 @@ func choose(choice: Dictionary) -> Array:
 
 
 func summary() -> String:
-	return "floor %d hp %d/%d gold %d deck %d talismans %s" % [floor_num, hp, max_hp, gold, deck.size(), ",".join(talismans)]
+	return "act %d floor %d hp %d/%d gold %d deck %d talismans %s" % [act, floor_num, hp, max_hp, gold, deck.size(), ",".join(talismans)]

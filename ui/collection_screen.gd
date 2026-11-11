@@ -6,7 +6,7 @@ extends Control
 signal closed
 signal picks_confirmed(picks: Array)
 
-const FILTERS := ["all", "neutral", "ember", "tide", "bloom"]
+const FILTERS := ["all", "neutral", "ember", "tide", "bloom", "void"]
 
 var db: CardDB
 var profile: Profile
@@ -39,7 +39,7 @@ func _ready() -> void:
 		v.add_child(UiKit.label("Your run starts with the base deck (%s) plus the cards you pick here." % _base_summary(), 14, Palette.TEXT_DIM, true))
 	var filters := UiKit.hbox(8)
 	for f in FILTERS:
-		filters.add_child(UiKit.button(f.capitalize(), func() -> void: _set_filter(f), Vector2(100, 44), 15))
+		filters.add_child(UiKit.button(f.capitalize(), func() -> void: _set_filter(f), Vector2(96, 44), 14))
 	v.add_child(filters)
 	var inner := UiKit.scroll(v)
 	_grid = UiKit.flow(10)

@@ -8,6 +8,7 @@ const FACTION := {
 	"ember": Color("#ff7a3d"),
 	"tide": Color("#3dc6ff"),
 	"bloom": Color("#7ee06a"),
+	"void": Color("#a98bff"),
 }
 
 const RARITY := {

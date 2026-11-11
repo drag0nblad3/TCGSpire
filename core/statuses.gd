@@ -12,9 +12,12 @@ const DEFS := {
 	"thorns": {"debuff": false, "desc": "When attacked, deal damage equal to stacks to the attacker."},
 	"regen": {"debuff": false, "desc": "Heal stacks at end of turn, then lose 1."},
 	"fortify": {"debuff": false, "desc": "Ward is not removed at the start of turn."},
+	"frail": {"debuff": true, "desc": "Gain 25% less Ward. Loses 1 at end of turn."},
+	"charge": {"debuff": false, "desc": "Stored power. Some cards spend it for big effects."},
+	"echo": {"debuff": false, "desc": "Your next card's effects happen twice. Uses 1 stack."},
 }
 
-const DECAYING := ["brittle", "weaken"]
+const DECAYING := ["brittle", "weaken", "frail"]
 
 
 static func debuffs(f: Fighter) -> Array:
