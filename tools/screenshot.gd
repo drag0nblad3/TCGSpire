@@ -115,7 +115,7 @@ func _go(main: Control, scr: String, seed_in: int) -> void:
 			main.add_child(DeckOverlay.new().setup("Choose a program to recompile", main.run.deck, "Cancel", func(_i: int) -> void: pass, true, true))
 		"firmware":
 			main.profile.collection.add("drone_swarm", 1)
-			main.profile.firmware = {"drone_swarm": true}
+			main.profile.firmware = {"drone_swarm": 2}
 			main.profile.firmware_mods = {"drone_swarm": "swarm_hook"}
 			main.profile.mastery["drone_swarm"] = 35
 			main.profile.rep = {"chrome": 120}

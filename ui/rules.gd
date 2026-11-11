@@ -67,7 +67,7 @@ static func sections(db: CardDB) -> Array:
 		"This run only: recompile a program at a safehouse (+), or install a mod. Each program holds one mod. Safehouses let you tinker, the Fixer sells mods, and some signals install them.",
 		"Mods: " + " ".join(mods),
 		"Subroutines: after black sentries and the first Core, load one of %d subroutines. They run for the rest of the job." % int(db.balance.get("perk_choices", 3)),
-		"Permanent: rig upgrades (hideout) apply to every run. Firmware: once you've run a program enough, flash it and every copy joins your runs upgraded. Run it even more and you can bake a mod into its firmware too. Crew programs cost that crew's rep; Street and base programs cost %s." % Palette.w("dust").to_lower(),
+		"Permanent: rig upgrades (hideout) apply to every run. Firmware: run a program %d times and flash it to v1 (+%d%% to its numbers in every run); run it %d times for v2 (+%d%%, twice the price). After %d plays you can also bake a mod into its firmware." % [int(db.balance["firmware"]["plays"][0]), roundi((float(db.balance["firmware"]["scale"][0]) - 1.0) * 100), int(db.balance["firmware"]["plays"][1]), roundi((float(db.balance["firmware"]["scale"][1]) - 1.0) * 100), int(db.balance["mastery"][int(db.balance["firmware"].get("mod_mastery_tier", 2)) - 1]["plays"])] + " Crew programs cost that crew's rep; Street and base programs cost %s." % Palette.w("dust").to_lower(),
 	]])
 	out.append(["Your library", [
 		"Your deck is built from programs you own. Before each run you load extra programs from your library.",

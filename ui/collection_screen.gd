@@ -116,7 +116,7 @@ func _refresh() -> void:
 	for n in _grid.get_children():
 		n.queue_free()
 	for id in _ids():
-		var inst := db.instance(id, profile.firmware.has(id))
+		var inst := db.instance(id, false, profile.firmware_level(id))
 		inst.foil = int(col.foils.get(id, 0)) > 0
 		if profile.firmware_mods.has(id):
 			inst.mod = db.mod(profile.firmware_mods[id])
@@ -128,7 +128,7 @@ func _refresh() -> void:
 			cv.badge = "%d/%d" % [chosen, n]
 			cv.selected = chosen > 0
 		else:
-			cv.badge = ("x%d" % n if n > 0 else "new") + (" " + stars if stars != "" else "") + (" FW" if profile.firmware.has(id) else "")
+			cv.badge = ("x%d" % n if n > 0 else "new") + (" " + stars if stars != "" else "") + ((" FW%d" % profile.firmware_level(id)) if profile.firmware_level(id) > 0 else "")
 			cv.playable = n > 0
 		cv.pressed.connect(func(_v: CardView) -> void: _on_card(id))
 		_grid.add_child(cv)
@@ -147,12 +147,16 @@ func _on_card(id: String) -> void:
 	_show_detail(id)
 
 
-## Permanent upgrade: flash the card to firmware so every copy starts runs upgraded.
+## Permanent upgrade: flash the card's firmware (two levels) so every copy starts runs stronger.
 func _firmware_row(id: String, overlay: Control) -> Control:
 	var box := UiKit.vbox(6)
-	if profile.firmware.has(id):
+	var lvl := profile.firmware_level(id)
+	var scale := db.firmware_scale()
+	if lvl < Profile.firmware_max(db):
+		box.add_child(_flash_button(id, overlay, lvl, scale))
+	if lvl > 0:
 		var baked := str(profile.firmware_mods.get(id, ""))
-		box.add_child(UiKit.label("In firmware: every copy joins your runs upgraded%s." % ((" with " + db.mod(baked)["name"]) if baked != "" else ""), 15, Palette.UPGRADED, true))
+		box.add_child(UiKit.label("Firmware v%d: every copy joins your runs with +%d%% numbers%s." % [lvl, roundi((float(scale[lvl]) - 1.0) * 100), (" and " + db.mod(baked)["name"]) if baked != "" else ""], 15, Palette.UPGRADED, true))
 		var fits: Array = db.mods.keys().filter(func(m: String) -> bool: return CardMods.can_apply(db.mod(m), CardInstance.new(db.card(id), true)))
 		fits.sort()
 		var gate := profile.firmware_mod_block(db, id, fits[0]) if not fits.is_empty() else "No mods fit."
@@ -174,11 +178,15 @@ func _firmware_row(id: String, overlay: Control) -> Control:
 			mb.tooltip_text = CardMods.describe(db.mod(m))
 			row.add_child(mb)
 		box.add_child(row)
-		return box
+	return box
+
+
+func _flash_button(id: String, overlay: Control, lvl: int, scale: Array) -> Control:
+	var box := UiKit.vbox(4)
 	var price := profile.firmware_price(db, id)
 	var cur := Palette.w("dust").to_lower() if price["faction"] == "" else Jobs.rep_name(db, price["faction"])
 	var block := profile.firmware_block(db, id).replace("dust", Palette.w("dust").to_lower())
-	var b := UiKit.button("Flash to firmware (%d %s)" % [price["amount"], cur], func() -> void:
+	var b := UiKit.button("Flash firmware v%d (%d %s)" % [lvl + 1, price["amount"], cur], func() -> void:
 		if profile.flash_firmware(db, id):
 			profile.save()
 			overlay.queue_free()
@@ -186,7 +194,7 @@ func _firmware_row(id: String, overlay: Control) -> Control:
 			_show_detail(id), Vector2(360, 56), 16)
 	b.disabled = block != ""
 	box.add_child(b)
-	box.add_child(UiKit.label(block if block != "" else "Permanent: every copy starts your runs upgraded.", 13, Palette.TEXT_DIM, true))
+	box.add_child(UiKit.label(block if block != "" else "Permanent: every copy starts your runs with +%d%% numbers (Firewall, damage, statuses, daemons)." % roundi((float(scale[lvl + 1]) - 1.0) * 100), 13, Palette.TEXT_DIM, true))
 	return box
 
 
@@ -202,7 +210,7 @@ func _show_detail(id: String) -> void:
 	var v: VBoxContainer = parts[1]
 	var holder := CenterContainer.new()
 	holder.custom_minimum_size = Vector2(0, CardView.SIZE.y * 1.7)
-	var shown := db.instance(id, profile.firmware.has(id))
+	var shown := db.instance(id, false, profile.firmware_level(id))
 	if profile.firmware_mods.has(id):
 		shown.mod = db.mod(profile.firmware_mods[id])
 	var cv := CardView.new().setup(shown)

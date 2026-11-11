@@ -11,7 +11,7 @@ extends RefCounted
 ##   rig       -> rep buys ranks of that faction's rig upgrades (permanent perks)
 ##   firmware  -> rep (dust for Street/starter cards) permanently upgrades a card
 
-const SAVE_VERSION := 3
+const SAVE_VERSION := 4
 const DEFAULT_PATH := "user://profile.json"
 
 var collection := Collection.new()
@@ -213,9 +213,26 @@ func firmware_price(db: CardDB, id: String) -> Dictionary:
 	if c == null:
 		return {"amount": 0, "faction": ""}
 	var cfg: Dictionary = db.balance.get("firmware", {})
+	var mults: Array = cfg.get("level_cost_mult", [1, 2])
+	var mult := float(mults[mini(firmware_level(id), mults.size() - 1)])
 	if c.rarity != "starter" and db.factions.has(c.faction):
-		return {"amount": int(cfg.get("rep_cost", {}).get(c.rarity, 0)), "faction": c.faction}
-	return {"amount": int(cfg.get("cost", {}).get(c.rarity, 0)), "faction": ""}
+		return {"amount": int(int(cfg.get("rep_cost", {}).get(c.rarity, 0)) * mult), "faction": c.faction}
+	return {"amount": int(int(cfg.get("cost", {}).get(c.rarity, 0)) * mult), "faction": ""}
+
+
+func firmware_level(id: String) -> int:
+	return int(firmware.get(id, 0))
+
+
+static func firmware_max(db: CardDB) -> int:
+	return db.balance.get("firmware", {}).get("plays", [10, 50]).size()
+
+
+## Plays needed for the next firmware level of id (0 once maxed).
+func firmware_plays_needed(db: CardDB, id: String) -> int:
+	var plays: Array = db.balance.get("firmware", {}).get("plays", [10, 50])
+	var lvl := firmware_level(id)
+	return int(plays[lvl]) if lvl < plays.size() else 0
 
 
 ## "" if it can be flashed, else the reason why not.
@@ -223,14 +240,13 @@ func firmware_block(db: CardDB, id: String) -> String:
 	var c := db.card(id)
 	if c == null or c.rarity == "curse":
 		return "Malware can't be flashed."
-	if firmware.has(id):
-		return "Already in firmware."
+	if firmware_level(id) >= firmware_max(db):
+		return "Firmware maxed."
 	if not collection.owns(id) and c.rarity != "starter":
 		return "Own a copy first."
-	var need := int(db.balance.get("firmware", {}).get("mastery_tier", 1))
-	if c.rarity != "starter" and mastery_tier(db, id) < need:
-		var plays := int(db.balance.get("mastery", [{}])[need - 1].get("plays", 0)) if need > 0 else 0
-		return "Run it %d times first (%d so far)." % [plays, int(mastery.get(id, 0))]
+	var need := firmware_plays_needed(db, id)
+	if c.rarity != "starter" and int(mastery.get(id, 0)) < need:
+		return "Run it %d times first (%d so far)." % [need, int(mastery.get(id, 0))]
 	var price := firmware_price(db, id)
 	var have := collection.dust if price["faction"] == "" else rep_of(price["faction"])
 	if have < int(price["amount"]):
@@ -246,7 +262,7 @@ func flash_firmware(db: CardDB, id: String) -> bool:
 		collection.dust -= int(price["amount"])
 	else:
 		rep[price["faction"]] = rep_of(price["faction"]) - int(price["amount"])
-	firmware[id] = true
+	firmware[id] = firmware_level(id) + 1
 	return true
 
 
@@ -318,7 +334,7 @@ func to_dict() -> Dictionary:
 		"settings": settings,
 		"rep": rep,
 		"rig": rig,
-		"firmware": firmware.keys(),
+		"firmware": firmware,
 		"firmware_mods": firmware_mods,
 	}
 
@@ -341,8 +357,9 @@ static func from_dict(d: Dictionary) -> Profile:
 		p.rep[k] = int(d["rep"][k])
 	for k in d.get("rig", {}):
 		p.rig[k] = int(d["rig"][k])
-	for id in d.get("firmware", []):
-		p.firmware[str(id)] = true
+	var fw: Variant = d.get("firmware", {})
+	for id in fw:
+		p.firmware[str(id)] = int(fw[id]) if fw is Dictionary else 1
 	for id in d.get("firmware_mods", {}):
 		p.firmware_mods[str(id)] = str(d["firmware_mods"][id])
 	return p
@@ -362,6 +379,13 @@ static func _migrate(d: Dictionary) -> Dictionary:
 		d["rig"] = {}
 		d["firmware"] = []
 		v = 3
+	if v < 4:
+		# v4: firmware has levels (id -> 1 or 2). Old flashed cards become level 1.
+		var fw := {}
+		for id in d.get("firmware", []):
+			fw[str(id)] = 1
+		d["firmware"] = fw
+		v = 4
 	d["version"] = v
 	return d
 

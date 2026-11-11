@@ -67,12 +67,21 @@ func card(id: String) -> CardDef:
 	return cards.get(id)
 
 
-func instance(id: String, upgraded: bool = false) -> CardInstance:
+func instance(id: String, upgraded: bool = false, fw: int = 0) -> CardInstance:
 	var d: CardDef = cards.get(id)
 	if d == null:
 		push_error("Unknown card '%s'" % id)
 		return null
-	return CardInstance.new(d, upgraded)
+	var c := CardInstance.new(d, upgraded)
+	if fw > 0:
+		c.fw = fw
+		c.fw_scale = firmware_scale()
+	return c
+
+
+## [1.0, level 1 mult, level 2 mult] from balance.firmware.scale.
+func firmware_scale() -> Array:
+	return [1.0] + balance.get("firmware", {}).get("scale", [1.25, 1.5])
 
 
 func mod(id: String) -> Dictionary:

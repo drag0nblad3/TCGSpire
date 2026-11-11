@@ -194,20 +194,36 @@ func test_firmware_needs_mastery_and_rep() -> void:
 	check(profile.flash_firmware(db, "jab"), "starters cost dust, no mastery")
 	eq(profile.collection.dust, 0)
 	var r := RunState.start(db, profile, ["kindle"], 1)
-	check(r.deck.filter(func(c: CardInstance) -> bool: return c.def.id in ["kindle", "jab"]).all(func(c: CardInstance) -> bool: return c.upgraded), "firmware copies upgraded")
+	check(r.deck.filter(func(c: CardInstance) -> bool: return c.def.id in ["kindle", "jab"]).all(func(c: CardInstance) -> bool: return c.fw == 1), "firmware copies flashed")
 	r.add_card("kindle")
-	check(r.deck.back().upgraded, "added copies upgraded too")
+	eq(r.deck.back().fw, 1, "added copies flashed too")
+	var jab: CardInstance = r.deck.filter(func(c: CardInstance) -> bool: return c.def.id == "jab")[0]
+	eq(int(jab.effects()[0]["amount"]), roundi(6 * 1.25), "v1 scales damage")
+	check(not jab.upgraded, "recompile still available in the run")
+	# Level 2: 50 plays, twice the price.
+	var base := int(db.balance["firmware"]["rep_cost"][db.card("kindle").rarity])
+	eq(int(profile.firmware_price(db, "kindle")["amount"]), base * 2, "v2 costs double")
+	profile.rep["ember"] = base * 2
+	check(profile.firmware_block(db, "kindle").begins_with("Run it 50"), "v2 needs 50 plays")
+	profile.mastery["kindle"] = 50
+	check(profile.flash_firmware(db, "kindle"), "flash v2")
+	eq(profile.firmware_level(db.card("kindle").id), 2)
+	check(profile.firmware_block(db, "kindle") == "Firmware maxed.", "max two levels")
+	var k := db.instance("kindle", false, 2)
+	eq(int(k.effects()[0]["amount"]), roundi(float(db.card("kindle").effects[0]["amount"]) * 1.5), "v2 scales by 1.5")
 
 
 func test_save_roundtrip_and_migration() -> void:
 	profile.rep = {"tide": 7}
 	profile.rig = {"chassis": 2}
-	profile.firmware = {"kindle": true}
+	profile.firmware = {"kindle": 2}
 	eq(profile.save(TMP), OK, "save")
 	var q := Profile.load_or_new(db, TMP)
 	eq(q.rep, {"tide": 7})
 	eq(q.rig, {"chassis": 2})
-	eq(q.firmware, {"kindle": true})
+	eq(q.firmware, {"kindle": 2})
+	var v3 := Profile.from_dict({"version": 3, "firmware": ["jab"], "collection": {}})
+	eq(v3.firmware, {"jab": 1}, "v3 firmware becomes level 1")
 	DirAccess.remove_absolute(TMP)
 	var old := Profile.from_dict({"version": 2, "xp": 50, "collection": {}})
 	eq(old.rig, {})
@@ -298,7 +314,7 @@ func test_firmware_mod_bakes_into_every_copy() -> void:
 	for c in r.deck:
 		if c.def.id == "kindle":
 			eq(c.mod_id(), "cached", "baked mod")
-			check(c.upgraded, "and upgraded")
+			check(c.fw > 0, "and flashed")
 	var q := Profile.from_dict(profile.to_dict())
 	eq(q.firmware_mods, {"kindle": "cached"}, "saved")
 

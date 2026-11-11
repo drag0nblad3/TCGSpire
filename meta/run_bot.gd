@@ -103,7 +103,7 @@ static func _choose_node(run: RunState, options: Array) -> int:
 
 
 ## Strongest legal picks from the collection: the client's best cards up to the
-## job's quota, then the best of the rest (firmware cards count as upgraded).
+## job's quota, then the best of the rest (firmware scales a card's value).
 static func best_picks(db: CardDB, profile: Profile, job: String, targets: Array) -> Array:
 	var n := profile.starter_picks(db)
 	var ban := targets if not targets.is_empty() else Jobs.banned(db, job)
@@ -114,7 +114,8 @@ static func best_picks(db: CardDB, profile: Profile, job: String, targets: Array
 			continue
 		for k in mini(profile.collection.count(id), 2):
 			pool.append(id)
-	var val := func(id: String) -> float: return card_value(db.card(id), profile.firmware.has(id))
+	var scale := db.firmware_scale()
+	var val := func(id: String) -> float: return card_value(db.card(id)) * float(scale[mini(profile.firmware_level(id), scale.size() - 1)])
 	pool.sort_custom(func(a: String, b: String) -> bool: return val.call(a) > val.call(b))
 	var out: Array = []
 	for id in pool:

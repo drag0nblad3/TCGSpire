@@ -256,7 +256,6 @@
    "rare": 180,
    "mythic": 360
   },
-  "mastery_tier": 1,
   "mod_mastery_tier": 2,
   "mod_rep_cost": {
    "common": 60,
@@ -267,7 +266,19 @@
    "common": 120,
    "uncommon": 225,
    "rare": 375
-  }
+  },
+  "plays": [
+   10,
+   50
+  ],
+  "scale": [
+   1.25,
+   1.5
+  ],
+  "level_cost_mult": [
+   1,
+   2
+  ]
  },
  "jobs": {
   "client_share": 0.5,

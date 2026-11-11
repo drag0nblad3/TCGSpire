@@ -33,7 +33,7 @@ var locked_talismans: Array = []
 ## Subroutines (run perks) loaded this run, in order.
 var perks: Array = []
 ## Permanent progress copied from the profile at start: rig perk ranks and
-## firmware cards (every copy of a firmware card joins the deck upgraded).
+## firmware cards (card id -> firmware level; every copy joins the deck with scaled numbers).
 var rig: Dictionary = {}
 var firmware: Dictionary = {}
 ## Card id -> mod id baked into its firmware (every copy arrives with that mod).
@@ -267,9 +267,9 @@ func reward_choices(kind: String = "normal") -> Array:
 	return Packs.reward_choices(db, rng.fork("reward:%d" % floor_num), kind, int(perk_mod("reward_choices")) if kind != "shop" else 0, banned)
 
 
-## New card for this run's deck (firmware cards arrive upgraded).
+## New card for this run's deck (firmware cards arrive with their firmware level).
 func make_card(id: String, upgraded: bool = false) -> CardInstance:
-	var c := db.instance(id, upgraded or firmware.has(id))
+	var c := db.instance(id, upgraded, int(firmware.get(id, 0)))
 	if c != null and firmware_mods.has(id) and CardMods.can_apply(db.mod(firmware_mods[id]), c):
 		c.mod = db.mod(firmware_mods[id])
 	return c

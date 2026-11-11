@@ -36,11 +36,13 @@ static func glossary(card: CardInstance) -> Array[String]:
 			out.append(Rules.UNITS)
 	if not card.mod.is_empty():
 		out.append("Mod: %s. %s" % [card.mod_name(), CardMods.describe(card.mod)])
+	if card.fw > 0:
+		out.append("Firmware v%d: its numbers are %d%% higher, permanently." % [card.fw, roundi((card.fw_mult() - 1.0) * 100)])
 	if card.def.rarity != "curse":
 		if card.upgraded:
-			out.append("Upgraded (+): " + card.def.upgrade_summary() + " Recompiled at a safehouse, or flashed to firmware.")
+			out.append("Upgraded (+): " + card.def.upgrade_summary() + " Recompiled at a safehouse for this run.")
 		else:
-			out.append("Upgrade (+): " + card.def.upgrade_summary() + " Recompile it at a safehouse for this run, or flash it to firmware for good.")
+			out.append("Upgrade (+): " + card.def.upgrade_summary() + " Recompile it at a safehouse for this run.")
 	return out
 
 

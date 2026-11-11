@@ -75,7 +75,7 @@ static func maxed(db: CardDB) -> Profile:
 		if c.rarity != "starter":
 			p.collection.add(id, maxi(3 - p.collection.count(id), 0))
 		p.mastery[id] = 100
-		p.firmware[id] = true
+		p.firmware[id] = Profile.firmware_max(db)
 		var m := best_mod(db, id)
 		if m != "":
 			p.firmware_mods[id] = m

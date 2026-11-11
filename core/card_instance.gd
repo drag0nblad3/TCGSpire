@@ -9,6 +9,17 @@ var upgraded := false
 var foil := false
 ## Installed mod (a dict from data/mods.json), or {} for none.
 var mod: Dictionary = {}
+## Firmware level (0-2): scales the card's numbers (balance.firmware.scale).
+var fw := 0
+## Set by whoever builds firmware cards (CardDB.firmware_scale), index = level.
+var fw_scale: Array = [1.0]
+
+## Numbers firmware scales, per op. Draw/RAM/copies stay as they are.
+const FW_KEYS := {
+	"damage": ["amount"], "ward": ["amount"], "heal": ["amount"], "apply": ["stacks"],
+	"summon": ["atk", "hp"], "grow": ["atk", "hp"], "rally": ["amount"],
+	"damage_per_ward": ["mult"], "damage_per_status": ["base", "mult"],
+}
 
 
 func _init(d: CardDef, up: bool = false) -> void:
@@ -25,7 +36,26 @@ func cost() -> int:
 
 
 func effects() -> Array:
-	return CardMods.effects(mod, def.get_effects(upgraded))
+	return CardMods.effects(mod, scaled(def.get_effects(upgraded), fw_mult()))
+
+
+func fw_mult() -> float:
+	return float(fw_scale[mini(fw, fw_scale.size() - 1)]) if fw > 0 else 1.0
+
+
+## Effects with their numbers scaled by m (rounded half up; never below the original).
+static func scaled(effs: Array, m: float) -> Array:
+	if is_equal_approx(m, 1.0):
+		return effs
+	var out: Array = []
+	for e in effs:
+		var d: Dictionary = e.duplicate()
+		for k in FW_KEYS.get(str(d.get("op", "")), []):
+			if d.has(k) and (d[k] is int or d[k] is float) and float(d[k]) > 0.0:
+				var v: float = float(d[k]) * m
+				d[k] = v if k == "mult" else maxi(int(floor(v + 0.5)), int(d[k]))
+		out.append(d)
+	return out
 
 
 func keywords() -> Array:
@@ -49,10 +79,18 @@ func display_name() -> String:
 
 
 func text() -> String:
+	if mod.is_empty() and fw == 0:
+		return def.get_text(upgraded)
+	if fw > 0:
+		return _generated_text()
 	if mod.is_empty():
 		return def.get_text(upgraded)
 	if def.get_text(upgraded) != "" and (upgraded and def.upgrade.has("text") or not upgraded and def.text_override != ""):
 		return def.get_text(upgraded) + " " + CardMods.describe(mod)
+	return _generated_text()
+
+
+func _generated_text() -> String:
 	var parts: Array[String] = []
 	for e in effects():
 		parts.append(Effects.describe(e))
@@ -62,7 +100,7 @@ func text() -> String:
 
 
 func key() -> String:
-	return def.id + ("+" if upgraded else "")
+	return def.id + ("+" if upgraded else "") + ("#%d" % fw if fw > 0 else "")
 
 
 ## Copy with the same upgrade and mod (for previews).
@@ -70,4 +108,6 @@ func copy() -> CardInstance:
 	var c := CardInstance.new(def, upgraded)
 	c.foil = foil
 	c.mod = mod
+	c.fw = fw
+	c.fw_scale = fw_scale
 	return c
