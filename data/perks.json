@@ -18,5 +18,9 @@
 {"id":"boot_firewall","scope":"rig","faction":"tide","name":"Boot Firewall","max_rank":2,"cost":40,"mods":{"start_ward":2}},
 {"id":"mod_cache","scope":"rig","faction":"ember","name":"Mod Cache","max_rank":2,"cost":40,"mods":{"start_mods":1}},
 {"id":"wider_scan","scope":"rig","faction":"void","name":"Wider Scan","max_rank":1,"cost":80,"mods":{"reward_choices":1}},
-{"id":"seed_subroutine","scope":"rig","faction":"ember","name":"Seed Subroutine","max_rank":1,"cost":70,"mods":{"start_perks":1}}
+{"id":"seed_subroutine","scope":"rig","faction":"ember","name":"Seed Subroutine","max_rank":1,"cost":70,"mods":{"start_perks":1}},
+{"id":"repair_drones","scope":"rig","faction":"chrome","name":"Repair Drones","max_rank":2,"cost":35,"mods":{"combat_heal":2}},
+{"id":"salvage_rights","scope":"rig","faction":"chrome","name":"Salvage Rights","max_rank":2,"cost":25,"mods":{"gold_pct":0.1}},
+{"id":"signal_jammer","scope":"rig","faction":"noise","name":"Signal Jammer","max_rank":2,"cost":40,"mods":{"enemy_hp_pct":-0.04}},
+{"id":"crowd_funding","scope":"rig","faction":"noise","name":"Crowd Funding","max_rank":2,"cost":20,"mods":{"start_gold":20}}
 ]

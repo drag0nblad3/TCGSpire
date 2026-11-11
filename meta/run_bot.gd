@@ -5,7 +5,8 @@ extends RefCounted
 
 
 static func play(db: CardDB, profile: Profile, seed_in: int, heat: int = 0, job: String = "") -> Dictionary:
-	var run := RunState.start(db, profile, RunState.default_picks(db, profile, job), seed_in, heat, job)
+	var targets := Jobs.targets(db, job, Jobs.extra_targets(db, heat), GameRng.new(seed_in).fork("job")) if job != "" else []
+	var run := RunState.start(db, profile, RunState.default_picks(db, profile, job, targets), seed_in, heat, job, targets)
 	var died_to := ""
 	var steps := 0
 	while not run.over and steps < 80:

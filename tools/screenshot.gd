@@ -5,7 +5,7 @@ extends SceneTree
 ##                   [out=/tmp/shot.png] [frames=30] [plays=2] [seed=1] [theme=archive] [end_turn=1]
 ## Under --headless it still runs (smoke test for script errors) but writes no image.
 
-const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker"]
+const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew"]
 
 
 func _initialize() -> void:
@@ -87,7 +87,8 @@ func _go(main: Control, scr: String, seed_in: int) -> void:
 		"picker":
 			main._show_picker(0, "ember")
 		"jobs":
-			main._show_jobs(0)
+			main.profile.max_heat = 6
+			main._show_jobs(6)
 		"rig":
 			main.profile.rep = {"ember": 60, "tide": 25, "bloom": 90, "void": 10}
 			main.profile.rig = {"chassis": 1}
@@ -106,6 +107,9 @@ func _go(main: Control, scr: String, seed_in: int) -> void:
 			main.show_map()
 		"combat":
 			main._start_combat({"type": "fight", "encounter": "wisp_court"})
+		"crew":
+			main.run = RunState.start(db, main.profile, RunState.default_picks(db, main.profile, "noise"), seed_in, 0, "noise")
+			main._start_combat({"type": "elite", "encounter": "chrome_a1e"})
 		"reward":
 			main._show_reward(["+15 gold", "Found Bone Dice"], ["bone_dice"], main.run.reward_choices("elite"))
 		"rest":

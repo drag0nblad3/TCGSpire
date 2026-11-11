@@ -35,21 +35,23 @@ var perks: Array = []
 var rig: Dictionary = {}
 var firmware: Dictionary = {}
 var mods_installed := 0
-## The job: client faction ("" = freelance) and the factions it bans.
+## The job: client faction ("" = freelance) and the crews it runs against.
+## Targets are banned (picks and offers) and their enemies show up on the map.
 var job := ""
 var banned: Array = []
 
 
 ## picks: card ids chosen from the player's collection (must own each one).
-## job: client faction id (see Jobs); its rivals' cards are dropped from picks.
-static func start(db_in: CardDB, profile: Profile, picks: Array, seed_in: int, heat_in: int = 0, job_in: String = "") -> RunState:
+## job: client faction id (see Jobs). targets: crews the job runs against
+## (default: the client's rivals); their cards are dropped from picks.
+static func start(db_in: CardDB, profile: Profile, picks: Array, seed_in: int, heat_in: int = 0, job_in: String = "", targets: Array = []) -> RunState:
 	var r := RunState.new()
 	r.db = db_in
 	r.seed_value = seed_in
 	r.rng = GameRng.new(seed_in)
 	r.heat = heat_in
 	r.job = job_in
-	r.banned = Jobs.banned(db_in, job_in)
+	r.banned = targets.duplicate() if not targets.is_empty() else Jobs.banned(db_in, job_in)
 	r.rig = profile.rig.duplicate()
 	r.firmware = profile.firmware.duplicate()
 	r.max_hp = int(db_in.balance.get("player", {}).get("max_hp", 60)) + int(r.heat_mod("max_hp", 0)) + int(r.perk_mod("max_hp"))
@@ -60,7 +62,7 @@ static func start(db_in: CardDB, profile: Profile, picks: Array, seed_in: int, h
 		var bid := str(raw)
 		r.deck.append(r.make_card(bid.trim_suffix("+"), bid.ends_with("+")))
 	var allowed := profile.starter_picks(db_in)
-	var problem := Jobs.check(db_in, job_in, picks.slice(0, allowed), allowed)
+	var problem := Jobs.check(db_in, job_in, picks.slice(0, allowed), allowed, r.banned)
 	if problem != "":
 		push_warning("Job '%s': %s" % [job_in, problem])
 	var used := {}
@@ -78,7 +80,7 @@ static func start(db_in: CardDB, profile: Profile, picks: Array, seed_in: int, h
 	for tid in db_in.talismans:
 		if int(db_in.talismans[tid].get("unlock_level", 1)) > profile.level():
 			r.locked_talismans.append(tid)
-	r.map = RunMap.generate(db_in, r.rng.fork("map:1"), 1)
+	r.map = RunMap.generate(db_in, r.rng.fork("map:1"), 1, r.banned)
 	var start_t := str(db_in.balance.get("start_talisman", ""))
 	if start_t != "":
 		r.add_talisman(start_t)
@@ -92,9 +94,9 @@ static func start(db_in: CardDB, profile: Profile, picks: Array, seed_in: int, h
 
 ## Default picks for a quick start: first owned non-starter cards. With a job,
 ## the client's cards come first and banned factions are skipped.
-static func default_picks(db_in: CardDB, profile: Profile, job_in: String = "") -> Array:
+static func default_picks(db_in: CardDB, profile: Profile, job_in: String = "", targets: Array = []) -> Array:
 	var n := profile.starter_picks(db_in)
-	var ban := Jobs.banned(db_in, job_in)
+	var ban := targets if not targets.is_empty() else Jobs.banned(db_in, job_in)
 	var out: Array = []
 	if job_in != "":
 		var need := Jobs.required(db_in, job_in, n)
@@ -150,7 +152,7 @@ func combat_opts() -> Dictionary:
 		"talismans": talismans,
 		"perks": perks.map(func(pid: String) -> Dictionary: return db.perks[pid]),
 		"start_ward": int(perk_mod("start_ward")),
-		"enemy_hp_mult": 1.0 + float(heat_mod("enemy_hp_pct", 0.0)),
+		"enemy_hp_mult": maxf(1.0 + float(heat_mod("enemy_hp_pct", 0.0)) + perk_mod("enemy_hp_pct"), 0.5),
 		"enemy_might": int(heat_mod("enemy_might", 0)),
 	}
 
@@ -232,7 +234,7 @@ func _next_act() -> void:
 	act += 1
 	node_id = -1
 	path = []
-	map = RunMap.generate(db, rng.fork("map:%d" % act), act)
+	map = RunMap.generate(db, rng.fork("map:%d" % act), act, banned)
 	var before := hp
 	hp = mini(max_hp, hp + int((max_hp - hp) * float(db.balance.get("act_heal_pct", 0.5))))
 	if hp < before:

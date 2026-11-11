@@ -6,7 +6,7 @@ extends Control
 signal closed
 signal picks_confirmed(picks: Array)
 
-const FILTERS := ["all", "neutral", "ember", "tide", "bloom", "void"]
+const FILTERS := ["all", "neutral", "ember", "tide", "bloom", "void", "chrome", "noise"]
 
 var db: CardDB
 var profile: Profile
@@ -14,6 +14,8 @@ var pick_mode := false
 var picks: Array = []
 ## Pick mode for a job: client faction ("" = no rules). Banned factions are hidden.
 var job := ""
+## Crews the job runs against (banned). Empty = the client's rivals.
+var targets: Array = []
 var _problem: Label
 var _begin: Button
 var _filter := "all"
@@ -21,18 +23,19 @@ var _grid: HFlowContainer
 var _header: Label
 
 
-func setup(db_in: CardDB, p: Profile, pick: bool = false, job_in: String = "") -> CollectionScreen:
+func setup(db_in: CardDB, p: Profile, pick: bool = false, job_in: String = "", targets_in: Array = []) -> CollectionScreen:
 	db = db_in
 	profile = p
 	pick_mode = pick
 	job = job_in
+	targets = targets_in if not targets_in.is_empty() else Jobs.banned(db, job)
 	if pick:
-		var ban := Jobs.banned(db, job)
+		var ban := targets
 		for id in p.last_picks:
 			if picks.count(id) < p.collection.count(id) and picks.size() < p.starter_picks(db) and db.card(id) != null and db.card(id).faction not in ban:
 				picks.append(id)
-		if Jobs.check(db, job, picks, p.starter_picks(db)) != "":
-			picks = RunState.default_picks(db, p, job)
+		if Jobs.check(db, job, picks, p.starter_picks(db), targets) != "":
+			picks = RunState.default_picks(db, p, job, targets)
 	return self
 
 
@@ -46,16 +49,16 @@ func _ready() -> void:
 	if pick_mode:
 		v.add_child(UiKit.label("Every run starts with your base rig (%s) plus the programs you pick here." % _base_summary(), 14, Palette.TEXT_DIM, true))
 		if job != "":
-			var ban: Array = Jobs.banned(db, job).map(func(x: String) -> String: return Lexicon.faction(x))
+			var ban: Array = targets.map(func(x: String) -> String: return Lexicon.faction(x))
 			v.add_child(UiKit.label("Job for %s: at least %d %s programs. %s programs are banned." % [Jobs.info(db, job).get("client", job),
 				Jobs.required(db, job, profile.starter_picks(db)), Lexicon.faction(job), " and ".join(ban)], 15, Palette.faction(job), true))
 		_problem = UiKit.label("", 14, Palette.HP, true)
 		v.add_child(_problem)
 	var filters := UiKit.hbox(8)
 	for f in FILTERS:
-		if pick_mode and f in Jobs.banned(db, job):
+		if pick_mode and f in targets:
 			continue
-		filters.add_child(UiKit.button("All" if f == "all" else Lexicon.faction(f), func() -> void: _set_filter(f), Vector2(96, 44), 14))
+		filters.add_child(UiKit.button("All" if f == "all" else Lexicon.faction(f), func() -> void: _set_filter(f), Vector2(76, 44), 13))
 	v.add_child(filters)
 	var inner := UiKit.scroll(v)
 	_grid = UiKit.flow(10)
@@ -64,7 +67,7 @@ func _ready() -> void:
 	bottom.add_child(UiKit.button("Back", func() -> void: closed.emit(), Vector2(160, 60)))
 	if pick_mode:
 		_begin = UiKit.button("Begin run", func() -> void:
-			if Jobs.check(db, job, picks, profile.starter_picks(db)) == "":
+			if Jobs.check(db, job, picks, profile.starter_picks(db), targets) == "":
 				picks_confirmed.emit(picks.duplicate()), Vector2(220, 60), 22)
 		bottom.add_child(_begin)
 	v.add_child(bottom)
@@ -89,7 +92,7 @@ func _set_filter(f: String) -> void:
 func _ids() -> Array:
 	var ids := db.ids_where(func(c: CardDef) -> bool:
 		return c.rarity not in ["starter", "curse"] and (_filter == "all" or c.faction == _filter) \
-			and (not pick_mode or (profile.collection.owns(c.id) and c.faction not in Jobs.banned(db, job))))
+			and (not pick_mode or (profile.collection.owns(c.id) and c.faction not in targets)))
 	var order := CardDef.RARITIES
 	ids.sort_custom(func(a: String, b: String) -> bool:
 		var ca := db.card(a)
@@ -104,7 +107,7 @@ func _refresh() -> void:
 	var owned := col.owned_ids().filter(func(id: String) -> bool: return db.card(id) != null and db.card(id).rarity not in ["starter", "curse"]).size()
 	if pick_mode:
 		_header.text = "Pick your starting cards: %d / %d" % [picks.size(), profile.starter_picks(db)]
-		var problem := Jobs.check(db, job, picks, profile.starter_picks(db))
+		var problem := Jobs.check(db, job, picks, profile.starter_picks(db), targets)
 		_problem.text = problem
 		if _begin != null:
 			_begin.disabled = problem != ""

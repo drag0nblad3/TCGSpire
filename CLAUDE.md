@@ -9,7 +9,7 @@ Original design only: don't copy cards, names, characters or look from existing 
 - `scripts/sim.sh [n=200] [deck=a,b] [enc=mites,golem]` — bot plays seeded fights, one line per encounter.
 - `scripts/sim.sh mode=run [n=100] [heat=0] [job=ember|all]` — bot plays whole runs: win %, avg floor, top killers.
 - `scripts/shot.sh screen=<name|all> out=/tmp/x.png [plays=2] [end_turn=1] [theme=archive]` — real render to PNG (xvfb).
-  Screens: hub map combat reward rest shop event collection picker pack end inspect rules jobs rig perk tinker. Uses a throwaway profile.
+  Screens: hub map combat reward rest shop event collection picker pack end inspect rules jobs rig perk tinker crew. Uses a throwaway profile.
 - Godot binary: `godot` on PATH, or set `GODOT=/path/to/godot`. Cloud sessions: download
   `Godot_v4.4.1-stable_linux.x86_64.zip` from the godotengine GitHub releases.
 
@@ -23,8 +23,10 @@ Original design only: don't copy cards, names, characters or look from existing 
   (counts, dust, craft/disenchant), `packs.gd`, `run_state.gd` (deck/HP/gold/talismans/heat,
   rest, shop, events), `run_map.gd` (seeded branching map), `run_outcomes.gd` (run-level ops for
   events/pickups), `run_bot.gd` (plays whole runs for sims). Progression: XP levels, card mastery, heat.
-  `jobs.gd`: every run is a job for a faction (data/factions.json): >= half the picks theirs, rivals banned
-  from picks and offers, pays that faction's rep. `perks.gd`: scope "run" = subroutines (picked after
+  `jobs.gd`: every run is a job for one client faction (data/factions.json, 6 crews in 3 rival pairs) run
+  against targets (the rival, plus heat mod "extra_targets"): >= half the picks the client's, targets banned
+  from picks and offers, targets' enemies (`data/enemies/factions.json`, encounters with "faction") fill
+  ~60% of fights/elites, pays the client's rep. `perks.gd`: scope "run" = subroutines (picked after
   elites/act boss), scope "rig" = permanent ranks bought with the perk's faction rep. Firmware
   (`Profile.flash_firmware`) permanently upgrades a card id: rep for faction cards, dust for Street/starter.
 - `ui/` presentation only, built in code (no .tscn besides main). `main.gd` is the screen flow;
@@ -57,7 +59,7 @@ Original design only: don't copy cards, names, characters or look from existing 
 - New talisman/event/mod/perk = JSON only (`mods.json`, `perks.json`; perk mod keys in `Perks.MODS`). Talisman triggers: combat_start, turn_start, turn_end,
   card_played (filters card_type, every), kill. Event outcomes use `RunOutcomes.OPS`.
 - Balance check after content changes: `scripts/sim.sh mode=run n=150 job=all`. Greedy bot baseline at heat 0
-  on jobs: ~9% clear act 1, ~4% win the full 2-act run (freelance, no job: ~16% / ~8%) (humans should do much better). Watch the killers list.
+  on jobs: ~9% clear act 1, ~3% win the full 2-act run (freelance, no job: ~16% / ~8%) (humans should do much better). Watch the killers list.
 - Save format change: bump `Profile.SAVE_VERSION` and add a step in `_migrate()`.
 - Packs are earned by play only. Rarity should add complexity, not raw power.
 - GDScript gotcha: `var x := untyped_value` fails to parse; write `var x: Type = ...`.

@@ -12,6 +12,8 @@ static var FACTION := {
 	"tide": Color("#3dc6ff"),
 	"bloom": Color("#7ee06a"),
 	"void": Color("#a98bff"),
+	"chrome": Color("#d9dfe8"),
+	"noise": Color("#ffd23d"),
 }
 
 static var RARITY := {

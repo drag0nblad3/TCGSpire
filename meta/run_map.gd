@@ -12,7 +12,9 @@ var rows: Array = []  # row -> [node ids]
 var act := 1
 
 
-static func generate(db: CardDB, rng: GameRng, act: int = 1) -> RunMap:
+## targets: crews the job runs against; their faction encounters replace a share
+## (balance.jobs.faction_encounter_share) of fights and elites. Bosses stay neutral.
+static func generate(db: CardDB, rng: GameRng, act: int = 1, targets: Array = []) -> RunMap:
 	var cfg: Dictionary = db.balance.get("map", {})
 	var m := RunMap.new()
 	var n_rows := int(cfg.get("rows", 12))
@@ -32,7 +34,7 @@ static func generate(db: CardDB, rng: GameRng, act: int = 1) -> RunMap:
 	m.rows.append([boss["id"]])
 	m._link(rng)
 	m.act = act
-	m._assign_encounters(db, rng)
+	m._assign_encounters(db, rng, targets)
 	return m
 
 
@@ -92,7 +94,8 @@ func _add_link(node: Dictionary, to_id: int) -> void:
 		node["next"].sort()
 
 
-func _assign_encounters(db: CardDB, rng: GameRng) -> void:
+func _assign_encounters(db: CardDB, rng: GameRng, targets: Array = []) -> void:
+	var share := float(db.balance.get("jobs", {}).get("faction_encounter_share", 0.6))
 	for node in nodes:
 		var kind := ""
 		match node["type"]:
@@ -106,13 +109,21 @@ func _assign_encounters(db: CardDB, rng: GameRng) -> void:
 			continue
 		var tier := 1 if node["row"] < 4 else 2
 		var pool: Array = []
+		var crew: Array = []
 		for id in db.encounters:
 			var enc: Dictionary = db.encounters[id]
 			if int(enc.get("act", 1)) != act:
 				continue
 			if str(enc.get("kind", "normal")) == kind and (kind != "normal" or int(enc.get("tier", 1)) == tier):
-				pool.append(id)
+				var f := str(enc.get("faction", ""))
+				if f == "":
+					pool.append(id)
+				elif f in targets:
+					crew.append(id)
 		pool.sort()
+		crew.sort()
+		if not crew.is_empty() and (pool.is_empty() or rng.chance(share)):
+			pool = crew
 		node["encounter"] = str(rng.pick(pool)) if not pool.is_empty() else ""
 
 

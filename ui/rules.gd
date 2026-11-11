@@ -57,6 +57,7 @@ static func sections(db: CardDB) -> Array:
 		rivals.append("%s bans %s" % [Lexicon.faction(f), " and ".join(Jobs.banned(db, f).map(func(x: String) -> String: return Lexicon.faction(x)))])
 	out.append(["Jobs and rep", [
 		"Every run is a job for one crew. At least %d%% of the programs you load must be theirs, and their rivals' programs are banned: you can't load them and nobody offers them during the job (%s)." % [share, "; ".join(rivals)],
+		"A job also runs against its targets: their crew's own enforcers guard most fights and black sentries on the map. From Heat %d, jobs run against extra crews too (still one client), and each extra target pays %d%% more rep." % [_first_heat(db, "extra_targets"), int(float(db.balance.get("jobs", {}).get("rep_per_extra_target", 0.25)) * 100)],
 		"A job pays the client's rep when it ends, more the further you climb. Rep buys that crew's rig upgrades and flashes its programs to firmware.",
 	]])
 	var mods: Array[String] = []
@@ -72,7 +73,7 @@ static func sections(db: CardDB) -> Array:
 		"Your deck is built from programs you own. Before each run you load extra programs from your library.",
 		"Runs earn XP and %s. Crack them open for new programs (rarer programs add complexity, not raw power)." % Palette.w("packs").to_lower(),
 		"Scrap spare copies for %s and compile the programs you want. Running a program often raises its mastery." % Palette.w("dust").to_lower(),
-		"Crews: Burner (viruses and overclocking), Flux (data flow and firewalls), Wetware (bio-daemons and patches), Null (glitches, buffers and loops), plus Street programs that fit any rig.",
+		"Crews: Burner (viruses and overclocking), Flux (data flow and firewalls), Wetware (bio-daemons and patches), Null (glitches, buffers and loops), Chrome (drone swarms and plating), Static (jamming and broadcasts), plus Street programs that fit any rig.",
 		"Heat: breach the final Core to unlock harder runs with extra modifiers.",
 	]])
 	out.append(["Tips", [
@@ -80,6 +81,14 @@ static func sections(db: CardDB) -> Array:
 		"Your HP bar sits under the battlefield. Firewall shows as a shield beside it.",
 	]])
 	return out
+
+
+static func _first_heat(db: CardDB, mod: String) -> int:
+	var levels: Array = db.balance.get("heat", [])
+	for i in levels.size():
+		if levels[i].get("mods", {}).has(mod):
+			return i + 1
+	return 0
 
 
 func _ready() -> void:

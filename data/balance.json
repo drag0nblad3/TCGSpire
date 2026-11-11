@@ -33,7 +33,11 @@
   "focus": 1,
   "arc_bolt": 2,
   "static_build": 1,
-  "discharge": 1
+  "discharge": 1,
+  "drone_swarm": 2,
+  "rivet_gun": 1,
+  "jam_signal": 1,
+  "shriek": 2
  },
  "pack": {
   "size": 5,
@@ -138,9 +142,10 @@
    }
   },
   {
-   "desc": "Safehouses repair a third less.",
+   "desc": "Safehouses repair a third less. Jobs run against one more crew.",
    "mods": {
-    "rest_heal_pct": -0.33
+    "rest_heal_pct": -0.33,
+    "extra_targets": 1
    }
   },
   {
@@ -156,9 +161,10 @@
    }
   },
   {
-   "desc": "Enemies have another 15% more HP.",
+   "desc": "Enemies have another 15% more HP. Jobs run against another crew.",
    "mods": {
-    "enemy_hp_pct": 0.15
+    "enemy_hp_pct": 0.15,
+    "extra_targets": 1
    }
   }
  ],
@@ -251,6 +257,8 @@
   "rep_per_floor": 2,
   "rep_per_elite": 6,
   "rep_per_act": 15,
-  "rep_boss": 30
+  "rep_boss": 30,
+  "faction_encounter_share": 0.6,
+  "rep_per_extra_target": 0.25
  }
 }

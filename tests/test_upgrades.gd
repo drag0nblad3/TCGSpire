@@ -222,3 +222,46 @@ func test_rules_mention_new_systems() -> void:
 		check(not Perks.describe(db.perks[id]).contains("?"), "perk text " + id)
 	for id in db.mods:
 		check(CardMods.describe(db.mods[id]) != "", "mod text " + id)
+
+
+# --- six crews, faction enemies, multi-target jobs ------------------------------------
+
+func test_six_crews_in_rival_pairs() -> void:
+	eq(Jobs.board(db).size(), 6, "six crews")
+	for f in Jobs.board(db):
+		var r: Array = Jobs.banned(db, f)
+		eq(r.size(), 1, "one rival for " + f)
+		eq(Jobs.banned(db, r[0]), [f], "rivalry is mutual for " + f)
+
+
+func test_map_uses_target_crew_enemies() -> void:
+	var seen := {}
+	for s in 10:
+		for act in [1, 2]:
+			var m := RunMap.generate(db, GameRng.new(s), act, ["chrome"])
+			for n in m.nodes:
+				var f := str(db.encounters.get(n["encounter"], {}).get("faction", ""))
+				check(f in ["", "chrome"], "non-target crew on the map: " + n["encounter"])
+				seen[f] = true
+			var free := RunMap.generate(db, GameRng.new(s), act)
+			for n in free.nodes:
+				eq(str(db.encounters.get(n["encounter"], {}).get("faction", "")), "", "freelance map has crew enemies")
+	check(seen.has("chrome"), "chrome enforcers appear")
+
+
+func test_high_heat_adds_targets_with_one_client() -> void:
+	eq(Jobs.extra_targets(db, 0), 0)
+	check(Jobs.extra_targets(db, 6) >= 2, "two extra at max heat")
+	for offer in Jobs.offers(db, 6, GameRng.new(5)):
+		var t: Array = offer["targets"]
+		eq(t.size(), 1 + Jobs.extra_targets(db, 6), "targets for " + offer["client"])
+		check(offer["client"] not in t, "client never a target")
+		eq(t[0], Jobs.banned(db, offer["client"])[0], "rival first")
+	var targets := Jobs.targets(db, "ember", 1, GameRng.new(2))
+	var r := RunState.start(db, profile, RunState.default_picks(db, profile, "ember", targets), 1, 3, "ember", targets)
+	eq(r.banned, targets, "run targets")
+	check(r.reward_choices("elite").all(func(id: String) -> bool: return db.card(id).faction not in targets), "targets not offered")
+	r.floor_num = 10
+	var base := RunState.start(db, profile, RunState.default_picks(db, profile, "ember"), 1, 3, "ember")
+	base.floor_num = 10
+	check(Jobs.rep_reward(db, r) > Jobs.rep_reward(db, base), "extra target pays more")

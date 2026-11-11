@@ -92,26 +92,28 @@ func _show_jobs(heat: int) -> void:
 	var v: VBoxContainer = parts[1]
 	v.add_child(UiKit.label("Job board", 32, Palette.ENERGY))
 	var n := profile.starter_picks(db)
-	for f in Jobs.board(db):
+	# Same board until the next run ends, so browsing doesn't reroll the targets.
+	for offer in Jobs.offers(db, heat, GameRng.new(int(profile.stats.get("runs", 0)) * 7919 + heat)):
+		var f: String = offer["client"]
 		var j := Jobs.info(db, f)
-		var ban: Array = Jobs.banned(db, f).map(func(x: String) -> String: return Lexicon.faction(x))
-		var b := UiKit.button("%s  (%s)\n%s\nLoad %d+ %s programs. Banned: %s. Pays %s (you have %d)." % [
+		var against: Array = offer["targets"].map(func(x: String) -> String: return Lexicon.faction(x))
+		var b := UiKit.button("%s  (%s)\n%s\nLoad %d+ %s programs. Against: %s (banned). Pays %s (you have %d)." % [
 			j.get("client", f), Lexicon.faction(f), j.get("job", ""), Jobs.required(db, f, n), Lexicon.faction(f),
-			", ".join(ban) if not ban.is_empty() else "none", Jobs.rep_name(db, f), profile.rep_of(f)],
-			_show_picker.bind(heat, f), Vector2(600, 112), 16)
+			" + ".join(against), Jobs.rep_name(db, f), profile.rep_of(f)],
+			_show_picker.bind(heat, f, offer["targets"]), Vector2(620, 104), 15)
 		b.add_theme_color_override("font_color", Palette.faction(f))
 		v.add_child(b)
 	v.add_child(UiKit.button("Back", show_hub, Vector2(200, 56)))
 	_show(parts[0])
 
 
-func _show_picker(heat: int, job: String = "") -> void:
-	var cs := CollectionScreen.new().setup(db, profile, true, job)
+func _show_picker(heat: int, job: String = "", targets: Array = []) -> void:
+	var cs := CollectionScreen.new().setup(db, profile, true, job, targets)
 	cs.closed.connect(_show_jobs.bind(heat))
 	cs.picks_confirmed.connect(func(picks: Array) -> void:
 		profile.last_picks = picks
 		_save()
-		run = RunState.start(db, profile, picks, int(Time.get_unix_time_from_system()), heat, job)
+		run = RunState.start(db, profile, picks, int(Time.get_unix_time_from_system()), heat, job, targets)
 		show_map())
 	_show(cs)
 

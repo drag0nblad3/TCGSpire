@@ -37,7 +37,7 @@ const KEYWORD := {
 	"ethereal": "Volatile",
 }
 
-const FACTION := {"neutral": "Street", "ember": "Burner", "tide": "Flux", "bloom": "Wetware", "void": "Null"}
+const FACTION := {"neutral": "Street", "ember": "Burner", "tide": "Flux", "bloom": "Wetware", "void": "Null", "chrome": "Chrome", "noise": "Static"}
 
 const TYPE := {"attack": "Exploit", "skill": "Script", "unit": "Daemon", "power": "Rootkit"}
 

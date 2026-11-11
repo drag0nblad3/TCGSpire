@@ -1,6 +1,8 @@
 [
-{"id":"ember","client":"The Kiln","rivals":["tide"],"job":"Torch a Flux relay farm and leave a Burner tag on the ashes.","rep":"Kiln marks"},
-{"id":"tide","client":"Undertow Brokers","rivals":["ember"],"job":"Move a stolen ledger through the Stack without a single Burner noticing.","rep":"Broker chits"},
-{"id":"bloom","client":"Greenroom Clinic","rivals":["void"],"job":"Liberate gene samples from a corporate vault before the Null cells erase them.","rep":"Clinic scrips"},
-{"id":"void","client":"Cell Zero","rivals":["bloom"],"job":"Wipe a Wetware archive so clean it never existed.","rep":"Zero keys"}
+{"id": "ember", "client": "The Kiln", "rivals": ["tide"], "job": "Torch a Flux relay farm and leave a Burner tag on the ashes.", "rep": "Kiln marks"},
+{"id": "tide", "client": "Undertow Brokers", "rivals": ["ember"], "job": "Move a stolen ledger through the Stack without a single Burner noticing.", "rep": "Broker chits"},
+{"id": "bloom", "client": "Greenroom Clinic", "rivals": ["void"], "job": "Liberate gene samples from a corporate vault before the Null cells erase them.", "rep": "Clinic scrips"},
+{"id": "void", "client": "Cell Zero", "rivals": ["bloom"], "job": "Wipe a Wetware archive so clean it never existed.", "rep": "Zero keys"},
+{"id": "chrome", "client": "Chromehive Syndicate", "rivals": ["noise"], "job": "Escort a drone convoy through Static airspace and keep every unit flying.", "rep": "Hive credits"},
+{"id": "noise", "client": "Channel 99", "rivals": ["chrome"], "job": "Hijack the Chromehive's drone feeds and broadcast their manifests to the whole Undercity.", "rep": "Airtime"}
 ]
