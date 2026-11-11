@@ -9,7 +9,7 @@ extends SceneTree
 
 
 func _initialize() -> void:
-	var opts := {"n": "200", "deck": "", "enc": "", "mode": "fight", "heat": "0", "job": "", "profile": "new"}
+	var opts := {"n": "", "deck": "", "enc": "", "mode": "fight", "heat": "0", "job": "", "profile": "new"}
 	for a in OS.get_cmdline_user_args():
 		var kv := a.split("=", true, 1)
 		if kv.size() == 2:
@@ -21,7 +21,7 @@ func _initialize() -> void:
 		quit(1)
 		return
 	if opts["mode"] == "run":
-		_sim_runs(db, int(opts["n"]) if opts["n"] != "200" else 100, int(opts["heat"]), opts["job"], opts["profile"])
+		_sim_runs(db, int(opts["n"]) if opts["n"] != "" else 100, int(opts["heat"]), opts["job"], opts["profile"])
 		quit(0)
 		return
 	var deck_ids: Array = []
@@ -30,7 +30,7 @@ func _initialize() -> void:
 	else:
 		deck_ids = db.balance["base_deck"] + RunState.default_picks(db, Profile.new_player(db))
 	var encs: Array = Array(opts["enc"].split(",")) if opts["enc"] != "" else db.encounters.keys()
-	var n := int(opts["n"])
+	var n := int(opts["n"]) if opts["n"] != "" else 200
 	print("deck(%d): %s" % [deck_ids.size(), ",".join(deck_ids)])
 	for enc in encs:
 		var wins := 0
