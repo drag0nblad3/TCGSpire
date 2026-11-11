@@ -3,8 +3,8 @@ extends SceneTree
 ## encounter. Use it to check a balance change instead of playtesting by hand.
 ##   godot --headless --path . -s res://tools/sim.gd -- [n=200] [deck=a,b,c] [enc=mites,golem]
 ##   ... -- mode=run [n=100] [heat=0] [job=ember|all]   (whole runs: win rate, floor reached, top killers;
-##          job=all rotates through every faction job; profile=new|veteran|max picks the save:
-##          veteran = after 10 bot runs spending what they earned, max = every upgrade)
+##          job=all rotates through every faction job; profile=new|experienced|veteran|max picks the save:
+##          experienced = after 10 bot runs spending what they earned, veteran = after 25, max = every upgrade)
 ## Default deck = base deck + default starter picks.
 
 
@@ -54,8 +54,10 @@ func _initialize() -> void:
 func _sim_runs(db: CardDB, n: int, heat: int, job: String = "", which: String = "new") -> void:
 	var jobs := Jobs.board(db)
 	var profile := Profile.new_player(db)
-	if which == "veteran":
-		profile = ProfileBot.veteran(db)
+	if which == "experienced":
+		profile = ProfileBot.veteran(db, 10)
+	elif which == "veteran":
+		profile = ProfileBot.veteran(db, 25)
 	elif which == "max":
 		profile = ProfileBot.maxed(db)
 	if which != "new":

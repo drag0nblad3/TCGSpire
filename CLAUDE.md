@@ -7,9 +7,9 @@ Original design only: don't copy cards, names, characters or look from existing 
 - `scripts/test.sh [filter] [-v]` — headless tests + UI smoke boot. Green = one `OK:` line.
 - `scripts/cards.sh [filter]` — every card as one line with generated rules text.
 - `scripts/sim.sh [n=200] [deck=a,b] [enc=mites,golem]` — bot plays seeded fights, one line per encounter.
-- `scripts/sim.sh mode=run [n=100] [heat=0] [job=ember|all] [profile=new|veteran|max]` — bot plays whole runs: win %, avg floor,
-  top killers. `profile=veteran` = save after 10 bot runs with likely spending, `max` = everything owned/bought (`meta/profile_bot.gd`).
-- `scripts/sim_matrix.sh` — the standard balance check Tyler wants: 150 runs per cell, new heat 0-2, veteran 1-4, max 3-6.
+- `scripts/sim.sh mode=run [n=100] [heat=0] [job=ember|all] [profile=new|experienced|veteran|max]` — bot plays whole runs: win %, avg floor,
+  top killers. `profile=experienced`/`veteran` = save after 10/25 bot runs with likely spending, `max` = everything owned/bought (`meta/profile_bot.gd`).
+- `scripts/sim_matrix.sh` — the standard balance check Tyler wants: 150 runs per cell, new heat 0-2, experienced 1-4, veteran 2-5, max 3-6.
 - `scripts/shot.sh screen=<name|all> out=/tmp/x.png [plays=2] [end_turn=1] [theme=archive]` — real render to PNG (xvfb).
   Screens: hub map combat reward rest shop event collection picker pack end inspect rules jobs rig perk tinker crew firmware recompile. Uses a throwaway profile.
 - Godot binary: `godot` on PATH, or set `GODOT=/path/to/godot`. Cloud sessions: download
@@ -24,7 +24,7 @@ Original design only: don't copy cards, names, characters or look from existing 
 - `meta/` between-run state: `profile.gd` (versioned save, `_migrate`), `collection.gd`
   (counts, dust, craft/disenchant), `packs.gd`, `run_state.gd` (deck/HP/gold/talismans/heat,
   rest, shop, events), `run_map.gd` (seeded branching map), `run_outcomes.gd` (run-level ops for
-  events/pickups), `run_bot.gd` (plays whole runs for sims), `profile_bot.gd` (builds veteran/maxed saves for sims). Progression: XP levels, card mastery, heat.
+  events/pickups), `run_bot.gd` (plays whole runs for sims), `profile_bot.gd` (builds experienced/veteran/maxed saves for sims). Progression: XP levels, card mastery, heat.
   `jobs.gd`: every run is a job for one client faction (data/factions.json, 6 crews in 3 rival pairs) run
   against targets (the rival, plus heat mod "extra_targets"): >= half the picks the client's, targets banned
   from picks and offers, targets' enemies (`data/enemies/factions.json`, encounters with "faction") fill
@@ -63,7 +63,7 @@ Original design only: don't copy cards, names, characters or look from existing 
 - New talisman/event/mod/perk = JSON only (`mods.json`, `perks.json`; perk mod keys in `Perks.MODS`). Talisman triggers: combat_start, turn_start, turn_end,
   card_played (filters card_type, every), kill. Event outcomes use `RunOutcomes.OPS`.
 - Balance check after content changes: `scripts/sim.sh mode=run n=400 job=all` (~20 s). Bot baseline at heat 0
-  on jobs (new profile, 3 acts): ~30% clear act 1, ~5% win; veteran (10 runs) ~50% win at heat 1, ~17% at heat 2; max ~55% at heat 3,
+  on jobs (new profile, 3 acts): ~30% clear act 1, ~5% win; experienced (10 runs) ~50% win at heat 1, ~17% at heat 2; max ~55% at heat 3,
   ~6% at heat 6 (Tyler is fine with lower rates since Act 3). Heat `enemy_hp_pct`/`enemy_dmg_pct` compound per level (`RunState.heat_mult`), the main lever.
   Runs pay `packs_per_boss`. Humans should do much
   better. Watch the killers list. `core/bot.gd` values (card, target) pairs from live state (no search/copies);
