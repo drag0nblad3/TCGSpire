@@ -17,7 +17,7 @@ func _ready() -> void:
 	var top := UiKit.hbox(18)
 	top.add_child(UiKit.label("HP %d/%d" % [run.hp, run.max_hp], 18, Palette.HP))
 	top.add_child(UiKit.label("Gold %d" % run.gold, 18, Palette.ENERGY))
-	top.add_child(UiKit.label("Floor %d" % run.floor_num, 18, Palette.TEXT_DIM))
+	top.add_child(UiKit.label("Act %d · Floor %d" % [run.act, run.floor_num], 18, Palette.TEXT_DIM))
 	if run.heat > 0:
 		top.add_child(UiKit.label("Heat %d" % run.heat, 18, Palette.HP))
 	top.add_child(UiKit.button("Deck %d" % run.deck.size(), func() -> void: _show_deck(), Vector2(110, 40), 15))

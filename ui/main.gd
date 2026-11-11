@@ -142,6 +142,8 @@ func _on_combat_finished(_won: bool) -> void:
 		_end_run()
 		return
 	var lines := ["+%d gold" % rewards["gold"]]
+	if rewards.has("act_started"):
+		lines.push_front("Act %d begins. You catch your breath (now %d/%d HP)." % [rewards["act_started"], run.hp, run.max_hp])
 	var tals: Array = []
 	if rewards["talisman"] != "":
 		run.add_talisman(rewards["talisman"])

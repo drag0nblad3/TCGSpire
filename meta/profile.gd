@@ -64,7 +64,8 @@ func finish_run(db: CardDB, run: RunState) -> Array:
 			max_heat = run.heat + 1
 			lines.append("Heat %d unlocked" % max_heat)
 	var cfg: Dictionary = db.balance.get("run_rewards", {})
-	var gained_xp := run.floor_num * int(cfg.get("xp_per_floor", 5)) + run.elites_won * int(cfg.get("xp_per_elite", 15))
+	var gained_xp := run.floor_num * int(cfg.get("xp_per_floor", 5)) + run.elites_won * int(cfg.get("xp_per_elite", 15)) \
+		+ run.acts_cleared * int(cfg.get("xp_per_act", 40))
 	if run.boss_won:
 		gained_xp += int(cfg.get("xp_boss", 60))
 	gained_xp = int(gained_xp * (1.0 + 0.1 * run.heat))

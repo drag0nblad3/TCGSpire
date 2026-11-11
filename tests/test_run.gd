@@ -154,3 +154,22 @@ func test_profile_v1_migrates() -> void:
 	var p := Profile.from_dict(old)
 	eq(p.xp, 60, "credited xp")
 	eq(p.collection.count("jab"), 2)
+
+
+func test_act_boss_advances_to_next_act() -> void:
+	var r := _run()
+	var boss: Dictionary = r.map.nodes.back()
+	r.node_id = boss["id"]
+	var c := r.start_combat(boss["encounter"])
+	c.start()
+	for e in c.enemies:
+		e.hp = 0
+	c._check_end()
+	var rew := r.finish_combat(c)
+	eq(r.act, 2, "act advanced")
+	check(not r.over, "run continues")
+	eq(rew.get("act_started", 0), 2)
+	check(r.map.act == 2, "act 2 map")
+	for n in r.map.nodes:
+		if n["encounter"] != "":
+			eq(int(db.encounters[n["encounter"]].get("act", 1)), 2, "act 2 encounter")

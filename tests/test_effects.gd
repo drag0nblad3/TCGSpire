@@ -118,3 +118,32 @@ func test_enemy_front_hits_unit_first() -> void:
 func test_unknown_op_fails_validation() -> void:
 	check(not Effects.validate({"op": "explode"}, "t").is_empty(), "unknown op accepted")
 	check(not Effects.validate({"op": "damage", "amout": 3}, "t").is_empty(), "typo param accepted")
+
+
+func test_charge_discharge_consumes() -> void:
+	c.player.add_status("charge", 4)
+	c.play_card(give(c, "discharge"), 0)
+	eq(c.enemies[0].hp, 18, "4 charge x3")
+	eq(c.player.status("charge"), 0, "consumed")
+
+
+func test_echo_repeats_next_card_once() -> void:
+	c.player.add_status("echo", 1)
+	c.play_card(give(c, "jab"), 0)
+	eq(c.enemies[0].hp, 18, "jab twice")
+	c.play_card(give(c, "jab"), 0)
+	eq(c.enemies[0].hp, 12, "third jab once")
+
+
+func test_echo_retargets_if_target_dies() -> void:
+	c.enemies[0].hp = 5
+	c.player.add_status("echo", 1)
+	c.play_card(give(c, "jab"), 0)
+	check(c.enemies[0].is_dead(), "first died")
+	eq(c.enemies[1].hp, 24, "echo hit next enemy")
+
+
+func test_frail_reduces_ward() -> void:
+	c.player.add_status("frail", 1)
+	c.play_card(give(c, "brace"))
+	eq(c.player.ward, 3, "floor(5*0.75)")

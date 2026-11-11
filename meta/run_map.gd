@@ -9,9 +9,10 @@ const TYPES := ["fight", "elite", "rest", "shop", "event", "treasure", "boss"]
 
 var nodes: Array = []
 var rows: Array = []  # row -> [node ids]
+var act := 1
 
 
-static func generate(db: CardDB, rng: GameRng) -> RunMap:
+static func generate(db: CardDB, rng: GameRng, act: int = 1) -> RunMap:
 	var cfg: Dictionary = db.balance.get("map", {})
 	var m := RunMap.new()
 	var n_rows := int(cfg.get("rows", 12))
@@ -30,6 +31,7 @@ static func generate(db: CardDB, rng: GameRng) -> RunMap:
 	m.nodes.append(boss)
 	m.rows.append([boss["id"]])
 	m._link(rng)
+	m.act = act
 	m._assign_encounters(db, rng)
 	return m
 
@@ -106,6 +108,8 @@ func _assign_encounters(db: CardDB, rng: GameRng) -> void:
 		var pool: Array = []
 		for id in db.encounters:
 			var enc: Dictionary = db.encounters[id]
+			if int(enc.get("act", 1)) != act:
+				continue
 			if str(enc.get("kind", "normal")) == kind and (kind != "normal" or int(enc.get("tier", 1)) == tier):
 				pool.append(id)
 		pool.sort()

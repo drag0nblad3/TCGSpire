@@ -53,8 +53,17 @@ static func score(c: Combat, card: CardInstance) -> float:
 				s += c.player.ward * float(e.get("mult", 1.0))
 			"ward":
 				s += minf(n, need_ward) * 1.2 + n * 0.2
+			"damage_per_status":
+				var amt := float(e.get("base", 0)) + c.player.status(str(e.get("status", ""))) * float(e.get("mult", 1.0))
+				s += amt * (c.living(c.enemies).size() if e.get("to", "") == "all_enemies" else 1)
 			"apply":
-				s += float(e.get("stacks", 1)) * 2.5
+				var st := str(e.get("status", ""))
+				if st == "echo":
+					s += 6.0
+				elif st == "overcharge":
+					s -= 2.0
+				else:
+					s += float(e.get("stacks", 1)) * (1.5 if st == "charge" else 2.5)
 			"draw", "energy":
 				s += n * 4.0
 			"summon":

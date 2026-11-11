@@ -38,7 +38,8 @@ Original design only: don't copy cards, names, characters or look from existing 
   All randomness goes through `GameRng`; events hold ids/numbers only.
 - New talisman/event = JSON only. Talisman triggers: combat_start, turn_start, turn_end,
   card_played (filters card_type, every), kill. Event outcomes use `RunOutcomes.OPS`.
-- Balance check after content changes: `scripts/sim.sh mode=run n=150` (bot win ~15-25% at heat 0).
+- Balance check after content changes: `scripts/sim.sh mode=run n=150`. Greedy bot baseline at heat 0:
+  ~12% clear act 1, ~3% win the full 2-act run (humans should do much better). Watch the killers list.
 - Save format change: bump `Profile.SAVE_VERSION` and add a step in `_migrate()`.
 - Packs are earned by play only. Rarity should add complexity, not raw power.
 - GDScript gotcha: `var x := untyped_value` fails to parse; write `var x: Type = ...`.

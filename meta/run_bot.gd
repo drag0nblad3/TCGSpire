@@ -8,7 +8,7 @@ static func play(db: CardDB, profile: Profile, seed_in: int, heat: int = 0) -> D
 	var run := RunState.start(db, profile, RunState.default_picks(db, profile), seed_in, heat)
 	var died_to := ""
 	var steps := 0
-	while not run.over and steps < 40:
+	while not run.over and steps < 80:
 		steps += 1
 		var options := run.available_nodes()
 		if options.is_empty():

@@ -11,5 +11,18 @@
 "hex_knight": {"kind": "elite", "enemies": ["hex_knight"]},
 "brood": {"kind": "elite", "enemies": ["brood_mother"]},
 "monarch": {"kind": "boss", "enemies": ["hollow_monarch"]},
-"colossus": {"kind": "boss", "enemies": ["cinder_colossus"]}
+"colossus": {"kind": "boss", "enemies": ["cinder_colossus"]},
+"harpy_tick": {"act": 2, "kind": "normal", "tier": 1, "enemies": ["storm_harpy", "void_tick"]},
+"sentinel": {"act": 2, "kind": "normal", "tier": 1, "enemies": ["rust_sentinel"]},
+"tick_swarm": {"act": 2, "kind": "normal", "tier": 1, "enemies": ["void_tick", "void_tick", "void_tick"]},
+"ash_tribe": {"act": 2, "kind": "normal", "tier": 1, "enemies": ["ash_shaman", "ember_imp", "ember_imp"]},
+"mire": {"act": 2, "kind": "normal", "tier": 2, "enemies": ["mire_beast"]},
+"harpy_pair": {"act": 2, "kind": "normal", "tier": 2, "enemies": ["storm_harpy", "storm_harpy"]},
+"sentinel_shaman": {"act": 2, "kind": "normal", "tier": 2, "enemies": ["rust_sentinel", "ash_shaman"]},
+"mire_ticks": {"act": 2, "kind": "normal", "tier": 2, "enemies": ["mire_beast", "void_tick"]},
+"chorus": {"act": 2, "kind": "elite", "enemies": ["chorus_of_echoes"]},
+"warden": {"act": 2, "kind": "elite", "enemies": ["warden_construct"]},
+"twin_reavers": {"act": 2, "kind": "elite", "enemies": ["reaver", "reaver"]},
+"unwritten": {"act": 2, "kind": "boss", "enemies": ["the_unwritten"]},
+"regent": {"act": 2, "kind": "boss", "enemies": ["storm_regent"]}
 }
