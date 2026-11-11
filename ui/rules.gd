@@ -74,7 +74,7 @@ static func sections(db: CardDB) -> Array:
 		"Runs earn XP and %s. Crack them open for new programs (rarer programs add complexity, not raw power)." % Palette.w("packs").to_lower(),
 		"Scrap spare copies for %s and compile the programs you want. Running a program often raises its mastery." % Palette.w("dust").to_lower(),
 		"Crews: Burner (viruses and overclocking), Flux (data flow and firewalls), Wetware (bio-daemons and patches), Null (glitches, buffers and loops), Chrome (drone swarms and plating), Static (jamming and broadcasts), plus Street programs that fit any rig.",
-		"Heat: breach the final Core to unlock harder runs with extra modifiers.",
+		"Heat: breach the final Core to unlock harder runs with extra modifiers. Enemy HP and damage boosts compound with each level.",
 	]])
 	out.append(["Tips", [
 		"An enemy's attack number already includes its Boost, its Throttle and your Exposed, so you can raise exactly enough Firewall.",

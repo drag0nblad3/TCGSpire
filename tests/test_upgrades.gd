@@ -187,10 +187,10 @@ func test_firmware_needs_mastery_and_rep() -> void:
 	check(profile.firmware_block(db, "kindle").begins_with("Run it"), "mastery gate")
 	profile.mastery["kindle"] = 10
 	check(profile.firmware_block(db, "kindle") != "", "rep gate")
-	profile.rep["ember"] = 30
+	profile.rep["ember"] = int(profile.firmware_price(db, "kindle")["amount"])
 	check(profile.flash_firmware(db, "kindle"), "flash")
 	eq(profile.rep_of("ember"), 0)
-	profile.collection.dust = 120
+	profile.collection.dust = int(profile.firmware_price(db, "jab")["amount"])
 	check(profile.flash_firmware(db, "jab"), "starters cost dust, no mastery")
 	eq(profile.collection.dust, 0)
 	var r := RunState.start(db, profile, ["kindle"], 1)
@@ -290,9 +290,10 @@ func test_firmware_mod_bakes_into_every_copy() -> void:
 	profile.mastery["kindle"] = 10
 	check(profile.firmware_mod_block(db, "kindle", "cached").begins_with("Run it"), "needs mastery tier 2")
 	profile.mastery["kindle"] = 30
-	profile.rep["ember"] = 100
+	profile.rep["ember"] = 200
+	var price := int(profile.firmware_mod_price(db, "kindle", "cached")["amount"])
 	check(profile.bake_firmware_mod(db, "kindle", "cached"), "bake")
-	eq(profile.rep_of("ember"), 60, "common mod price")
+	eq(profile.rep_of("ember"), 200 - price, "common mod price")
 	var r := RunState.start(db, profile, ["kindle"], 1)
 	r.add_card("kindle")
 	for c in r.deck:
@@ -344,3 +345,24 @@ func test_profile_bot_builds_sim_saves() -> void:
 		var picks := RunBot.best_picks(db, m, f, [])
 		eq(picks.size(), m.starter_picks(db), "full picks for " + f)
 		eq(Jobs.check(db, f, picks, m.starter_picks(db)), "", "legal picks for " + f)
+
+
+func test_heat_stat_boosts_compound() -> void:
+	var r := RunState.start(db, profile, [], 1, 2)
+	var levels: Array = db.balance["heat"]
+	var want := (1.0 + float(levels[0]["mods"].get("enemy_hp_pct", 0.0))) * (1.0 + float(levels[1]["mods"].get("enemy_hp_pct", 0.0)))
+	check(absf(r.heat_mult("enemy_hp_pct") - want) < 0.001, "hp boosts multiply")
+	var c := r.start_combat(db.encounters.keys()[0])
+	check(c.enemy_dmg_mult > 1.0, "heat raises enemy damage")
+	var f := Fighter.make("x", "x", 10)
+	f.dmg_mult = 1.5
+	eq(Statuses.modify_attack(10, f, null), 15, "damage multiplier applies")
+
+
+func test_runs_pay_a_pack_per_boss() -> void:
+	var r := RunState.start(db, profile, [], 1)
+	r.acts_cleared = 2
+	r.combats_won = 12
+	var before := profile.packs_unopened
+	profile.finish_run(db, r)
+	eq(profile.packs_unopened - before, 2 * int(db.balance["run_rewards"]["packs_per_boss"]))

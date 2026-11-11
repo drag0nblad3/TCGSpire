@@ -60,8 +60,10 @@ Original design only: don't copy cards, names, characters or look from existing 
   All randomness goes through `GameRng`; events hold ids/numbers only.
 - New talisman/event/mod/perk = JSON only (`mods.json`, `perks.json`; perk mod keys in `Perks.MODS`). Talisman triggers: combat_start, turn_start, turn_end,
   card_played (filters card_type, every), kill. Event outcomes use `RunOutcomes.OPS`.
-- Balance check after content changes: `scripts/sim.sh mode=run n=400 job=all` (~20 s). Bot baseline (new profile) at heat 0
-  on jobs: ~26% clear act 1, ~10% win the full 2-act run (heat 3 ~7% / 2%, heat 6 ~1%). Humans should do much
+- Balance check after content changes: `scripts/sim.sh mode=run n=400 job=all` (~20 s). Bot baseline at heat 0
+  on jobs (new profile): ~26% clear act 1, ~10% win. Targets Tyler set: `profile=veteran` ~50% win at heat 2, `profile=max`
+  wins sometimes (~10%) at heat 6. Heat `enemy_hp_pct`/`enemy_dmg_pct` compound per level (`RunState.heat_mult`), the main lever.
+  Runs pay `packs_per_boss`. Humans should do much
   better. Watch the killers list. `core/bot.gd` values (card, target) pairs from live state (no search/copies);
   `meta/run_bot.gd` uses static `card_value` for picks/upgrades/shop and scores event outcomes. Keep both cheap.
 - Save format change: bump `Profile.SAVE_VERSION` and add a step in `_migrate()`.

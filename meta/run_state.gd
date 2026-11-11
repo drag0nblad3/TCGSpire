@@ -139,6 +139,15 @@ func heat_mod(key: String, default: Variant) -> Variant:
 	return v
 
 
+## Heat stat boosts compound: each level's pct multiplies the ones below it.
+func heat_mult(key: String) -> float:
+	var levels: Array = db.balance.get("heat", [])
+	var v := 1.0
+	for i in mini(heat, levels.size()):
+		v *= 1.0 + float(levels[i].get("mods", {}).get(key, 0.0))
+	return v
+
+
 ## Sum of a perk modifier over this run's subroutines and the rig (x rank).
 func perk_mod(key: String) -> float:
 	var v := 0.0
@@ -155,8 +164,9 @@ func combat_opts() -> Dictionary:
 		"talismans": talismans,
 		"perks": perks.map(func(pid: String) -> Dictionary: return db.perks[pid]),
 		"start_ward": int(perk_mod("start_ward")),
-		"enemy_hp_mult": maxf(1.0 + float(heat_mod("enemy_hp_pct", 0.0)) + perk_mod("enemy_hp_pct"), 0.5),
+		"enemy_hp_mult": maxf(heat_mult("enemy_hp_pct") * (1.0 + perk_mod("enemy_hp_pct")), 0.5),
 		"enemy_might": int(heat_mod("enemy_might", 0)),
+		"enemy_dmg_mult": maxf(heat_mult("enemy_dmg_pct"), 0.5),
 	}
 
 

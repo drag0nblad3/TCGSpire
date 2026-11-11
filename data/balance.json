@@ -130,41 +130,51 @@
  },
  "heat": [
   {
-   "desc": "Enemies have 10% more HP.",
+   "desc": "Enemies have 23% more HP and deal 23% more damage.",
    "mods": {
-    "enemy_hp_pct": 0.1
+    "enemy_hp_pct": 0.23,
+    "enemy_dmg_pct": 0.23
    }
   },
   {
-   "desc": "Start each run infected with Adware (malware).",
+   "desc": "Start each run infected with Adware (malware). Enemies get another 23% HP and damage.",
    "mods": {
-    "start_curse": "doubt"
+    "start_curse": "doubt",
+    "enemy_hp_pct": 0.23,
+    "enemy_dmg_pct": 0.23
    }
   },
   {
-   "desc": "Safehouses repair a third less. Jobs run against one more crew.",
+   "desc": "Safehouses repair a third less. Jobs run against one more crew. Enemies get another 13% HP and damage.",
    "mods": {
     "rest_heal_pct": -0.33,
-    "extra_targets": 1
+    "extra_targets": 1,
+    "enemy_hp_pct": 0.13,
+    "enemy_dmg_pct": 0.13
    }
   },
   {
-   "desc": "Enemies start combat with 1 Boost.",
+   "desc": "Enemies start combat with 1 Boost and get another 13% HP and damage.",
    "mods": {
-    "enemy_might": 1
+    "enemy_might": 1,
+    "enemy_hp_pct": 0.13,
+    "enemy_dmg_pct": 0.13
    }
   },
   {
-   "desc": "Start with 6 less max HP.",
+   "desc": "Start with 6 less max HP. Enemies get another 13% HP and damage.",
    "mods": {
-    "max_hp": -6
+    "max_hp": -6,
+    "enemy_hp_pct": 0.13,
+    "enemy_dmg_pct": 0.13
    }
   },
   {
-   "desc": "Enemies have another 15% more HP. Jobs run against another crew.",
+   "desc": "Jobs run against another crew. Enemies get another 13% HP and damage.",
    "mods": {
-    "enemy_hp_pct": 0.15,
-    "extra_targets": 1
+    "enemy_hp_pct": 0.13,
+    "extra_targets": 1,
+    "enemy_dmg_pct": 0.13
    }
   }
  ],
@@ -172,9 +182,8 @@
   "xp_per_floor": 5,
   "xp_per_elite": 15,
   "xp_boss": 60,
-  "combats_per_pack": 3,
-  "boss_packs": 2,
-  "xp_per_act": 40
+  "xp_per_act": 40,
+  "packs_per_boss": 1
  },
  "levels": {
   "default": {
@@ -238,29 +247,29 @@
  "rest_mod_choices": 2,
  "firmware": {
   "cost": {
-   "starter": 120,
-   "common": 60,
-   "uncommon": 120,
-   "rare": 300,
-   "mythic": 600
+   "starter": 180,
+   "common": 90,
+   "uncommon": 180,
+   "rare": 450,
+   "mythic": 900
   },
   "rep_cost": {
-   "common": 30,
-   "uncommon": 60,
-   "rare": 120,
-   "mythic": 240
+   "common": 45,
+   "uncommon": 90,
+   "rare": 180,
+   "mythic": 360
   },
   "mastery_tier": 1,
   "mod_mastery_tier": 2,
   "mod_rep_cost": {
-   "common": 40,
-   "uncommon": 70,
-   "rare": 120
+   "common": 60,
+   "uncommon": 105,
+   "rare": 180
   },
   "mod_dust_cost": {
-   "common": 80,
-   "uncommon": 150,
-   "rare": 250
+   "common": 120,
+   "uncommon": 225,
+   "rare": 375
   }
  },
  "jobs": {

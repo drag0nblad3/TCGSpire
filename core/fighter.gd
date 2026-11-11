@@ -14,6 +14,8 @@ var atk := 0
 var moves: Array = []
 var move_idx := 0
 var def_id := ""
+## Attack multiplier (heat scaling for enemies), applied after Boost and Weakened.
+var dmg_mult := 1.0
 
 
 static func make(id_in: String, name_in: String, hp_in: int) -> Fighter:

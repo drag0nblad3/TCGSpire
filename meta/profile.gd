@@ -82,7 +82,7 @@ func finish_run(db: CardDB, run: RunState) -> Array:
 	if run.boss_won:
 		gained_xp += int(cfg.get("xp_boss", 60))
 	gained_xp = int(gained_xp * (1.0 + 0.1 * run.heat))
-	var packs := run.combats_won / maxi(int(cfg.get("combats_per_pack", 3)), 1) + (int(cfg.get("boss_packs", 2)) if run.boss_won else 0)
+	var packs := run.acts_cleared * int(cfg.get("packs_per_boss", 1))
 	packs_unopened += packs
 	lines.append("+%d XP, +%d pack%s" % [gained_xp, packs, "" if packs == 1 else "s"])
 	var rep_gain := Jobs.rep_reward(db, run)

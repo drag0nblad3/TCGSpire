@@ -38,11 +38,12 @@ var _enemy_counter := 0
 ## Difficulty modifiers from heat levels (see RunState.combat_opts).
 var enemy_hp_mult := 1.0
 var enemy_might := 0
+var enemy_dmg_mult := 1.0
 
 
 ## deck: Array of CardInstance (copied, not mutated). hp < 0 means full HP.
 ## opts (all optional): max_hp, talismans (Array of ids), perks (Array of perk dicts),
-## start_ward, enemy_hp_mult, enemy_might.
+## start_ward, enemy_hp_mult, enemy_might, enemy_dmg_mult.
 static func create(db_in: CardDB, deck: Array, encounter_id: String, rng_in: GameRng, hp: int = -1, opts: Dictionary = {}) -> Combat:
 	var c := Combat.new()
 	c.db = db_in
@@ -54,6 +55,7 @@ static func create(db_in: CardDB, deck: Array, encounter_id: String, rng_in: Gam
 	var max_hp := int(opts.get("max_hp", p.get("max_hp", 60)))
 	c.enemy_hp_mult = float(opts.get("enemy_hp_mult", 1.0))
 	c.enemy_might = int(opts.get("enemy_might", 0))
+	c.enemy_dmg_mult = float(opts.get("enemy_dmg_mult", 1.0))
 	for tid in opts.get("talismans", []):
 		if db_in.talismans.has(tid):
 			c.talismans.append(db_in.talismans[tid])
@@ -89,6 +91,7 @@ func _make_enemy(eid: String) -> Fighter:
 	for s in d.get("statuses", {}):
 		f.add_status(s, int(d["statuses"][s]))
 	f.def_id = eid
+	f.dmg_mult = enemy_dmg_mult
 	f.moves = d.get("moves", [])
 	if d.get("random_start", false) and not f.moves.is_empty():
 		f.move_idx = rng.range_i(0, f.moves.size() - 1)
