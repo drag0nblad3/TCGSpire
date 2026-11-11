@@ -7,6 +7,20 @@ const TYPES := ["attack", "skill", "unit", "power"]
 const TARGETS := ["enemy", "none"]
 const RARITIES := ["starter", "common", "uncommon", "rare", "mythic", "curse"]
 const KEYWORDS := ["exhaust", "retain", "unplayable", "innate", "ethereal"]
+## Rules glossary for keywords (shown by the card inspector and the rules screen).
+const KEYWORD_DESC := {
+	"exhaust": "After you play it, the card is removed for the rest of this fight.",
+	"retain": "Stays in your hand at the end of your turn instead of being discarded.",
+	"unplayable": "Can't be played. It just takes up space in your hand.",
+	"innate": "Always starts the fight in your opening hand.",
+	"ethereal": "If it's still in your hand at the end of your turn, it is exhausted.",
+}
+const TYPE_DESC := {
+	"attack": "Attack: usually deals damage to an enemy.",
+	"skill": "Skill: Ward, draw, statuses and other tricks.",
+	"unit": "Unit: summons an ally to your board. Units strike the front enemy at the end of your turn and can be attacked.",
+	"power": "Power: a lasting effect for the rest of the fight. Powers are removed after you play them.",
+}
 
 var id := ""
 var name := ""

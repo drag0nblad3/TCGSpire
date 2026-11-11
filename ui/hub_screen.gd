@@ -5,6 +5,7 @@ extends Control
 signal start_pressed(heat: int)
 signal collection_pressed
 signal packs_pressed
+signal theme_pressed
 
 var db: CardDB
 var profile: Profile
@@ -32,7 +33,9 @@ func _ready() -> void:
 		Sigil.draw(logo, logo.size / 2, 80.0, "tcg-spire-logo", Palette.ENERGY, t)
 		logo.queue_redraw())
 	v.add_child(logo)
-	v.add_child(UiKit.label("TCG SPIRE", 44, Palette.TEXT))
+	v.add_child(UiKit.label(Palette.w("title"), 40, Palette.TEXT))
+	if Palette.w("tagline") != "":
+		v.add_child(UiKit.label(Palette.w("tagline"), 15, Palette.TEXT_DIM, true))
 	var lvl := profile.level()
 	var have := profile.xp - Profile.xp_for_level(lvl)
 	var need := Profile.xp_for_level(lvl + 1) - Profile.xp_for_level(lvl)
@@ -45,9 +48,9 @@ func _ready() -> void:
 	bar.value = have
 	v.add_child(bar)
 	var s := profile.stats
-	v.add_child(UiKit.label("Runs %d   Wins %d   Best floor %d   Cards %d   Dust %d" % [
+	v.add_child(UiKit.label("Runs %d   Wins %d   Best floor %d   Cards %d   %s %d" % [
 		int(s.get("runs", 0)), int(s.get("wins", 0)), int(s.get("best_floor", 0)),
-		profile.collection.owned_ids().size(), profile.collection.dust], 15, Palette.TEXT_DIM))
+		profile.collection.owned_ids().size(), Palette.w("dust"), profile.collection.dust], 15, Palette.TEXT_DIM))
 
 	var heat_row := UiKit.hbox(16)
 	heat_row.add_child(UiKit.button("<", func() -> void: _set_heat(heat - 1), Vector2(56, 48)))
@@ -62,9 +65,13 @@ func _ready() -> void:
 
 	v.add_child(UiKit.button("Start run", func() -> void: start_pressed.emit(heat), Vector2(300, 72), 24))
 	v.add_child(UiKit.button("Collection", func() -> void: collection_pressed.emit(), Vector2(300, 60)))
-	var pk := UiKit.button("Open packs (%d)" % profile.packs_unopened, func() -> void: packs_pressed.emit(), Vector2(300, 60))
+	var pk := UiKit.button("Open %s (%d)" % [Palette.w("packs").to_lower(), profile.packs_unopened], func() -> void: packs_pressed.emit(), Vector2(300, 60))
 	pk.disabled = profile.packs_unopened <= 0
 	v.add_child(pk)
+	var row := UiKit.hbox(12)
+	row.add_child(UiKit.button("How to play", func() -> void: Rules.open(self), Vector2(200, 52), 16))
+	row.add_child(UiKit.button("World: %s" % Themes.ALL[Palette.theme_id]["name"], func() -> void: theme_pressed.emit(), Vector2(300, 52), 16))
+	v.add_child(row)
 
 
 func _set_heat(h: int) -> void:

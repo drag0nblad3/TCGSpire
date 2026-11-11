@@ -2,14 +2,14 @@ extends SceneTree
 ## Boots the real main scene, jumps to a screen, optionally auto-plays a few
 ## cards, and saves a PNG. Lets you review UI from the CLI without an emulator.
 ##   scripts/shot.sh [screen=hub|map|combat|reward|rest|shop|event|collection|picker|pack|end]
-##                   [out=/tmp/shot.png] [frames=30] [plays=2] [seed=1]
+##                   [out=/tmp/shot.png] [frames=30] [plays=2] [seed=1] [theme=archive] [end_turn=1]
 ## Under --headless it still runs (smoke test for script errors) but writes no image.
 
-const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "end"]
+const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "end", "inspect", "rules"]
 
 
 func _initialize() -> void:
-	var opts := {"out": "user://shot.png", "frames": "30", "plays": "0", "screen": "combat", "seed": "1"}
+	var opts := {"out": "user://shot.png", "frames": "30", "plays": "0", "screen": "combat", "seed": "1", "theme": "", "end_turn": "0"}
 	for a in OS.get_cmdline_user_args():
 		var kv := a.split("=", true, 1)
 		if kv.size() == 2:
@@ -22,6 +22,8 @@ func _initialize() -> void:
 	main.profile = Profile.new_player(main.db)
 	main.profile.packs_unopened = 2
 	main.profile.collection.dust = 120
+	if opts["theme"] != "":
+		main.apply_theme(opts["theme"])
 	var screens: Array = SCREENS if opts["screen"] == "all" else [opts["screen"]]
 	for scr in screens:
 		_go(main, scr, int(opts["seed"]))
@@ -37,8 +39,10 @@ func _initialize() -> void:
 						if cs._selected >= 0:
 							cs._on_enemy_pressed(null, c.enemies.find(c.living(c.enemies)[0]))
 						break
-				await process_frame
-				await process_frame
+				await _idle(cs)
+			if opts["end_turn"] == "1":
+				main.get("_screen")._on_end_turn()
+				await _idle(main.get("_screen"))
 		for i in int(opts["frames"]):
 			await process_frame
 		if DisplayServer.get_name() != "headless":
@@ -50,9 +54,17 @@ func _initialize() -> void:
 	quit(0)
 
 
+## Waits for combat animations to finish (capped at ~10s).
+func _idle(cs) -> void:
+	for i in 600:
+		await process_frame
+		if not cs.is_busy():
+			return
+
+
 func _go(main: Control, scr: String, seed_in: int) -> void:
 	var db: CardDB = main.db
-	if scr not in ["hub", "collection", "picker", "pack"]:
+	if scr not in ["hub", "collection", "picker", "pack", "inspect", "rules"]:
 		var p: Profile = main.profile
 		main.run = RunState.start(db, p, RunState.default_picks(db, p), seed_in)
 		main.run.add_talisman("oak_token")
@@ -60,6 +72,15 @@ func _go(main: Control, scr: String, seed_in: int) -> void:
 	match scr:
 		"hub":
 			main.show_hub()
+		"inspect":
+			main.show_hub()
+			CardInspector.show_for(main, db.instance("flare_volley"))
+		"rules":
+			for n in main.get_tree().root.get_children():
+				if n is CardInspector:
+					n.queue_free()
+			main.show_hub()
+			Rules.open(main)
 		"collection":
 			main.show_hub()
 			main.get("_screen").collection_pressed.emit()

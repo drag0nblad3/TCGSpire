@@ -45,18 +45,18 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 			for t in targets(c, e, src, target, "self"):
 				var w := int(n * 0.75) if t.status("frail") > 0 else n
 				t.ward += w
-				c.emit("ward", {"target": t.id, "amount": w})
+				c.emit("ward", {"target": t.id, "amount": w, "ward": t.ward})
 		"heal":
 			for t in targets(c, e, src, target, "self"):
 				var before: int = t.hp
 				t.hp = mini(t.max_hp, t.hp + n)
-				c.emit("heal", {"target": t.id, "amount": t.hp - before})
+				c.emit("heal", {"target": t.id, "amount": t.hp - before, "hp": t.hp})
 		"apply":
 			var s := str(e.get("status", ""))
 			var stacks := int(e.get("stacks", 1))
 			for t in targets(c, e, src, target, "target"):
 				t.add_status(s, stacks)
-				c.emit("status", {"target": t.id, "status": s, "stacks": stacks})
+				c.emit("status", {"target": t.id, "status": s, "stacks": stacks, "total": t.status(s)})
 		"draw":
 			c.draw(n)
 		"energy":

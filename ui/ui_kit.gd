@@ -10,6 +10,8 @@ static func label(text: String, font_size: int = 16, col: Color = Palette.TEXT, 
 	l.add_theme_color_override("font_color", col)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if font_size >= 24:
+		l.add_theme_font_override("font", Palette.display())
 	if wrap:
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.custom_minimum_size.x = 560
@@ -78,7 +80,7 @@ static func panel(child: Control, col: Color = Palette.PANEL_BG) -> PanelContain
 	var p := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = col
-	sb.set_corner_radius_all(12)
+	sb.set_corner_radius_all(maxi(Palette.RADIUS, 4))
 	sb.set_content_margin_all(14)
 	p.add_theme_stylebox_override("panel", sb)
 	p.add_child(child)
@@ -86,14 +88,23 @@ static func panel(child: Control, col: Color = Palette.PANEL_BG) -> PanelContain
 
 
 ## Shows a short message that fades out, on top of `host`.
-static func toast(host: Node, text: String) -> void:
+static func toast(host: Node, text: String, seconds: float = 2.2) -> void:
+	# Only one toast at a time: a new one replaces the old.
+	for n in host.get_children():
+		if n.has_meta("toast"):
+			n.queue_free()
 	var l := label(text, 16, Palette.TEXT, true)
-	var p := panel(l, Color(0.05, 0.04, 0.09, 0.95))
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	var p := panel(l, Color(Palette.PANEL_BG, 0.97))
+	p.set_meta("toast", true)
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb: StyleBoxFlat = p.get_theme_stylebox("panel")
+	sb.border_color = Color(Palette.ENERGY, 0.7)
+	sb.set_border_width_all(2)
 	host.add_child(p)
-	p.position = Vector2(80, 120)
+	p.position = Vector2(60, 150)
 	p.z_index = 50
 	var tw := p.create_tween()
-	tw.tween_interval(2.2)
+	tw.tween_interval(seconds)
 	tw.tween_property(p, "modulate:a", 0.0, 0.4)
 	tw.tween_callback(p.queue_free)
