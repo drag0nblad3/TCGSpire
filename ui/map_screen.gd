@@ -100,12 +100,14 @@ func _dashed(a: Vector2, b: Vector2, col: Color, w: float) -> void:
 			_canvas.draw_line(a.lerp(b, float(i) / steps), a.lerp(b, float(i + 1) / steps), col, w, true)
 
 
+var _tap := Tap.new()
+
+
 func _on_canvas_input(event: InputEvent) -> void:
-	var tapped: bool = (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT) \
-		or (event is InputEventScreenTouch and event.pressed)
-	if not tapped:
+	# Tap (not drag) so scrolling the map never picks a node by accident.
+	if _tap.feed(event) != "tap":
 		return
 	for id in run.available_nodes():
-		if _pos(id).distance_to(event.position) < 40.0:
+		if _pos(id).distance_to(event.position) < 44.0:
 			node_chosen.emit(id)
 			return

@@ -24,7 +24,7 @@ func setup(title: String, cards: Array, button_text: String, on_pick: Callable, 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var bg := ColorRect.new()
-	bg.color = Color(0.02, 0.02, 0.05, 0.94)
+	bg.color = Color(Palette.PANEL_BG, 0.97)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 	var parts := UiKit.screen(14, BoxContainer.ALIGNMENT_BEGIN)
@@ -34,6 +34,8 @@ func _ready() -> void:
 	var inner := UiKit.scroll(v)
 	var grid := UiKit.flow(10)
 	inner.add_child(grid)
+	if _cards.is_empty():
+		inner.add_child(UiKit.label("No cards here yet.", 18, Palette.TEXT_DIM))
 	for i in _cards.size():
 		var src: CardInstance = _cards[i]
 		var shown := src

@@ -51,7 +51,7 @@ static func on_turn_end(c: Combat, f: Fighter) -> void:
 	if regen > 0 and not f.is_dead():
 		var before := f.hp
 		f.hp = mini(f.max_hp, f.hp + regen)
-		c.emit("heal", {"target": f.id, "amount": f.hp - before})
+		c.emit("heal", {"target": f.id, "amount": f.hp - before, "hp": f.hp})
 		f.add_status("regen", -1)
 	for s in DECAYING:
 		if f.status(s) > 0:

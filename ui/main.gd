@@ -25,7 +25,22 @@ func _ready() -> void:
 	add_child(bg)
 	db = CardDB.shared()
 	profile = Profile.load_or_new(db)
+	apply_theme(str(profile.settings.get("theme", Themes.DEFAULT)))
 	show_hub()
+
+
+## Restyles everything: colors, fonts, frames, backdrop. Screens built after
+## this call pick it up (call show_hub()/show_map() to rebuild the current one).
+func apply_theme(id: String) -> void:
+	Palette.apply(id)
+	theme = Palette.make_theme()
+	# Overlays (deck, rules, inspector) live on the root window, so theme it too.
+	get_tree().root.theme = theme
+	var b: Dictionary = Palette.BACKDROP
+	_bg_mat.set_shader_parameter("style", b["style"])
+	_bg_mat.set_shader_parameter("top_color", b["top"])
+	_bg_mat.set_shader_parameter("bottom_color", b["bottom"])
+	_bg_mat.set_shader_parameter("glow_color", b["glow"])
 
 
 func _save() -> void:
@@ -40,15 +55,22 @@ func _show(node: Control) -> void:
 	add_child(node)
 
 
-func _tint(col: Color) -> void:
-	_bg_mat.set_shader_parameter("glow_color", col)
+## Shifts the backdrop glow toward `col` (elites, shops...). No arg = theme default.
+func _tint(col: Color = Color.TRANSPARENT) -> void:
+	var g: Color = Palette.BACKDROP["glow"]
+	_bg_mat.set_shader_parameter("glow_color", g if col == Color.TRANSPARENT else g.lerp(col, 0.6))
 
 
 # --- hub / collection / packs ---------------------------------------------------
 
 func show_hub() -> void:
-	_tint(Color(0.55, 0.28, 0.85))
+	_tint()
 	var hub := HubScreen.new().setup(db, profile)
+	hub.theme_pressed.connect(func() -> void:
+		profile.settings["theme"] = Themes.next_after(Palette.theme_id)
+		_save()
+		apply_theme(profile.settings["theme"])
+		show_hub())
 	hub.start_pressed.connect(_show_picker)
 	hub.collection_pressed.connect(func() -> void:
 		var cs := CollectionScreen.new().setup(db, profile)
@@ -77,7 +99,7 @@ func _show_pack() -> void:
 	_save()
 	var parts := UiKit.screen(24)
 	var v: VBoxContainer = parts[1]
-	v.add_child(UiKit.label("Tap cards to reveal", 24))
+	v.add_child(UiKit.label("%s: tap cards to reveal" % Palette.w("pack"), 24))
 	var grid := UiKit.flow(12)
 	var views: Array = []
 	for p in pulled:
@@ -104,7 +126,7 @@ func _show_pack() -> void:
 # --- map ------------------------------------------------------------------------
 
 func show_map() -> void:
-	_tint(Color(0.3, 0.35, 0.8))
+	_tint()
 	var m := MapScreen.new().setup(run)
 	m.node_chosen.connect(_enter_node)
 	_show(m)
@@ -124,11 +146,11 @@ func _enter_node(id: int) -> void:
 		"treasure":
 			var tid := run.roll_talisman("", run.rng.fork("treasure:%d" % run.floor_num))
 			run.add_talisman(tid)
-			_show_message("Treasure", ["You found %s." % db.talismans[tid]["name"] if tid != "" else "The chest is empty."], [tid] if tid != "" else [])
+			_show_message(Palette.w("treasure"), ["You found %s." % db.talismans[tid]["name"] if tid != "" else "The chest is empty."], [tid] if tid != "" else [])
 
 
 func _start_combat(node: Dictionary) -> void:
-	_tint(Palette.NODE[node["type"]] if node["type"] != "fight" else Color(0.55, 0.28, 0.85))
+	_tint(Palette.NODE[node["type"]] if node["type"] != "fight" else Color.TRANSPARENT)
 	_combat = run.start_combat(node["encounter"])
 	_combat.start()
 	var s := CombatScreen.new().setup(_combat, run)
@@ -180,7 +202,9 @@ func _show_rest() -> void:
 	var parts := UiKit.screen(24)
 	var v: VBoxContainer = parts[1]
 	v.add_child(RunHeader.new().setup(run))
-	v.add_child(UiKit.label("A quiet campfire", 30))
+	v.add_child(UiKit.label(Palette.w("rest"), 30))
+	if Palette.w("rest_text") != "":
+		v.add_child(UiKit.label(Palette.w("rest_text"), 16, Palette.TEXT_DIM, true))
 	var heal_amt := mini(run.max_hp - run.hp, int(run.max_hp * float(db.balance.get("rest_heal_pct", 0.3)) * (1.0 + float(run.heat_mod("rest_heal_pct", 0.0)))))
 	v.add_child(UiKit.button("Rest (+%d HP)" % heal_amt, func() -> void:
 		run.rest_heal()
@@ -197,7 +221,7 @@ func _show_shop(shop: Dictionary) -> void:
 	var parts := UiKit.screen(16, BoxContainer.ALIGNMENT_BEGIN)
 	var v: VBoxContainer = parts[1]
 	v.add_child(RunHeader.new().setup(run))
-	v.add_child(UiKit.label("Merchant", 30))
+	v.add_child(UiKit.label(Palette.w("shop"), 30))
 	var cards := UiKit.flow(10)
 	for item in shop["cards"]:
 		var cv := CardView.new().setup(db.instance(item["id"]))
@@ -292,5 +316,5 @@ func _end_run() -> void:
 	v.add_child(UiKit.label("Fights won %d   Elites %d   Deck %d cards" % [run.combats_won, run.elites_won, run.deck.size()], 16, Palette.TEXT_DIM))
 	for l in lines:
 		v.add_child(UiKit.label(str(l), 17))
-	v.add_child(UiKit.button("Back to camp", show_hub, Vector2(280, 64)))
+	v.add_child(UiKit.button(Palette.w("camp"), show_hub, Vector2(360, 64)))
 	_show(parts[0])

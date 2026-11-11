@@ -8,8 +8,8 @@ Original design only: don't copy cards, names, characters or look from existing 
 - `scripts/cards.sh [filter]` — every card as one line with generated rules text.
 - `scripts/sim.sh [n=200] [deck=a,b] [enc=mites,golem]` — bot plays seeded fights, one line per encounter.
 - `scripts/sim.sh mode=run [n=100] [heat=0]` — bot plays whole runs: win %, avg floor, top killers.
-- `scripts/shot.sh screen=<name|all> out=/tmp/x.png [plays=2]` — real render to PNG (xvfb).
-  Screens: hub map combat reward rest shop event collection picker pack end. Uses a throwaway profile.
+- `scripts/shot.sh screen=<name|all> out=/tmp/x.png [plays=2] [end_turn=1] [theme=archive]` — real render to PNG (xvfb).
+  Screens: hub map combat reward rest shop event collection picker pack end inspect rules. Uses a throwaway profile.
 - Godot binary: `godot` on PATH, or set `GODOT=/path/to/godot`. Cloud sessions: download
   `Godot_v4.4.1-stable_linux.x86_64.zip` from the godotengine GitHub releases.
 
@@ -24,7 +24,16 @@ Original design only: don't copy cards, names, characters or look from existing 
   events/pickups), `run_bot.gd` (plays whole runs for sims). Progression: XP levels, card mastery, heat.
 - `ui/` presentation only, built in code (no .tscn besides main). `main.gd` is the screen flow;
   `ui_kit.gd` has label/button/flow/scroll/toast helpers. Reads `combat.events` to animate.
-  All art is code: `sigil.gd` (procedural glyphs), `palette.gd` (all colors), `shaders/`.
+  All art is code: `sigil.gd` (procedural glyphs), `intent_icon.gd`, `palette.gd` (all colors), `shaders/`.
+- Worlds/themes: `ui/themes.gd` (colors, fonts, frame shape, backdrop style, and `words`: title, hero,
+  pack/dust names, faction names). Read them via `Palette.*`, `Palette.w("dust")`, `Palette.faction_name(f)`;
+  never hardcode colors or world words in screens. Choice saved in `Profile.settings.theme`.
+- Input: custom controls use `Tap` (`ui/tap.gd`) for tap vs drag vs long-press. Never handle
+  InputEventScreenTouch too (Android emulates mouse from touch: double events = select/deselect bug).
+  Long-press a card = `CardInspector`; rules text lives in `Rules` (generated from Statuses.DEFS,
+  CardDef.KEYWORD_DESC, Intents.DESC) so new content documents itself.
+- Combat animation: `CombatScreen._play_events` replays `combat.events` step by step (input blocked);
+  damage/ward/heal events carry `hp`/`ward` after the change for the bars. `step_scale = 0` in tests.
 - `data/` all content as JSON: `cards/<faction>.json` (one card per line), `enemies/`,
   `encounters.json` (kind normal/elite/boss, tier), `talismans.json`, `events.json`,
   `balance.json` (every tuning number: map weights, prices, heat levels, XP, mastery).

@@ -20,6 +20,8 @@ var mastery: Dictionary = {}  # card id -> total plays
 var max_heat := 0
 ## Last deck picks, so the picker remembers them.
 var last_picks: Array = []
+## UI preferences, e.g. {"theme": "archive"}. Optional field, no migration needed.
+var settings: Dictionary = {}
 
 
 static func new_player(db: CardDB) -> Profile:
@@ -153,6 +155,7 @@ func to_dict() -> Dictionary:
 		"mastery": mastery,
 		"max_heat": max_heat,
 		"last_picks": last_picks,
+		"settings": settings,
 	}
 
 
@@ -169,6 +172,7 @@ static func from_dict(d: Dictionary) -> Profile:
 		p.mastery[k] = int(d["mastery"][k])
 	p.max_heat = int(d.get("max_heat", 0))
 	p.last_picks = d.get("last_picks", [])
+	p.settings = d.get("settings", {})
 	return p
 
 
