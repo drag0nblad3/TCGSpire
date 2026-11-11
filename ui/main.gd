@@ -254,16 +254,17 @@ func _show_rest() -> void:
 	v.add_child(UiKit.label(Palette.w("rest"), 30))
 	if Palette.w("rest_text") != "":
 		v.add_child(UiKit.label(Palette.w("rest_text"), 16, Palette.TEXT_DIM, true))
+	v.add_child(UiKit.label("Pick one:", 16, Palette.TEXT_DIM))
 	v.add_child(UiKit.button("Reboot (+%d HP)" % run.rest_heal_amount(), func() -> void:
 		run.rest_heal()
 		show_map(), Vector2(320, 70), 22))
-	v.add_child(UiKit.button("Recompile a program", func() -> void:
+	v.add_child(UiKit.button("Recompile a program\nUpgrade one card (+) for the rest of this run", func() -> void:
 		add_child(DeckOverlay.new().setup("Choose a program to recompile", run.deck, "Cancel", func(i: int) -> void:
 			if i >= 0 and run.upgrade_card(i):
-				show_map(), true, true)), Vector2(320, 70), 22))
+				show_map(), true, true)), Vector2(440, 78), 19))
 	var mods := run.mod_choices(int(db.balance.get("rest_mod_choices", 2)), run.rng.fork("tinker:%d" % run.floor_num))
 	if not mods.is_empty():
-		v.add_child(UiKit.label("or tinker: install one mod", 16, Palette.TEXT_DIM))
+		v.add_child(UiKit.label("or tinker: install one mod (one per card, lasts this run)", 16, Palette.TEXT_DIM))
 		for mid in mods:
 			v.add_child(_mod_button(mid, "", func() -> void:
 				_pick_mod_target(mid, func(i: int) -> void:

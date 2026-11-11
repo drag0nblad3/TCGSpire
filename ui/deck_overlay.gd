@@ -57,7 +57,21 @@ func _ready() -> void:
 		cv.playable = not _pickable or ok
 		if _pickable and cv.playable:
 			cv.pressed.connect(func(_v: CardView) -> void: _close(i))
-		grid.add_child(cv)
+		if _preview_upgrade or not _mod.is_empty():
+			# Under each card: what the upgrade or mod would change, or why it can't.
+			var cell := UiKit.vbox(4, BoxContainer.ALIGNMENT_BEGIN)
+			cell.add_child(cv)
+			var why := ""
+			if _preview_upgrade:
+				why = src.def.upgrade_summary() if ok else ("Already upgraded." if src.upgraded else "Can't be upgraded.")
+			else:
+				why = CardMods.describe(_mod) if ok else ("Has %s." % src.mod_name() if not src.mod.is_empty() else "Doesn't fit.")
+			var l := UiKit.label(why, 12, Palette.UPGRADED if ok else Palette.TEXT_DIM, true)
+			l.custom_minimum_size = Vector2(CardView.SIZE.x, 0)
+			cell.add_child(l)
+			grid.add_child(cell)
+		else:
+			grid.add_child(cv)
 	v.add_child(UiKit.button(_button, func() -> void: _close(-1)))
 
 

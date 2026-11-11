@@ -5,7 +5,7 @@ extends SceneTree
 ##                   [out=/tmp/shot.png] [frames=30] [plays=2] [seed=1] [theme=archive] [end_turn=1]
 ## Under --headless it still runs (smoke test for script errors) but writes no image.
 
-const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware"]
+const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile"]
 
 
 func _initialize() -> void:
@@ -110,6 +110,9 @@ func _go(main: Control, scr: String, seed_in: int) -> void:
 		"crew":
 			main.run = RunState.start(db, main.profile, RunState.default_picks(db, main.profile, "noise"), seed_in, 0, "noise")
 			main._start_combat({"type": "boss", "encounter": "chrome_a1b"})
+		"recompile":
+			main._show_rest()
+			main.add_child(DeckOverlay.new().setup("Choose a program to recompile", main.run.deck, "Cancel", func(_i: int) -> void: pass, true, true))
 		"firmware":
 			main.profile.collection.add("drone_swarm", 1)
 			main.profile.firmware = {"drone_swarm": true}

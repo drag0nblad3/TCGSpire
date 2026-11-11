@@ -210,7 +210,8 @@ func _show_detail(id: String) -> void:
 	holder.add_child(cv)
 	v.add_child(holder)
 	var up := db.instance(id, true)
-	v.add_child(UiKit.label("Upgraded: " + up.text(), 15, Palette.UPGRADED, true))
+	v.add_child(UiKit.label("Upgrade (+): " + c.upgrade_summary(), 15, Palette.UPGRADED, true))
+	v.add_child(UiKit.label("Upgraded text: " + up.text(), 13, Palette.TEXT_DIM, true))
 	v.add_child(UiKit.label("Owned %d   ·   Foils %d   ·   Played %d times" % [col.count(id), int(col.foils.get(id, 0)), int(profile.mastery.get(id, 0))], 15, Palette.TEXT_DIM))
 	var mtiers: Array = db.balance.get("mastery", [])
 	var next_t := ""

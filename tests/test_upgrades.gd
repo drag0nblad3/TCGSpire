@@ -322,3 +322,12 @@ func test_new_perk_keys() -> void:
 		e.hp = 0
 	c._check_end()
 	eq(r.finish_combat(c).get("perks", []).size(), 4, "extra subroutine choice")
+
+
+func test_every_card_explains_its_upgrade() -> void:
+	eq(db.card("jab").upgrade_summary(), "Damage 6 → 9.")
+	eq(db.card("second_wind").upgrade_summary(), "Costs 0 RAM (was 1).")
+	for id in db.cards:
+		var t: String = db.cards[id].upgrade_summary()
+		check(t != "No change." and t != "" and not t.contains("?"), "upgrade text for %s: %s" % [id, t])
+	check(CardInspector.glossary(db.instance("kindle")).any(func(l: String) -> bool: return l.begins_with("Upgrade (+): Damage 4 → 6.")), "inspector shows the upgrade")

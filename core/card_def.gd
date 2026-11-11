@@ -76,6 +76,73 @@ func get_text(upgraded: bool) -> String:
 	return " ".join(parts)
 
 
+## What recompiling (upgrading) changes, e.g. "Damage 6 → 9. Costs 0 RAM."
+## Generated from the base and upgraded data so every card explains itself.
+func upgrade_summary() -> String:
+	if upgrade.is_empty():
+		return "Can't be upgraded."
+	var parts: Array[String] = []
+	if get_cost(true) != cost:
+		parts.append("Costs %d RAM (was %d)." % [get_cost(true), cost])
+	var a: Array = get_effects(false).duplicate()
+	for eb in get_effects(true):
+		var match_i := -1
+		for i in a.size():
+			if a[i].get("op", "") == eb.get("op", "") and a[i].get("status", "") == eb.get("status", "") and a[i].get("to", "") == eb.get("to", ""):
+				match_i = i
+				break
+		if match_i < 0:
+			parts.append("Adds: " + Effects.describe(eb))
+			continue
+		var ea: Dictionary = a[match_i]
+		a.remove_at(match_i)
+		for k in eb:
+			if k in ["op", "status", "to", "name", "card", "enemy", "consume"]:
+				continue
+			if k == "upgraded":
+				if bool(eb[k]) and not bool(ea.get(k, false)):
+					parts.append("The added program is upgraded.")
+				continue
+			var dflt := 1 if k == "hits" or (k == "amount" and eb.get("op", "") == "add_card") else 0
+			var before := int(ea.get(k, dflt))
+			var after := int(eb[k])
+			if before != after:
+				parts.append("%s %d → %d." % [_param_name(eb, k), before, after])
+	for ea in a:
+		parts.append("Drops: " + Effects.describe(ea))
+	for k in get_keywords(true):
+		if k not in keywords:
+			parts.append("Gains %s." % Lexicon.keyword(str(k)))
+	for k in keywords:
+		if k not in get_keywords(true):
+			parts.append("Loses %s." % Lexicon.keyword(str(k)))
+	return " ".join(parts) if not parts.is_empty() else "No change."
+
+
+static func _param_name(e: Dictionary, k: String) -> String:
+	var op := str(e.get("op", ""))
+	if k == "hits":
+		return "Hits"
+	if op == "summon":
+		return "%s %s" % [e.get("name", "Daemon"), "attack" if k == "atk" else "HP"]
+	if op == "grow":
+		return "Daemon " + ("attack" if k == "atk" else "HP")
+	if op == "apply" and k == "stacks":
+		return Lexicon.status(str(e.get("status", "")))
+	if op in ["damage_per_status", "damage_per_ward"]:
+		return {"mult": "Damage per stack", "base": "Base damage"}.get(k, k.capitalize())
+	match op:
+		"damage": return "Damage"
+		"ward": return Lexicon.term("ward")
+		"heal": return "Repair"
+		"draw": return "Draw"
+		"energy": return Lexicon.term("energy")
+		"rally": return "Daemon attack"
+		"lose_hp": return "HP loss"
+		"add_card": return "Copies"
+	return k.capitalize()
+
+
 ## Returns a list of human-readable problems; empty means valid.
 func validate() -> Array[String]:
 	var errs: Array[String] = []

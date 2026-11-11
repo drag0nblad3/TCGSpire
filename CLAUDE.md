@@ -9,7 +9,7 @@ Original design only: don't copy cards, names, characters or look from existing 
 - `scripts/sim.sh [n=200] [deck=a,b] [enc=mites,golem]` — bot plays seeded fights, one line per encounter.
 - `scripts/sim.sh mode=run [n=100] [heat=0] [job=ember|all]` — bot plays whole runs: win %, avg floor, top killers.
 - `scripts/shot.sh screen=<name|all> out=/tmp/x.png [plays=2] [end_turn=1] [theme=archive]` — real render to PNG (xvfb).
-  Screens: hub map combat reward rest shop event collection picker pack end inspect rules jobs rig perk tinker crew. Uses a throwaway profile.
+  Screens: hub map combat reward rest shop event collection picker pack end inspect rules jobs rig perk tinker crew firmware recompile. Uses a throwaway profile.
 - Godot binary: `godot` on PATH, or set `GODOT=/path/to/godot`. Cloud sessions: download
   `Godot_v4.4.1-stable_linux.x86_64.zip` from the godotengine GitHub releases.
 

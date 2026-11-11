@@ -36,13 +36,11 @@ static func glossary(card: CardInstance) -> Array[String]:
 			out.append(Rules.UNITS)
 	if not card.mod.is_empty():
 		out.append("Mod: %s. %s" % [card.mod_name(), CardMods.describe(card.mod)])
-	if card.upgraded:
-		out.append("Upgraded: recompiled at a safehouse, or flashed to firmware.")
-	else:
-		var up := card.copy()
-		up.upgraded = true
-		if up.text() != card.text() or up.cost() != card.cost():
-			out.append("Upgraded (%d): %s" % [up.cost(), up.text()])
+	if card.def.rarity != "curse":
+		if card.upgraded:
+			out.append("Upgraded (+): " + card.def.upgrade_summary() + " Recompiled at a safehouse, or flashed to firmware.")
+		else:
+			out.append("Upgrade (+): " + card.def.upgrade_summary() + " Recompile it at a safehouse for this run, or flash it to firmware for good.")
 	return out
 
 
