@@ -43,7 +43,7 @@ func _ready() -> void:
 	var lvl := profile.level()
 	var have := profile.xp - Profile.xp_for_level(lvl)
 	var need := Profile.xp_for_level(lvl + 1) - Profile.xp_for_level(lvl)
-	v.add_child(UiKit.label("Level %d   ·   XP %d / %d" % [lvl, have, need], 18, Palette.ENERGY))
+	v.add_child(UiKit.label(("Level %d (max)" % lvl) if lvl >= Profile.LEVEL_CAP else ("Level %d   ·   XP %d / %d" % [lvl, have, need]), 18, Palette.ENERGY))
 	var bar := ProgressBar.new()
 	bar.custom_minimum_size = Vector2(400, 14)
 	bar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER

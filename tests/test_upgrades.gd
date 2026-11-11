@@ -381,3 +381,15 @@ func test_double_cross_turns_client_in_final_act() -> void:
 	while r0.act < r0.total_acts():
 		r0._next_act()
 	check(not r0.double_crossed, "only at heat 6")
+
+
+func test_level_rewards_and_cap() -> void:
+	var before_packs := profile.packs_unopened
+	var before_dust := profile.collection.dust
+	profile.add_xp(db, Profile.xp_for_level(4))
+	eq(profile.level(), 4)
+	eq(profile.packs_unopened - before_packs, 3, "a pack per level")
+	eq(profile.collection.dust - before_dust, 10 * (2 + 3 + 4), "10 dust x level")
+	eq(int(profile.unlocks.get("extra_picks", 0)), 1, "pick at level 3")
+	profile.add_xp(db, 10000000)
+	eq(profile.level(), Profile.LEVEL_CAP, "level cap")

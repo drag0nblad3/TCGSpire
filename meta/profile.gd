@@ -45,7 +45,10 @@ static func new_player(db: CardDB) -> Profile:
 
 # --- progression ------------------------------------------------------------
 
-## Level from total XP. Level n needs xp_per_level * n * (n - 1) / 2 total XP.
+const LEVEL_CAP := 20
+
+
+## Level from total XP. Level n needs 100 * n * (n - 1) / 2 total XP, up to LEVEL_CAP.
 func level() -> int:
 	return level_for_xp(xp)
 
@@ -53,7 +56,7 @@ func level() -> int:
 static func level_for_xp(total: int) -> int:
 	var per := 100
 	var lvl := 1
-	while total >= per * lvl * (lvl + 1) / 2:
+	while lvl < LEVEL_CAP and total >= per * lvl * (lvl + 1) / 2:
 		lvl += 1
 	return lvl
 
@@ -101,18 +104,17 @@ func add_xp(db: CardDB, amount: int) -> Array:
 	var rewards: Dictionary = db.balance.get("levels", {})
 	for lvl in range(before + 1, level() + 1):
 		lines.append("Level %d!" % lvl)
-		var r: Dictionary = rewards.get(str(lvl), rewards.get("default", {}))
-		if r.has("packs"):
-			packs_unopened += int(r["packs"])
-			lines.append("  +%d pack%s" % [int(r["packs"]), "" if int(r["packs"]) == 1 else "s"])
-		if r.has("dust"):
-			collection.dust += int(r["dust"])
-			lines.append("  +%d dust" % int(r["dust"]))
-		if r.has("extra_picks"):
-			unlocks["extra_picks"] = int(unlocks.get("extra_picks", 0)) + int(r["extra_picks"])
+		var packs := int(rewards.get("packs", 1))
+		if packs > 0:
+			packs_unopened += packs
+			lines.append("  +%d pack%s" % [packs, "" if packs == 1 else "s"])
+		var dust := int(rewards.get("dust_per_level", 0)) * lvl
+		if dust > 0:
+			collection.dust += dust
+			lines.append("  +%d dust" % dust)
+		if rewards.get("extra_picks", []).any(func(x: Variant) -> bool: return int(x) == lvl):
+			unlocks["extra_picks"] = int(unlocks.get("extra_picks", 0)) + 1
 			lines.append("  +1 starting pick")
-		if r.has("note"):
-			lines.append("  " + str(r["note"]))
 	return lines
 
 
