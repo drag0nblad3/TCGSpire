@@ -29,7 +29,7 @@ func test_ward_blocks_then_resets_on_turn_start() -> void:
 	eq(c.player.ward, 5)
 	c.deal_damage(c.player, 3)
 	eq(c.player.ward, 2, "ward after hit")
-	eq(c.player.hp, 60)
+	eq(c.player.hp, c.player.max_hp)
 	c._start_player_turn()
 	eq(c.player.ward, 0, "ward reset")
 
@@ -100,9 +100,9 @@ func test_rally_buffs_units() -> void:
 
 
 func test_heal_capped() -> void:
-	c.player.hp = 55
+	c.player.hp = c.player.max_hp - 5
 	c.play_card(give(c, "field_medic"))
-	eq(c.player.hp, 60)
+	eq(c.player.hp, c.player.max_hp)
 	eq(c.exhaust_pile.size(), 1, "exhausted")
 
 
@@ -112,7 +112,7 @@ func test_enemy_front_hits_unit_first() -> void:
 	g.enemies[0].move_idx = 2  # Crush, to: front
 	g.end_turn()
 	eq(g.units[0].hp, 38)
-	eq(g.player.hp, 60)
+	eq(g.player.hp, g.player.max_hp)
 
 
 func test_unknown_op_fails_validation() -> void:

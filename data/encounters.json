@@ -1,5 +1,15 @@
 {
-"mites": {"tier": 1, "enemies": ["cinder_mite", "cinder_mite"]},
-"wisp_pack": {"tier": 1, "enemies": ["hollow_wisp", "cinder_mite"]},
-"golem": {"tier": 2, "enemies": ["shard_golem"]}
+"mites": {"kind": "normal", "tier": 1, "enemies": ["cinder_mite", "cinder_mite"]},
+"imps": {"kind": "normal", "tier": 1, "enemies": ["ember_imp", "ember_imp"]},
+"crawler": {"kind": "normal", "tier": 1, "enemies": ["bramble_crawler"]},
+"wisp_pack": {"kind": "normal", "tier": 1, "enemies": ["hollow_wisp", "cinder_mite"]},
+"lurker_imp": {"kind": "normal", "tier": 2, "enemies": ["tide_lurker", "ember_imp"]},
+"crawler_pair": {"kind": "normal", "tier": 2, "enemies": ["bramble_crawler", "bramble_crawler"]},
+"wisp_court": {"kind": "normal", "tier": 2, "enemies": ["hollow_wisp", "hollow_wisp", "cinder_mite"]},
+"pod_garden": {"kind": "normal", "tier": 2, "enemies": ["spore_pod", "spore_pod", "tide_lurker"]},
+"golem": {"kind": "elite", "enemies": ["shard_golem"]},
+"hex_knight": {"kind": "elite", "enemies": ["hex_knight"]},
+"brood": {"kind": "elite", "enemies": ["brood_mother"]},
+"monarch": {"kind": "boss", "enemies": ["hollow_monarch"]},
+"colossus": {"kind": "boss", "enemies": ["cinder_colossus"]}
 }

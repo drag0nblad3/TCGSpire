@@ -24,11 +24,21 @@ var board_slots := 3
 var turn := 0
 var phase: Phase = Phase.PLAYER
 var events: Array = []
+var encounter_id := ""
+## Talisman defs (dicts from data/talismans.json) active this combat.
+var talismans: Array = []
+## Per-talisman counters for "every N" triggers.
+var talisman_counters: Dictionary = {}
 var _unit_counter := 0
+var _enemy_counter := 0
+## Difficulty modifiers from heat levels (see RunState.combat_opts).
+var enemy_hp_mult := 1.0
+var enemy_might := 0
 
 
 ## deck: Array of CardInstance (copied, not mutated). hp < 0 means full HP.
-static func create(db_in: CardDB, deck: Array, encounter_id: String, rng_in: GameRng, hp: int = -1) -> Combat:
+## opts (all optional): max_hp, talismans (Array of ids), enemy_hp_mult, enemy_might.
+static func create(db_in: CardDB, deck: Array, encounter_id: String, rng_in: GameRng, hp: int = -1, opts: Dictionary = {}) -> Combat:
 	var c := Combat.new()
 	c.db = db_in
 	c.rng = rng_in
@@ -36,28 +46,39 @@ static func create(db_in: CardDB, deck: Array, encounter_id: String, rng_in: Gam
 	c.max_energy = int(p.get("max_energy", 3))
 	c.hand_size = int(p.get("hand_size", 5))
 	c.board_slots = int(db_in.balance.get("board_slots", 3))
-	var max_hp := int(p.get("max_hp", 60))
+	var max_hp := int(opts.get("max_hp", p.get("max_hp", 60)))
+	c.enemy_hp_mult = float(opts.get("enemy_hp_mult", 1.0))
+	c.enemy_might = int(opts.get("enemy_might", 0))
+	for tid in opts.get("talismans", []):
+		if db_in.talismans.has(tid):
+			c.talismans.append(db_in.talismans[tid])
 	c.player = Fighter.make("player", "You", max_hp)
 	if hp > 0:
 		c.player.hp = mini(hp, max_hp)
+	c.encounter_id = encounter_id
 	var enc: Dictionary = db_in.encounters.get(encounter_id, {})
 	if enc.is_empty():
 		push_error("Unknown encounter '%s'" % encounter_id)
-	var i := 0
 	for eid in enc.get("enemies", []):
-		c.enemies.append(c._make_enemy(str(eid), i))
-		i += 1
+		c.enemies.append(c._make_enemy(str(eid)))
 	c.draw_pile = deck.duplicate()
 	return c
 
 
-func _make_enemy(eid: String, idx: int) -> Fighter:
+func _make_enemy(eid: String) -> Fighter:
+	var idx := _enemy_counter
+	_enemy_counter += 1
 	var d: Dictionary = db.enemies.get(eid, {})
 	if d.is_empty():
 		push_error("Unknown enemy '%s'" % eid)
 		return Fighter.make("e%d" % idx, eid, 1)
 	var r: Array = d.get("hp", [10, 10])
-	var f := Fighter.make("e%d" % idx, str(d.get("name", eid)), rng.range_i(int(r[0]), int(r[1])))
+	var hp := int(round(rng.range_i(int(r[0]), int(r[1])) * enemy_hp_mult))
+	var f := Fighter.make("e%d" % idx, str(d.get("name", eid)), hp)
+	if enemy_might > 0:
+		f.add_status("might", enemy_might)
+	for s in d.get("statuses", {}):
+		f.add_status(s, int(d["statuses"][s]))
 	f.def_id = eid
 	f.moves = d.get("moves", [])
 	if d.get("random_start", false) and not f.moves.is_empty():
@@ -69,6 +90,11 @@ func _make_enemy(eid: String, idx: int) -> Fighter:
 
 func start() -> void:
 	rng.shuffle(draw_pile)
+	# Innate cards go on top so they are in the opening hand.
+	var innate := draw_pile.filter(func(c: CardInstance) -> bool: return c.has_keyword("innate"))
+	for card in innate:
+		draw_pile.erase(card)
+		draw_pile.append(card)
 	emit("combat_start", {"enemies": enemies.map(func(e: Fighter) -> String: return e.def_id)})
 	_start_player_turn()
 
@@ -76,15 +102,20 @@ func start() -> void:
 func _start_player_turn() -> void:
 	turn += 1
 	phase = Phase.PLAYER
-	player.ward = 0
+	if player.status("fortify") <= 0:
+		player.ward = 0
 	energy = maxi(max_energy - player.status("overcharge"), 0)
 	player.statuses.erase("overcharge")
 	emit("turn_start", {"turn": turn})
+	if turn == 1:
+		# After the Ward reset, so start-of-combat Ward sticks for turn 1.
+		Talismans.fire(self, "combat_start")
 	Statuses.on_turn_start(self, player)
 	_check_end()
 	if is_over():
 		return
 	draw(hand_size)
+	Talismans.fire(self, "turn_start")
 
 
 func can_play(hand_idx: int) -> bool:
@@ -125,12 +156,17 @@ func play_card(hand_idx: int, target_idx: int = -1) -> bool:
 		exhaust_pile.append(card)
 	else:
 		discard_pile.append(card)
+	if not is_over():
+		Talismans.fire(self, "card_played", {"card": card, "target": target})
 	_check_end()
 	return true
 
 
 func end_turn() -> void:
 	if phase != Phase.PLAYER:
+		return
+	Talismans.fire(self, "turn_end")
+	if is_over():
 		return
 	# Units strike the front enemy.
 	for u in units.duplicate():
@@ -146,6 +182,8 @@ func end_turn() -> void:
 	for card in hand:
 		if card.has_keyword("retain"):
 			kept.append(card)
+		elif card.has_keyword("ethereal"):
+			exhaust_pile.append(card)
 		else:
 			discard_pile.append(card)
 	hand = kept
@@ -154,7 +192,8 @@ func end_turn() -> void:
 	for en in enemies:
 		if en.is_dead():
 			continue
-		en.ward = 0
+		if en.status("fortify") <= 0:
+			en.ward = 0
 		Statuses.on_turn_start(self, en)
 		_check_end()
 		if is_over():
@@ -198,7 +237,12 @@ func emit(t: String, data: Dictionary = {}) -> void:
 
 
 func attack(src: Fighter, t: Fighter, base: int) -> int:
-	return deal_damage(t, Statuses.modify_attack(base, src, t), src.id if src != null else "")
+	var dealt := deal_damage(t, Statuses.modify_attack(base, src, t), src.id if src != null else "")
+	# Thorns: being attacked hurts the attacker (even if Ward absorbed the hit).
+	var thorns := t.status("thorns")
+	if thorns > 0 and src != null and not src.is_dead():
+		deal_damage(src, thorns, t.id, "thorns")
+	return dealt
 
 
 func deal_damage(t: Fighter, amount: int, source_id: String = "", kind: String = "attack") -> int:
@@ -212,6 +256,8 @@ func deal_damage(t: Fighter, amount: int, source_id: String = "", kind: String =
 	if t.is_dead():
 		emit("death", {"target": t.id})
 		units.erase(t)
+		if enemies.has(t) and phase == Phase.PLAYER:
+			Talismans.fire(self, "kill", {"target": t})
 	return dealt
 
 
@@ -240,6 +286,26 @@ func summon(unit_name: String, atk: int, hp: int) -> bool:
 	units.append(u)
 	emit("summon", {"target": u.id, "name": unit_name, "atk": atk, "hp": hp})
 	return true
+
+
+## Enemy-side summon (op "spawn"). Max 5 enemies alive.
+func spawn(enemy_id: String) -> bool:
+	if living(enemies).size() >= 5 or not db.enemies.has(enemy_id):
+		return false
+	var f := _make_enemy(enemy_id)
+	enemies.append(f)
+	emit("spawn", {"target": f.id, "enemy": enemy_id})
+	return true
+
+
+## Counts plays per card id this combat (feeds card mastery).
+func play_counts() -> Dictionary:
+	var out := {}
+	for e in events:
+		if e["t"] == "play":
+			var id := str(e["card"]).trim_suffix("+")
+			out[id] = int(out.get(id, 0)) + 1
+	return out
 
 
 # --- queries ------------------------------------------------------------------

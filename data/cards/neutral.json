@@ -4,5 +4,9 @@
 {"id":"second_wind","name":"Second Wind","faction":"neutral","rarity":"common","type":"skill","cost":1,"effects":[{"op":"draw","amount":2}],"upgrade":{"cost":0}},
 {"id":"sparring_dummy","name":"Sparring Dummy","faction":"neutral","rarity":"common","type":"unit","cost":1,"effects":[{"op":"summon","name":"Dummy","atk":1,"hp":8}],"upgrade":{"effects":[{"op":"summon","name":"Dummy","atk":2,"hp":11}]}},
 {"id":"rally_cry","name":"Rally Cry","faction":"neutral","rarity":"uncommon","type":"skill","cost":1,"effects":[{"op":"rally","amount":2},{"op":"ward","amount":3}],"upgrade":{"effects":[{"op":"rally","amount":3},{"op":"ward","amount":5}]}},
-{"id":"field_medic","name":"Field Medic","faction":"neutral","rarity":"uncommon","type":"skill","cost":1,"keywords":["exhaust"],"effects":[{"op":"heal","amount":8}],"upgrade":{"effects":[{"op":"heal","amount":12}]}}
+{"id":"field_medic","name":"Field Medic","faction":"neutral","rarity":"uncommon","type":"skill","cost":1,"keywords":["exhaust"],"effects":[{"op":"heal","amount":8}],"upgrade":{"effects":[{"op":"heal","amount":12}]}},
+{"id":"focus","name":"Focus","faction":"neutral","rarity":"common","type":"skill","cost":0,"keywords":["retain"],"effects":[{"op":"draw","amount":1}],"upgrade":{"effects":[{"op":"draw","amount":2}]}},
+{"id":"reckless_swing","name":"Reckless Swing","faction":"neutral","rarity":"common","type":"attack","target":"enemy","cost":0,"effects":[{"op":"damage","amount":8},{"op":"lose_hp","amount":3}],"upgrade":{"effects":[{"op":"damage","amount":11},{"op":"lose_hp","amount":3}]}},
+{"id":"purge","name":"Purge","faction":"neutral","rarity":"uncommon","type":"skill","cost":1,"effects":[{"op":"cleanse"},{"op":"ward","amount":6}],"upgrade":{"effects":[{"op":"cleanse"},{"op":"ward","amount":10}]}},
+{"id":"opening_gambit","name":"Opening Gambit","faction":"neutral","rarity":"uncommon","type":"skill","cost":0,"keywords":["innate","exhaust"],"effects":[{"op":"energy","amount":1},{"op":"draw","amount":2}],"upgrade":{"effects":[{"op":"energy","amount":2},{"op":"draw","amount":2}]}}
 ]

@@ -6,7 +6,9 @@ extends RefCounted
 
 static func run_combat(c: Combat, max_turns: int = 50) -> Dictionary:
 	c.start()
-	while not c.is_over() and c.turn <= max_turns:
+	var guard := 0
+	while not c.is_over() and c.turn <= max_turns and guard < max_turns * 2:
+		guard += 1
 		play_turn(c)
 	return {
 		"won": c.phase == Combat.Phase.WON,

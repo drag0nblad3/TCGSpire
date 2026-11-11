@@ -2,11 +2,12 @@ extends SceneTree
 ## Balance sim: the bot plays N seeded combats and prints one summary line per
 ## encounter. Use it to check a balance change instead of playtesting by hand.
 ##   godot --headless --path . -s res://tools/sim.gd -- [n=200] [deck=a,b,c] [enc=mites,golem]
+##   ... -- mode=run [n=100] [heat=0]   (whole runs: win rate, floor reached, top killers)
 ## Default deck = base deck + default starter picks.
 
 
 func _initialize() -> void:
-	var opts := {"n": "200", "deck": "", "enc": ""}
+	var opts := {"n": "200", "deck": "", "enc": "", "mode": "fight", "heat": "0"}
 	for a in OS.get_cmdline_user_args():
 		var kv := a.split("=", true, 1)
 		if kv.size() == 2:
@@ -16,6 +17,10 @@ func _initialize() -> void:
 		for e in db.errors:
 			print("DATA ERROR ", e)
 		quit(1)
+		return
+	if opts["mode"] == "run":
+		_sim_runs(db, int(opts["n"]) if opts["n"] != "200" else 100, int(opts["heat"]))
+		quit(0)
 		return
 	var deck_ids: Array = []
 	if opts["deck"] != "":
@@ -42,3 +47,26 @@ func _initialize() -> void:
 		print("%-12s win %5.1f%%  turns %4.1f  hp_left(won) %4.1f  timeouts %d" % [
 			enc, 100.0 * wins / n, float(turns) / n, float(hp_left) / maxi(wins, 1), timeouts])
 	quit(0)
+
+
+func _sim_runs(db: CardDB, n: int, heat: int) -> void:
+	var profile := Profile.new_player(db)
+	var wins := 0
+	var floors := 0
+	var stuck := 0
+	var killers := {}
+	for i in n:
+		var r := RunBot.play(db, profile, i, heat)
+		if r["won"]:
+			wins += 1
+		floors += r["floor"]
+		if r["stuck"]:
+			stuck += 1
+		if r["died_to"] != "":
+			killers[r["died_to"]] = int(killers.get(r["died_to"], 0)) + 1
+	var top := killers.keys()
+	top.sort_custom(func(a: String, b: String) -> bool: return killers[a] > killers[b])
+	var parts: Array[String] = []
+	for k in top.slice(0, 5):
+		parts.append("%s %d" % [k, killers[k]])
+	print("runs %d heat %d  win %5.1f%%  avg floor %4.1f  stuck %d  killers: %s" % [n, heat, 100.0 * wins / n, float(floors) / n, stuck, ", ".join(parts)])

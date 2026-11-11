@@ -13,6 +13,8 @@ var cards: Dictionary = {}
 var enemies: Dictionary = {}
 var encounters: Dictionary = {}
 var balance: Dictionary = {}
+var talismans: Dictionary = {}
+var events: Dictionary = {}
 var errors: Array[String] = []
 
 static var _shared: CardDB
@@ -40,6 +42,10 @@ static func load_from(root: String) -> CardDB:
 			if db.enemies.has(id):
 				db.errors.append("%s: duplicate enemy id '%s'" % [path, id])
 			db.enemies[id] = d
+	for d in db._read_array(root + "/talismans.json"):
+		db.talismans[str(d.get("id", ""))] = d
+	for d in db._read_array(root + "/events.json"):
+		db.events[str(d.get("id", ""))] = d
 	db.encounters = db._read_dict(root + "/encounters.json")
 	db.balance = db._read_dict(root + "/balance.json")
 	db.errors.append_array(db.validate())
@@ -93,6 +99,30 @@ func validate() -> Array[String]:
 		for eid in encounters[id].get("enemies", []):
 			if not enemies.has(eid):
 				errs.append("encounter '%s': unknown enemy '%s'" % [id, eid])
+	for id in talismans:
+		errs.append_array(Talismans.validate(talismans[id]))
+	for id in events:
+		for ch in events[id].get("choices", []):
+			for o in ch.get("outcomes", []):
+				errs.append_array(RunOutcomes.validate(o, "event '%s'" % id))
+				if o.has("card") and not cards.has(o["card"]):
+					errs.append("event '%s': unknown card '%s'" % [id, o["card"]])
+	for id in cards:
+		for up in [false, true]:
+			for e in cards[id].get_effects(up):
+				if e.get("op", "") == "add_card" and not cards.has(str(e.get("card", ""))):
+					errs.append("card '%s': add_card of unknown card '%s'" % [id, e.get("card", "")])
+	for id in enemies:
+		for mv in enemies[id].get("moves", []):
+			for e in mv.get("effects", []):
+				if e.get("op", "") == "spawn" and not enemies.has(str(e.get("enemy", ""))):
+					errs.append("enemy '%s': spawns unknown enemy '%s'" % [id, e.get("enemy", "")])
+	var kinds := {}
+	for id in encounters:
+		kinds[str(encounters[id].get("kind", "normal"))] = true
+	for k in ["normal", "elite", "boss"]:
+		if not kinds.has(k):
+			errs.append("encounters: no '%s' encounter" % k)
 	for key in ["base_deck"]:
 		for cid in balance.get(key, []):
 			if not cards.has(str(cid).trim_suffix("+")):
