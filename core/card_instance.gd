@@ -98,7 +98,7 @@ func level_up() -> void:
 ## What the next level_up() changes, in words.
 func level_up_text() -> String:
 	if fw < fw_scale.size() - 1:
-		return "Firmware v%d: numbers +%d%% (from +%d%%)." % [fw + 1, roundi((float(fw_scale[fw + 1]) - 1.0) * 100), roundi((fw_mult() - 1.0) * 100)]
+		return "To v%d: numbers +%d%% over the base card." % [fw + 1, roundi((float(fw_scale[fw + 1]) - 1.0) * 100)]
 	return "Recompile (+): " + def.upgrade_summary()
 
 
