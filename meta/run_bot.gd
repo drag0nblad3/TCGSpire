@@ -4,8 +4,8 @@ extends RefCounted
 ## Path: prefer rest when hurt, elites when healthy, otherwise fights/events.
 
 
-static func play(db: CardDB, profile: Profile, seed_in: int, heat: int = 0) -> Dictionary:
-	var run := RunState.start(db, profile, RunState.default_picks(db, profile), seed_in, heat)
+static func play(db: CardDB, profile: Profile, seed_in: int, heat: int = 0, job: String = "") -> Dictionary:
+	var run := RunState.start(db, profile, RunState.default_picks(db, profile, job), seed_in, heat, job)
 	var died_to := ""
 	var steps := 0
 	while not run.over and steps < 80:
@@ -25,6 +25,8 @@ static func play(db: CardDB, profile: Profile, seed_in: int, heat: int = 0) -> D
 				if not rewards["cards"].is_empty():
 					run.add_card(_best_card(db, rewards["cards"]))
 				run.add_talisman(rewards["talisman"])
+				if not rewards.get("perks", []).is_empty():
+					run.add_perk(_best_perk(rewards["perks"]))
 			"rest":
 				if run.hp < run.max_hp * 0.65:
 					run.rest_heal()
@@ -80,6 +82,16 @@ static func _best_card(db: CardDB, ids: Array) -> String:
 	var best: String = ids[0]
 	for id in ids:
 		if rank.get(db.card(id).rarity, 0) > rank.get(db.card(best).rarity, 0):
+			best = id
+	return best
+
+
+## Simple preference: survival first, then tempo, then economy.
+static func _best_perk(ids: Array) -> String:
+	var order := ["nanite_mesh", "ablative_casing", "boot_shield", "ram_spike", "hot_patch", "wide_bus", "clean_room", "mod_kit", "burst_buffer", "deep_scan", "scavenger", "fence_contact"]
+	var best: String = ids[0]
+	for id in ids:
+		if order.find(id) >= 0 and (order.find(best) < 0 or order.find(id) < order.find(best)):
 			best = id
 	return best
 

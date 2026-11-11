@@ -1,7 +1,8 @@
 class_name DeckOverlay
 extends Control
 ## Full-screen card grid on top of everything. on_pick(index) gets the tapped
-## card's index (or -1 for the button). Used for deck view, upgrade and removal.
+## card's index (or -1 for the button). Used for deck view, upgrade, removal and
+## installing a mod (only cards that fit it can be picked; they preview with it).
 
 var _title := ""
 var _cards: Array = []
@@ -9,9 +10,11 @@ var _button := ""
 var _on_pick: Callable
 var _preview_upgrade := false
 var _pickable := false
+var _mod: Dictionary = {}
 
 
-func setup(title: String, cards: Array, button_text: String, on_pick: Callable, pickable: bool = false, preview_upgrade: bool = false) -> DeckOverlay:
+func setup(title: String, cards: Array, button_text: String, on_pick: Callable, pickable: bool = false, preview_upgrade: bool = false, mod: Dictionary = {}) -> DeckOverlay:
+	_mod = mod
 	_title = title
 	_cards = cards
 	_button = button_text
@@ -39,10 +42,19 @@ func _ready() -> void:
 	for i in _cards.size():
 		var src: CardInstance = _cards[i]
 		var shown := src
-		if _preview_upgrade and not src.upgraded:
-			shown = CardInstance.new(src.def, true)
+		var ok := true
+		if _preview_upgrade:
+			ok = not src.upgraded and src.def.rarity != "curse"
+			if ok:
+				shown = src.copy()
+				shown.upgraded = true
+		if not _mod.is_empty():
+			ok = CardMods.can_apply(_mod, src)
+			if ok:
+				shown = src.copy()
+				shown.mod = _mod
 		var cv := CardView.new().setup(shown)
-		cv.playable = not _pickable or (not _preview_upgrade or (not src.upgraded and src.def.rarity != "curse"))
+		cv.playable = not _pickable or ok
 		if _pickable and cv.playable:
 			cv.pressed.connect(func(_v: CardView) -> void: _close(i))
 		grid.add_child(cv)

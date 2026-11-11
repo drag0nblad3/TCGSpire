@@ -15,6 +15,11 @@ var encounters: Dictionary = {}
 var balance: Dictionary = {}
 var talismans: Dictionary = {}
 var events: Dictionary = {}
+## Card mods (data/mods.json) and perks (data/perks.json), by id.
+var mods: Dictionary = {}
+var perks: Dictionary = {}
+## Job factions (data/factions.json): client name, rivals, rep currency.
+var factions: Dictionary = {}
 var errors: Array[String] = []
 
 static var _shared: CardDB
@@ -46,6 +51,12 @@ static func load_from(root: String) -> CardDB:
 		db.talismans[str(d.get("id", ""))] = d
 	for d in db._read_array(root + "/events.json"):
 		db.events[str(d.get("id", ""))] = d
+	for d in db._read_array(root + "/mods.json"):
+		db.mods[str(d.get("id", ""))] = d
+	for d in db._read_array(root + "/perks.json"):
+		db.perks[str(d.get("id", ""))] = d
+	for d in db._read_array(root + "/factions.json"):
+		db.factions[str(d.get("id", ""))] = d
 	db.encounters = db._read_dict(root + "/encounters.json")
 	db.balance = db._read_dict(root + "/balance.json")
 	db.errors.append_array(db.validate())
@@ -62,6 +73,10 @@ func instance(id: String, upgraded: bool = false) -> CardInstance:
 		push_error("Unknown card '%s'" % id)
 		return null
 	return CardInstance.new(d, upgraded)
+
+
+func mod(id: String) -> Dictionary:
+	return mods.get(id, {})
 
 
 ## Accepts "jab" or "jab+" (upgraded).
@@ -101,12 +116,23 @@ func validate() -> Array[String]:
 				errs.append("encounter '%s': unknown enemy '%s'" % [id, eid])
 	for id in talismans:
 		errs.append_array(Talismans.validate(talismans[id]))
+	for id in mods:
+		errs.append_array(CardMods.validate(mods[id]))
+		if not cards.values().any(func(c: CardDef) -> bool: return CardMods.can_apply(mods[id], CardInstance.new(c))):
+			errs.append("mod '%s': fits no card" % id)
+	for id in perks:
+		errs.append_array(Perks.validate(perks[id]))
+	errs.append_array(Jobs.validate(self))
 	for id in events:
 		for ch in events[id].get("choices", []):
 			for o in ch.get("outcomes", []):
 				errs.append_array(RunOutcomes.validate(o, "event '%s'" % id))
 				if o.has("card") and not cards.has(o["card"]):
 					errs.append("event '%s': unknown card '%s'" % [id, o["card"]])
+				if o.get("op", "") == "mod" and o.has("id") and not mods.has(str(o["id"])):
+					errs.append("event '%s': unknown mod '%s'" % [id, o["id"]])
+				if o.get("op", "") == "perk" and o.has("id") and not perks.has(str(o["id"])):
+					errs.append("event '%s': unknown perk '%s'" % [id, o["id"]])
 	for id in cards:
 		for up in [false, true]:
 			for e in cards[id].get_effects(up):

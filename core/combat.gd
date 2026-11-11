@@ -29,6 +29,10 @@ var encounter_id := ""
 var talismans: Array = []
 ## Per-talisman counters for "every N" triggers.
 var talisman_counters: Dictionary = {}
+## Subroutine (run perk) defs with triggers; they fire like talismans.
+var perks: Array = []
+## Firewall gained when combat starts (perks).
+var start_ward := 0
 var _unit_counter := 0
 var _enemy_counter := 0
 ## Difficulty modifiers from heat levels (see RunState.combat_opts).
@@ -37,7 +41,8 @@ var enemy_might := 0
 
 
 ## deck: Array of CardInstance (copied, not mutated). hp < 0 means full HP.
-## opts (all optional): max_hp, talismans (Array of ids), enemy_hp_mult, enemy_might.
+## opts (all optional): max_hp, talismans (Array of ids), perks (Array of perk dicts),
+## start_ward, enemy_hp_mult, enemy_might.
 static func create(db_in: CardDB, deck: Array, encounter_id: String, rng_in: GameRng, hp: int = -1, opts: Dictionary = {}) -> Combat:
 	var c := Combat.new()
 	c.db = db_in
@@ -52,6 +57,10 @@ static func create(db_in: CardDB, deck: Array, encounter_id: String, rng_in: Gam
 	for tid in opts.get("talismans", []):
 		if db_in.talismans.has(tid):
 			c.talismans.append(db_in.talismans[tid])
+	for pd in opts.get("perks", []):
+		if not pd.get("triggers", []).is_empty():
+			c.perks.append(pd)
+	c.start_ward = int(opts.get("start_ward", 0))
 	c.player = Fighter.make("player", "You", max_hp)
 	if hp > 0:
 		c.player.hp = mini(hp, max_hp)
@@ -109,6 +118,8 @@ func _start_player_turn() -> void:
 	emit("turn_start", {"turn": turn})
 	if turn == 1:
 		# After the Ward reset, so start-of-combat Ward sticks for turn 1.
+		if start_ward > 0:
+			Effects.resolve(self, {"op": "ward", "amount": start_ward}, player, null)
 		Talismans.fire(self, "combat_start")
 	Statuses.on_turn_start(self, player)
 	_check_end()

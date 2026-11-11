@@ -12,19 +12,27 @@ var db: CardDB
 var profile: Profile
 var pick_mode := false
 var picks: Array = []
+## Pick mode for a job: client faction ("" = no rules). Banned factions are hidden.
+var job := ""
+var _problem: Label
+var _begin: Button
 var _filter := "all"
 var _grid: HFlowContainer
 var _header: Label
 
 
-func setup(db_in: CardDB, p: Profile, pick: bool = false) -> CollectionScreen:
+func setup(db_in: CardDB, p: Profile, pick: bool = false, job_in: String = "") -> CollectionScreen:
 	db = db_in
 	profile = p
 	pick_mode = pick
+	job = job_in
 	if pick:
+		var ban := Jobs.banned(db, job)
 		for id in p.last_picks:
-			if picks.count(id) < p.collection.count(id) and picks.size() < p.starter_picks(db):
+			if picks.count(id) < p.collection.count(id) and picks.size() < p.starter_picks(db) and db.card(id) != null and db.card(id).faction not in ban:
 				picks.append(id)
+		if Jobs.check(db, job, picks, p.starter_picks(db)) != "":
+			picks = RunState.default_picks(db, p, job)
 	return self
 
 
@@ -37,8 +45,16 @@ func _ready() -> void:
 	v.add_child(_header)
 	if pick_mode:
 		v.add_child(UiKit.label("Every run starts with your base rig (%s) plus the programs you pick here." % _base_summary(), 14, Palette.TEXT_DIM, true))
+		if job != "":
+			var ban: Array = Jobs.banned(db, job).map(func(x: String) -> String: return Lexicon.faction(x))
+			v.add_child(UiKit.label("Job for %s: at least %d %s programs. %s programs are banned." % [Jobs.info(db, job).get("client", job),
+				Jobs.required(db, job, profile.starter_picks(db)), Lexicon.faction(job), " and ".join(ban)], 15, Palette.faction(job), true))
+		_problem = UiKit.label("", 14, Palette.HP, true)
+		v.add_child(_problem)
 	var filters := UiKit.hbox(8)
 	for f in FILTERS:
+		if pick_mode and f in Jobs.banned(db, job):
+			continue
 		filters.add_child(UiKit.button("All" if f == "all" else Lexicon.faction(f), func() -> void: _set_filter(f), Vector2(96, 44), 14))
 	v.add_child(filters)
 	var inner := UiKit.scroll(v)
@@ -47,7 +63,10 @@ func _ready() -> void:
 	var bottom := UiKit.hbox(16)
 	bottom.add_child(UiKit.button("Back", func() -> void: closed.emit(), Vector2(160, 60)))
 	if pick_mode:
-		bottom.add_child(UiKit.button("Begin run", func() -> void: picks_confirmed.emit(picks.duplicate()), Vector2(220, 60), 22))
+		_begin = UiKit.button("Begin run", func() -> void:
+			if Jobs.check(db, job, picks, profile.starter_picks(db)) == "":
+				picks_confirmed.emit(picks.duplicate()), Vector2(220, 60), 22)
+		bottom.add_child(_begin)
 	v.add_child(bottom)
 	_refresh()
 
@@ -70,7 +89,7 @@ func _set_filter(f: String) -> void:
 func _ids() -> Array:
 	var ids := db.ids_where(func(c: CardDef) -> bool:
 		return c.rarity not in ["starter", "curse"] and (_filter == "all" or c.faction == _filter) \
-			and (not pick_mode or profile.collection.owns(c.id)))
+			and (not pick_mode or (profile.collection.owns(c.id) and c.faction not in Jobs.banned(db, job))))
 	var order := CardDef.RARITIES
 	ids.sort_custom(func(a: String, b: String) -> bool:
 		var ca := db.card(a)
@@ -85,12 +104,16 @@ func _refresh() -> void:
 	var owned := col.owned_ids().filter(func(id: String) -> bool: return db.card(id) != null and db.card(id).rarity not in ["starter", "curse"]).size()
 	if pick_mode:
 		_header.text = "Pick your starting cards: %d / %d" % [picks.size(), profile.starter_picks(db)]
+		var problem := Jobs.check(db, job, picks, profile.starter_picks(db))
+		_problem.text = problem
+		if _begin != null:
+			_begin.disabled = problem != ""
 	else:
 		_header.text = "Library %d / %d   ·   %s %d" % [owned, total, Palette.w("dust"), col.dust]
 	for n in _grid.get_children():
 		n.queue_free()
 	for id in _ids():
-		var inst := db.instance(id)
+		var inst := db.instance(id, profile.firmware.has(id))
 		inst.foil = int(col.foils.get(id, 0)) > 0
 		var cv := CardView.new().setup(inst)
 		var n := col.count(id)
@@ -100,7 +123,7 @@ func _refresh() -> void:
 			cv.badge = "%d/%d" % [chosen, n]
 			cv.selected = chosen > 0
 		else:
-			cv.badge = ("x%d" % n if n > 0 else "new") + (" " + stars if stars != "" else "")
+			cv.badge = ("x%d" % n if n > 0 else "new") + (" " + stars if stars != "" else "") + (" FW" if profile.firmware.has(id) else "")
 			cv.playable = n > 0
 		cv.pressed.connect(func(_v: CardView) -> void: _on_card(id))
 		_grid.add_child(cv)
@@ -117,6 +140,27 @@ func _on_card(id: String) -> void:
 		_refresh()
 		return
 	_show_detail(id)
+
+
+## Permanent upgrade: flash the card to firmware so every copy starts runs upgraded.
+func _firmware_row(id: String, overlay: Control) -> Control:
+	var box := UiKit.vbox(6)
+	if profile.firmware.has(id):
+		box.add_child(UiKit.label("In firmware: every copy joins your runs upgraded.", 15, Palette.UPGRADED, true))
+		return box
+	var price := profile.firmware_price(db, id)
+	var cur := Palette.w("dust").to_lower() if price["faction"] == "" else Jobs.rep_name(db, price["faction"])
+	var block := profile.firmware_block(db, id).replace("dust", Palette.w("dust").to_lower())
+	var b := UiKit.button("Flash to firmware (%d %s)" % [price["amount"], cur], func() -> void:
+		if profile.flash_firmware(db, id):
+			profile.save()
+			overlay.queue_free()
+			_refresh()
+			_show_detail(id), Vector2(360, 56), 16)
+	b.disabled = block != ""
+	box.add_child(b)
+	box.add_child(UiKit.label(block if block != "" else "Permanent: every copy starts your runs upgraded.", 13, Palette.TEXT_DIM, true))
+	return box
 
 
 func _show_detail(id: String) -> void:
@@ -167,4 +211,5 @@ func _show_detail(id: String) -> void:
 	row.add_child(dis)
 	v.add_child(row)
 	v.add_child(UiKit.label("Your last copy can't be disenchanted.", 12, Palette.TEXT_DIM))
+	v.add_child(_firmware_row(id, overlay))
 	v.add_child(UiKit.button("Close", func() -> void: overlay.queue_free()))

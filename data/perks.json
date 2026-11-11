@@ -1,0 +1,22 @@
+[
+{"id":"scavenger","scope":"run","name":"Scavenger Script","mods":{"gold_pct":0.35}},
+{"id":"nanite_mesh","scope":"run","name":"Nanite Mesh","mods":{"combat_heal":4}},
+{"id":"wide_bus","scope":"run","name":"Wide Bus","triggers":[{"on":"turn_start","turn":1,"effects":[{"op":"draw","amount":2}]}]},
+{"id":"fence_contact","scope":"run","name":"Fence Contact","mods":{"shop_discount_pct":0.2}},
+{"id":"mod_kit","scope":"run","name":"Mod Kit","pickup":[{"op":"mod","amount":2}]},
+{"id":"hot_patch","scope":"run","name":"Hot Patch","pickup":[{"op":"upgrade","amount":2}]},
+{"id":"deep_scan","scope":"run","name":"Deep Scan","mods":{"reward_choices":1}},
+{"id":"boot_shield","scope":"run","name":"Boot Shield","mods":{"start_ward":6}},
+{"id":"ram_spike","scope":"run","name":"RAM Spike","triggers":[{"on":"turn_start","turn":1,"effects":[{"op":"energy","amount":1}]}]},
+{"id":"burst_buffer","scope":"run","name":"Burst Buffer","triggers":[{"on":"card_played","every":6,"effects":[{"op":"draw","amount":1}]}]},
+{"id":"ablative_casing","scope":"run","name":"Ablative Casing","pickup":[{"op":"max_hp","amount":10}]},
+{"id":"clean_room","scope":"run","name":"Clean Room","pickup":[{"op":"remove_card","amount":2}]},
+{"id":"chassis","scope":"rig","faction":"bloom","name":"Reinforced Chassis","max_rank":3,"cost":25,"mods":{"max_hp":4}},
+{"id":"cred_stash","scope":"rig","faction":"void","name":"Cred Stash","max_rank":2,"cost":25,"mods":{"start_gold":25}},
+{"id":"cooling_loop","scope":"rig","faction":"bloom","name":"Cooling Loop","max_rank":2,"cost":25,"mods":{"rest_heal_pct":0.15}},
+{"id":"fence_network","scope":"rig","faction":"tide","name":"Fence Network","max_rank":2,"cost":30,"mods":{"shop_discount_pct":0.08}},
+{"id":"boot_firewall","scope":"rig","faction":"tide","name":"Boot Firewall","max_rank":2,"cost":40,"mods":{"start_ward":2}},
+{"id":"mod_cache","scope":"rig","faction":"ember","name":"Mod Cache","max_rank":2,"cost":40,"mods":{"start_mods":1}},
+{"id":"wider_scan","scope":"rig","faction":"void","name":"Wider Scan","max_rank":1,"cost":80,"mods":{"reward_choices":1}},
+{"id":"seed_subroutine","scope":"rig","faction":"ember","name":"Seed Subroutine","max_rank":1,"cost":70,"mods":{"start_perks":1}}
+]

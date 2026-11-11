@@ -15,6 +15,8 @@ const OPS := {
 	"remove_card": ["amount"],
 	"upgrade": ["amount"],
 	"talisman": ["id", "rarity"],
+	"mod": ["id", "rarity", "amount"],
+	"perk": ["id"],
 }
 
 
@@ -43,12 +45,12 @@ static func apply(run: RunState, o: Dictionary) -> String:
 			var id := str(o.get("card", ""))
 			if id == "":
 				var pool := run.db.ids_where(func(c: CardDef) -> bool:
-					return c.rarity == str(o.get("rarity", "common")) and (not o.has("faction") or c.faction == o["faction"]))
+					return c.rarity == str(o.get("rarity", "common")) and (not o.has("faction") or c.faction == o["faction"]) and c.faction not in run.banned)
 				pool.sort()
 				id = str(rng.pick(pool)) if not pool.is_empty() else ""
 			if id == "" or run.db.card(id) == null:
 				return ""
-			run.deck.append(run.db.instance(id, bool(o.get("upgraded", false))))
+			run.deck.append(run.make_card(id, bool(o.get("upgraded", false))))
 			return "Added %s" % run.db.card(id).name
 		"remove_card":
 			var names: Array[String] = []
@@ -80,6 +82,27 @@ static func apply(run: RunState, o: Dictionary) -> String:
 				return ""
 			run.add_talisman(tid)
 			return "Got %s" % run.db.talismans[tid]["name"]
+		"mod":
+			var names: Array[String] = []
+			for i in maxi(n, 1):
+				var mid := str(o.get("id", ""))
+				if mid == "":
+					mid = run.roll_mod(str(o.get("rarity", "")), rng)
+				var fits := run.mod_targets(mid)
+				if fits.is_empty():
+					continue
+				var idx: int = rng.pick(fits)
+				var card: CardInstance = run.deck[idx]
+				run.install_mod(idx, mid)
+				names.append("%s on %s" % [run.db.mod(mid)["name"], card.display_name()])
+			return "Installed %s" % ", ".join(names) if not names.is_empty() else ""
+		"perk":
+			var pid := str(o.get("id", ""))
+			if pid == "":
+				var pool := run.perk_choices(1, rng)
+				pid = str(pool[0]) if not pool.is_empty() else ""
+			var got := run.add_perk(pid)
+			return ". ".join(got)
 	push_error("Unknown run outcome %s" % o)
 	return ""
 
@@ -105,6 +128,15 @@ static func describe(o: Dictionary) -> String:
 			return "Upgrade %d random card%s." % [maxi(n, 1), "" if maxi(n, 1) == 1 else "s"]
 		"talisman":
 			return "Gain a %s implant." % o.get("rarity", "random") if not o.has("id") else "Gain %s." % str(CardDB.shared().talismans.get(str(o["id"]), {}).get("name", o["id"]))
+		"mod":
+			var cnt := maxi(n, 1)
+			if o.has("id"):
+				return "Install %s on a random program." % str(CardDB.shared().mods.get(str(o["id"]), {}).get("name", o["id"]))
+			return "Install %d random %smod%s." % [cnt, (str(o["rarity"]) + " ") if o.has("rarity") else "", "" if cnt == 1 else "s"]
+		"perk":
+			if o.has("id"):
+				return "Load the %s subroutine." % str(CardDB.shared().perks.get(str(o["id"]), {}).get("name", o["id"]))
+			return "Load a random subroutine."
 	return "?"
 
 

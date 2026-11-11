@@ -104,7 +104,13 @@
    "boss": 300
   },
   "remove_base": 50,
-  "remove_step": 25
+  "remove_step": 25,
+  "mod_price": {
+   "common": 45,
+   "uncommon": 70,
+   "rare": 110
+  },
+  "mod_count": 2
  },
  "map": {
   "rows": 12,
@@ -216,5 +222,35 @@
   "flare_volley",
   "ember_whelp",
   "undertow"
- ]
+ ],
+ "perk_choices": 3,
+ "mod_weights": {
+  "common": 60,
+  "uncommon": 30,
+  "rare": 10
+ },
+ "rest_mod_choices": 2,
+ "firmware": {
+  "cost": {
+   "starter": 120,
+   "common": 60,
+   "uncommon": 120,
+   "rare": 300,
+   "mythic": 600
+  },
+  "rep_cost": {
+   "common": 30,
+   "uncommon": 60,
+   "rare": 120,
+   "mythic": 240
+  },
+  "mastery_tier": 1
+ },
+ "jobs": {
+  "client_share": 0.5,
+  "rep_per_floor": 2,
+  "rep_per_elite": 6,
+  "rep_per_act": 15,
+  "rep_boss": 30
+ }
 }

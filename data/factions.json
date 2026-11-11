@@ -1,0 +1,6 @@
+[
+{"id":"ember","client":"The Kiln","rivals":["tide"],"job":"Torch a Flux relay farm and leave a Burner tag on the ashes.","rep":"Kiln marks"},
+{"id":"tide","client":"Undertow Brokers","rivals":["ember"],"job":"Move a stolen ledger through the Stack without a single Burner noticing.","rep":"Broker chits"},
+{"id":"bloom","client":"Greenroom Clinic","rivals":["void"],"job":"Liberate gene samples from a corporate vault before the Null cells erase them.","rep":"Clinic scrips"},
+{"id":"void","client":"Cell Zero","rivals":["bloom"],"job":"Wipe a Wetware archive so clean it never existed.","rep":"Zero keys"}
+]

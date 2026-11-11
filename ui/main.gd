@@ -72,22 +72,46 @@ func show_hub() -> void:
 		_save()
 		apply_theme(profile.settings["theme"])
 		show_hub())
-	hub.start_pressed.connect(_show_picker)
+	hub.start_pressed.connect(_show_jobs)
 	hub.collection_pressed.connect(func() -> void:
 		var cs := CollectionScreen.new().setup(db, profile)
 		cs.closed.connect(show_hub)
 		_show(cs))
 	hub.packs_pressed.connect(_show_pack)
+	hub.rig_pressed.connect(func() -> void:
+		var rs := RigScreen.new().setup(db, profile)
+		rs.changed.connect(_save)
+		rs.closed.connect(show_hub)
+		_show(rs))
 	_show(hub)
 
 
-func _show_picker(heat: int) -> void:
-	var cs := CollectionScreen.new().setup(db, profile, true)
-	cs.closed.connect(show_hub)
+## Job board: every run is a job for one faction (see Jobs).
+func _show_jobs(heat: int) -> void:
+	var parts := UiKit.screen(16)
+	var v: VBoxContainer = parts[1]
+	v.add_child(UiKit.label("Job board", 32, Palette.ENERGY))
+	var n := profile.starter_picks(db)
+	for f in Jobs.board(db):
+		var j := Jobs.info(db, f)
+		var ban: Array = Jobs.banned(db, f).map(func(x: String) -> String: return Lexicon.faction(x))
+		var b := UiKit.button("%s  (%s)\n%s\nLoad %d+ %s programs. Banned: %s. Pays %s (you have %d)." % [
+			j.get("client", f), Lexicon.faction(f), j.get("job", ""), Jobs.required(db, f, n), Lexicon.faction(f),
+			", ".join(ban) if not ban.is_empty() else "none", Jobs.rep_name(db, f), profile.rep_of(f)],
+			_show_picker.bind(heat, f), Vector2(600, 112), 16)
+		b.add_theme_color_override("font_color", Palette.faction(f))
+		v.add_child(b)
+	v.add_child(UiKit.button("Back", show_hub, Vector2(200, 56)))
+	_show(parts[0])
+
+
+func _show_picker(heat: int, job: String = "") -> void:
+	var cs := CollectionScreen.new().setup(db, profile, true, job)
+	cs.closed.connect(_show_jobs.bind(heat))
 	cs.picks_confirmed.connect(func(picks: Array) -> void:
 		profile.last_picks = picks
 		_save()
-		run = RunState.start(db, profile, picks, int(Time.get_unix_time_from_system()), heat)
+		run = RunState.start(db, profile, picks, int(Time.get_unix_time_from_system()), heat, job)
 		show_map())
 	_show(cs)
 
@@ -165,6 +189,8 @@ func _on_combat_finished(_won: bool) -> void:
 		_end_run()
 		return
 	var lines := ["+%d creds" % rewards["gold"]]
+	if int(rewards.get("healed", 0)) > 0:
+		lines.append("Nanites repair %d HP" % int(rewards["healed"]))
 	if rewards.has("act_started"):
 		lines.push_front("Layer %d breached. You reboot (now %d/%d HP)." % [rewards["act_started"], run.hp, run.max_hp])
 	var tals: Array = []
@@ -172,10 +198,11 @@ func _on_combat_finished(_won: bool) -> void:
 		run.add_talisman(rewards["talisman"])
 		lines.append("Recovered implant: %s" % db.talismans[rewards["talisman"]]["name"])
 		tals.append(rewards["talisman"])
-	_show_reward(lines, tals, rewards["cards"])
+	_show_reward(lines, tals, rewards["cards"], rewards.get("perks", []))
 
 
-func _show_reward(lines: Array, tals: Array, choices: Array) -> void:
+func _show_reward(lines: Array, tals: Array, choices: Array, perks: Array = []) -> void:
+	var next := show_map if perks.is_empty() else _show_perk_pick.bind(perks)
 	var parts := UiKit.screen(20)
 	var v: VBoxContainer = parts[1]
 	v.add_child(RunHeader.new().setup(run))
@@ -189,10 +216,29 @@ func _show_reward(lines: Array, tals: Array, choices: Array) -> void:
 		var cv := CardView.new().setup(db.instance(id))
 		cv.pressed.connect(func(_v: CardView) -> void:
 			run.add_card(id)
-			show_map())
+			next.call())
 		row.add_child(cv)
 	v.add_child(row)
-	v.add_child(UiKit.button("Skip", show_map))
+	v.add_child(UiKit.button("Skip", next))
+	_show(parts[0])
+
+
+## After black sentries and Cores: load one of a few subroutines (run perks).
+func _show_perk_pick(choices: Array) -> void:
+	var parts := UiKit.screen(18)
+	var v: VBoxContainer = parts[1]
+	v.add_child(RunHeader.new().setup(run))
+	v.add_child(UiKit.label("Load a subroutine", 32, Palette.ENERGY))
+	v.add_child(UiKit.label("Subroutines run in the background for the rest of this run.", 16, Palette.TEXT_DIM, true))
+	for pid in choices:
+		var p: Dictionary = db.perks[pid]
+		v.add_child(UiKit.button("%s\n%s" % [p["name"], Perks.describe(p)], func() -> void:
+			var lines := run.add_perk(pid)
+			if lines.size() > 1:
+				_show_message(p["name"], lines)
+			else:
+				show_map(), Vector2(560, 80), 17))
+	v.add_child(UiKit.button("Skip", show_map, Vector2(200, 56)))
 	_show(parts[0])
 
 
@@ -206,15 +252,38 @@ func _show_rest() -> void:
 	v.add_child(UiKit.label(Palette.w("rest"), 30))
 	if Palette.w("rest_text") != "":
 		v.add_child(UiKit.label(Palette.w("rest_text"), 16, Palette.TEXT_DIM, true))
-	var heal_amt := mini(run.max_hp - run.hp, int(run.max_hp * float(db.balance.get("rest_heal_pct", 0.3)) * (1.0 + float(run.heat_mod("rest_heal_pct", 0.0)))))
-	v.add_child(UiKit.button("Reboot (+%d HP)" % heal_amt, func() -> void:
+	v.add_child(UiKit.button("Reboot (+%d HP)" % run.rest_heal_amount(), func() -> void:
 		run.rest_heal()
 		show_map(), Vector2(320, 70), 22))
 	v.add_child(UiKit.button("Recompile a program", func() -> void:
 		add_child(DeckOverlay.new().setup("Choose a program to recompile", run.deck, "Cancel", func(i: int) -> void:
 			if i >= 0 and run.upgrade_card(i):
 				show_map(), true, true)), Vector2(320, 70), 22))
+	var mods := run.mod_choices(int(db.balance.get("rest_mod_choices", 2)), run.rng.fork("tinker:%d" % run.floor_num))
+	if not mods.is_empty():
+		v.add_child(UiKit.label("or tinker: install one mod", 16, Palette.TEXT_DIM))
+		for mid in mods:
+			v.add_child(_mod_button(mid, "", func() -> void:
+				_pick_mod_target(mid, func(i: int) -> void:
+					if run.install_mod(i, mid):
+						show_map())))
 	_show(parts[0])
+
+
+## Button showing a mod's name, rules and fit. suffix e.g. a price.
+func _mod_button(mid: String, suffix: String, on_press: Callable) -> Button:
+	var m := db.mod(mid)
+	var fit := CardMods.restriction_text(m)
+	var b := UiKit.button("%s%s\n%s%s" % [m["name"], suffix, CardMods.describe(m), (" " + fit) if fit != "" else ""], on_press, Vector2(520, 70), 16)
+	b.add_theme_color_override("font_color", Palette.rarity(str(m["rarity"])))
+	return b
+
+
+func _pick_mod_target(mid: String, on_pick: Callable) -> void:
+	var m := db.mod(mid)
+	add_child(DeckOverlay.new().setup("Install %s on which program?" % m["name"], run.deck, "Cancel", func(i: int) -> void:
+		if i >= 0:
+			on_pick.call(i), true, false, m))
 
 
 func _show_shop(shop: Dictionary) -> void:
@@ -247,6 +316,15 @@ func _show_shop(shop: Dictionary) -> void:
 		box.add_child(b)
 		trow.add_child(box)
 	v.add_child(trow)
+	for item in shop.get("mods", []):
+		var sold: bool = item.get("sold", false)
+		var mb := _mod_button(item["id"], "  ·  sold" if sold else "  ·  %dc" % item["price"], func() -> void:
+			_pick_mod_target(item["id"], func(i: int) -> void:
+				if run.buy_mod(item, i):
+					_show_shop(shop)))
+		mb.custom_minimum_size = Vector2(520, 60)
+		mb.disabled = sold or run.gold < int(item["price"])
+		v.add_child(mb)
 	var rm := UiKit.button("Delete a program (%dc)" % run.remove_cost, func() -> void:
 		add_child(DeckOverlay.new().setup("Choose a program to delete", run.deck, "Cancel", func(i: int) -> void:
 			if i >= 0 and run.remove_card(i):

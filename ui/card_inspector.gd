@@ -19,7 +19,7 @@ static func show_for(host: Node, card: CardInstance) -> void:
 static func glossary(card: CardInstance) -> Array[String]:
 	var out: Array[String] = []
 	out.append(str(CardDef.TYPE_DESC.get(card.def.type, "")))
-	for k in card.def.get_keywords(card.upgraded):
+	for k in card.keywords():
 		out.append("%s: %s" % [Lexicon.keyword(str(k)), CardDef.KEYWORD_DESC.get(k, "")])
 	var seen := {}
 	for e in card.effects():
@@ -34,10 +34,13 @@ static func glossary(card: CardInstance) -> Array[String]:
 		if op == "summon" and not seen.has("unit"):
 			seen["unit"] = true
 			out.append(Rules.UNITS)
+	if not card.mod.is_empty():
+		out.append("Mod: %s. %s" % [card.mod_name(), CardMods.describe(card.mod)])
 	if card.upgraded:
-		out.append("Upgraded: recompiled at a safehouse.")
+		out.append("Upgraded: recompiled at a safehouse, or flashed to firmware.")
 	else:
-		var up := CardInstance.new(card.def, true)
+		var up := card.copy()
+		up.upgraded = true
 		if up.text() != card.text() or up.cost() != card.cost():
 			out.append("Upgraded (%d): %s" % [up.cost(), up.text()])
 	return out

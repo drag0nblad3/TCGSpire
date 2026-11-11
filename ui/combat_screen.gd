@@ -377,7 +377,7 @@ func _play_events(played: CardView) -> int:
 					_pop_in(nv)
 				await _wait(0.25)
 			"talisman":
-				_float_text(_player_view, str(combat.db.talismans.get(e["id"], {}).get("name", "")), Palette.RARITY["rare"], -30)
+				_float_text(_player_view, str(combat.db.talismans.get(e["id"], combat.db.perks.get(e["id"], {})).get("name", "")), Palette.RARITY["rare"], -30)
 				await _wait(0.18)
 			"echo":
 				_float_text(_player_view, "Echo!", Palette.faction("void"), -30)
