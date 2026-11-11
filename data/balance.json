@@ -244,17 +244,17 @@
  "rest_mod_choices": 2,
  "firmware": {
   "cost": {
-   "starter": 180,
-   "common": 90,
-   "uncommon": 180,
-   "rare": 450,
-   "mythic": 900
+   "starter": 150,
+   "common": 80,
+   "uncommon": 140,
+   "rare": 300,
+   "mythic": 500
   },
   "rep_cost": {
-   "common": 45,
-   "uncommon": 90,
-   "rare": 180,
-   "mythic": 360
+   "common": 40,
+   "uncommon": 70,
+   "rare": 120,
+   "mythic": 200
   },
   "mod_mastery_tier": 2,
   "mod_rep_cost": {
