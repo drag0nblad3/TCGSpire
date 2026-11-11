@@ -1,0 +1,5 @@
+{
+"mites": {"tier": 1, "enemies": ["cinder_mite", "cinder_mite"]},
+"wisp_pack": {"tier": 1, "enemies": ["hollow_wisp", "cinder_mite"]},
+"golem": {"tier": 2, "enemies": ["shard_golem"]}
+}

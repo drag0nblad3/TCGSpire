@@ -1,0 +1,8 @@
+[
+{"id":"jab","name":"Jab","faction":"neutral","rarity":"starter","type":"attack","target":"enemy","cost":1,"effects":[{"op":"damage","amount":6}],"upgrade":{"effects":[{"op":"damage","amount":9}]}},
+{"id":"brace","name":"Brace","faction":"neutral","rarity":"starter","type":"skill","cost":1,"effects":[{"op":"ward","amount":5}],"upgrade":{"effects":[{"op":"ward","amount":8}]}},
+{"id":"second_wind","name":"Second Wind","faction":"neutral","rarity":"common","type":"skill","cost":1,"effects":[{"op":"draw","amount":2}],"upgrade":{"cost":0}},
+{"id":"sparring_dummy","name":"Sparring Dummy","faction":"neutral","rarity":"common","type":"unit","cost":1,"effects":[{"op":"summon","name":"Dummy","atk":1,"hp":8}],"upgrade":{"effects":[{"op":"summon","name":"Dummy","atk":2,"hp":11}]}},
+{"id":"rally_cry","name":"Rally Cry","faction":"neutral","rarity":"uncommon","type":"skill","cost":1,"effects":[{"op":"rally","amount":2},{"op":"ward","amount":3}],"upgrade":{"effects":[{"op":"rally","amount":3},{"op":"ward","amount":5}]}},
+{"id":"field_medic","name":"Field Medic","faction":"neutral","rarity":"uncommon","type":"skill","cost":1,"keywords":["exhaust"],"effects":[{"op":"heal","amount":8}],"upgrade":{"effects":[{"op":"heal","amount":12}]}}
+]

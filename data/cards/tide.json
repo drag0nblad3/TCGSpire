@@ -1,0 +1,9 @@
+[
+{"id":"undertow","name":"Undertow","faction":"tide","rarity":"common","type":"attack","target":"enemy","cost":1,"effects":[{"op":"damage","amount":5},{"op":"ward","amount":4}],"upgrade":{"effects":[{"op":"damage","amount":7},{"op":"ward","amount":6}]}},
+{"id":"tidewall","name":"Tidewall","faction":"tide","rarity":"common","type":"skill","cost":2,"effects":[{"op":"ward","amount":12}],"upgrade":{"effects":[{"op":"ward","amount":16}]}},
+{"id":"low_tide","name":"Low Tide","faction":"tide","rarity":"common","type":"skill","target":"enemy","cost":1,"effects":[{"op":"apply","status":"weaken","stacks":2},{"op":"draw","amount":1}],"upgrade":{"effects":[{"op":"apply","status":"weaken","stacks":3},{"op":"draw","amount":1}]}},
+{"id":"riptide","name":"Riptide","faction":"tide","rarity":"uncommon","type":"attack","target":"enemy","cost":1,"effects":[{"op":"damage_per_ward"}],"upgrade":{"cost":0}},
+{"id":"reef_warden","name":"Reef Warden","faction":"tide","rarity":"uncommon","type":"unit","cost":2,"effects":[{"op":"summon","name":"Warden","atk":2,"hp":14}],"upgrade":{"effects":[{"op":"summon","name":"Warden","atk":3,"hp":18}]}},
+{"id":"crashing_wave","name":"Crashing Wave","faction":"tide","rarity":"rare","type":"attack","cost":2,"keywords":["exhaust"],"effects":[{"op":"ward","amount":6},{"op":"damage_per_ward","to":"all_enemies"}],"upgrade":{"effects":[{"op":"ward","amount":10},{"op":"damage_per_ward","to":"all_enemies"}]}},
+{"id":"leviathan_call","name":"Leviathan's Call","faction":"tide","rarity":"mythic","type":"unit","cost":3,"effects":[{"op":"summon","name":"Leviathan","atk":6,"hp":24}],"upgrade":{"effects":[{"op":"summon","name":"Leviathan","atk":8,"hp":30}]}}
+]

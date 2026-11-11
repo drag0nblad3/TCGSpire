@@ -1,0 +1,5 @@
+[
+{"id":"cinder_mite","name":"Cinder Mite","hp":[11,14],"random_start":true,"moves":[{"name":"Nibble","effects":[{"op":"damage","amount":5}]},{"name":"Skitter","effects":[{"op":"ward","amount":4},{"op":"damage","amount":3}]}]},
+{"id":"hollow_wisp","name":"Hollow Wisp","hp":[20,24],"moves":[{"name":"Chill","effects":[{"op":"damage","amount":6},{"op":"apply","status":"weaken","stacks":1}]},{"name":"Flicker","effects":[{"op":"ward","amount":7}]}]},
+{"id":"shard_golem","name":"Shard Golem","hp":[62,68],"moves":[{"name":"Slam","effects":[{"op":"damage","amount":15}]},{"name":"Fortify","effects":[{"op":"ward","amount":10},{"op":"apply","status":"might","stacks":2,"to":"self"}]},{"name":"Crush","effects":[{"op":"damage","amount":6,"hits":2,"to":"front"}]}]}
+]
