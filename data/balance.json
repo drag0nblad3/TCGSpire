@@ -186,7 +186,8 @@
   "xp_per_elite": 15,
   "xp_boss": 60,
   "xp_per_act": 40,
-  "packs_per_boss": 1
+  "packs_per_boss": 1,
+  "xp_mult": 0.75
  },
  "levels": {
   "packs": 1,
@@ -276,6 +277,7 @@
   "rep_boss": 30,
   "faction_encounter_share": 0.6,
   "rep_per_extra_target": 0.25,
-  "faction_boss_share": 0.75
+  "faction_boss_share": 0.75,
+  "rep_mult": 0.75
  }
 }

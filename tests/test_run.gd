@@ -140,9 +140,10 @@ func test_run_bot_completes_runs() -> void:
 
 func test_progression_levels_and_mastery() -> void:
 	var r := _run()
-	r.floor_num = 13
+	r.floor_num = 39
 	r.boss_won = true
-	r.combats_won = 9
+	r.acts_cleared = 3
+	r.combats_won = 27
 	r.card_plays = {"kindle": 12}
 	var before_packs := profile.packs_unopened
 	var lines := profile.finish_run(db, r)

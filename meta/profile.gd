@@ -102,7 +102,7 @@ func finish_run(db: CardDB, run: RunState) -> Array:
 		+ run.acts_cleared * int(cfg.get("xp_per_act", 40))
 	if run.boss_won:
 		gained_xp += int(cfg.get("xp_boss", 60))
-	gained_xp = int(gained_xp * (1.0 + 0.1 * run.heat))
+	gained_xp = int(gained_xp * (1.0 + 0.1 * run.heat) * float(cfg.get("xp_mult", 1.0)))
 	var packs := run.acts_cleared * int(cfg.get("packs_per_boss", 1))
 	packs_unopened += packs
 	lines.append("+%d XP, +%d pack%s" % [gained_xp, packs, "" if packs == 1 else "s"])

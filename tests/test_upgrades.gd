@@ -153,7 +153,7 @@ func test_job_pays_rep() -> void:
 	r.floor_num = 10
 	r.elites_won = 1
 	var lines := profile.finish_run(db, r)
-	eq(profile.rep_of("void"), 26, "rep")
+	eq(profile.rep_of("void"), int(26 * float(db.balance["jobs"].get("rep_mult", 1.0))), "rep")
 	check(lines.any(func(l: String) -> bool: return l.contains(Jobs.rep_name(db, "void"))), "rep line")
 	eq(profile.rep_of("ember"), 0, "only the client pays")
 
