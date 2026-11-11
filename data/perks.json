@@ -22,5 +22,17 @@
 {"id":"repair_drones","scope":"rig","faction":"chrome","name":"Repair Drones","max_rank":2,"cost":35,"mods":{"combat_heal":2}},
 {"id":"salvage_rights","scope":"rig","faction":"chrome","name":"Salvage Rights","max_rank":2,"cost":25,"mods":{"gold_pct":0.1}},
 {"id":"signal_jammer","scope":"rig","faction":"noise","name":"Signal Jammer","max_rank":2,"cost":40,"mods":{"enemy_hp_pct":-0.04}},
-{"id":"crowd_funding","scope":"rig","faction":"noise","name":"Crowd Funding","max_rank":2,"cost":20,"mods":{"start_gold":20}}
+{"id":"crowd_funding","scope":"rig","faction":"noise","name":"Crowd Funding","max_rank":2,"cost":20,"mods":{"start_gold":20}},
+{"id":"drone_escort","scope":"run","name":"Drone Escort","triggers":[{"on":"combat_start","effects":[{"op":"summon","name":"Escort","atk":2,"hp":5}]}]},
+{"id":"jam_feed","scope":"run","name":"Jam Feed","triggers":[{"on":"combat_start","effects":[{"op":"apply","status":"weaken","stacks":1,"to":"all_enemies"}]}]},
+{"id":"reflex_cache","scope":"run","name":"Reflex Cache","triggers":[{"on":"turn_end","effects":[{"op":"ward","amount":2}]}]},
+{"id":"contract_bonus","scope":"run","name":"Contract Bonus","mods":{"rep_pct":0.3}},
+{"id":"kill_switch","scope":"run","name":"Kill Switch","triggers":[{"on":"kill","effects":[{"op":"draw","amount":1}]}]},
+{"id":"patch_notes","scope":"run","name":"Patch Notes","pickup":[{"op":"upgrade","amount":1},{"op":"mod","amount":1}]},
+{"id":"contract_killer","scope":"rig","faction":"ember","name":"Contract Killer","max_rank":3,"cost":30,"mods":{"rep_pct":0.1}},
+{"id":"dividend_plan","scope":"rig","faction":"tide","name":"Dividend Plan","max_rank":2,"cost":30,"mods":{"gold_pct":0.1}},
+{"id":"field_clinic","scope":"rig","faction":"bloom","name":"Field Clinic","max_rank":3,"cost":30,"mods":{"combat_heal":1}},
+{"id":"wider_menu","scope":"rig","faction":"void","name":"Wider Menu","max_rank":1,"cost":50,"mods":{"perk_choices":1}},
+{"id":"hardpoint","scope":"rig","faction":"chrome","name":"Hardpoints","max_rank":3,"cost":25,"mods":{"max_hp":3}},
+{"id":"pirate_coupons","scope":"rig","faction":"noise","name":"Pirate Coupons","max_rank":2,"cost":25,"mods":{"remove_discount":20}}
 ]

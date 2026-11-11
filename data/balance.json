@@ -250,7 +250,18 @@
    "rare": 120,
    "mythic": 240
   },
-  "mastery_tier": 1
+  "mastery_tier": 1,
+  "mod_mastery_tier": 2,
+  "mod_rep_cost": {
+   "common": 40,
+   "uncommon": 70,
+   "rare": 120
+  },
+  "mod_dust_cost": {
+   "common": 80,
+   "uncommon": 150,
+   "rare": 250
+  }
  },
  "jobs": {
   "client_share": 0.5,
@@ -259,6 +270,7 @@
   "rep_per_act": 15,
   "rep_boss": 30,
   "faction_encounter_share": 0.6,
-  "rep_per_extra_target": 0.25
+  "rep_per_extra_target": 0.25,
+  "faction_boss_share": 0.75
  }
 }

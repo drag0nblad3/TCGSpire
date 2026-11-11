@@ -327,12 +327,12 @@ func _show_shop(shop: Dictionary) -> void:
 		mb.custom_minimum_size = Vector2(520, 60)
 		mb.disabled = sold or run.gold < int(item["price"])
 		v.add_child(mb)
-	var rm := UiKit.button("Delete a program (%dc)" % run.remove_cost, func() -> void:
+	var rm := UiKit.button("Delete a program (%dc)" % run.remove_price(), func() -> void:
 		add_child(DeckOverlay.new().setup("Choose a program to delete", run.deck, "Cancel", func(i: int) -> void:
 			if i >= 0 and run.remove_card(i):
-				shop["remove"] = run.remove_cost
+				shop["remove"] = run.remove_price()
 				_show_shop(shop), true)), Vector2(300, 56))
-	rm.disabled = run.gold < run.remove_cost or shop.get("removed", false)
+	rm.disabled = run.gold < run.remove_price() or shop.get("removed", false)
 	v.add_child(rm)
 	v.add_child(UiKit.button("Jack out", show_map))
 	_show(parts[0])

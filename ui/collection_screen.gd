@@ -118,6 +118,8 @@ func _refresh() -> void:
 	for id in _ids():
 		var inst := db.instance(id, profile.firmware.has(id))
 		inst.foil = int(col.foils.get(id, 0)) > 0
+		if profile.firmware_mods.has(id):
+			inst.mod = db.mod(profile.firmware_mods[id])
 		var cv := CardView.new().setup(inst)
 		var n := col.count(id)
 		var stars := "*".repeat(profile.mastery_tier(db, id))
@@ -149,7 +151,29 @@ func _on_card(id: String) -> void:
 func _firmware_row(id: String, overlay: Control) -> Control:
 	var box := UiKit.vbox(6)
 	if profile.firmware.has(id):
-		box.add_child(UiKit.label("In firmware: every copy joins your runs upgraded.", 15, Palette.UPGRADED, true))
+		var baked := str(profile.firmware_mods.get(id, ""))
+		box.add_child(UiKit.label("In firmware: every copy joins your runs upgraded%s." % ((" with " + db.mod(baked)["name"]) if baked != "" else ""), 15, Palette.UPGRADED, true))
+		var fits: Array = db.mods.keys().filter(func(m: String) -> bool: return CardMods.can_apply(db.mod(m), CardInstance.new(db.card(id), true)))
+		fits.sort()
+		var gate := profile.firmware_mod_block(db, id, fits[0]) if not fits.is_empty() else "No mods fit."
+		if gate.begins_with("Run it") or fits.is_empty():
+			box.add_child(UiKit.label(gate, 13, Palette.TEXT_DIM, true))
+			return box
+		box.add_child(UiKit.label("Bake a mod into its firmware:", 14, Palette.TEXT_DIM))
+		var row := UiKit.flow(6)
+		for m in fits:
+			var price := profile.firmware_mod_price(db, id, m)
+			var cur := Palette.w("dust").to_lower() if price["faction"] == "" else "rep"
+			var mb := UiKit.button("%s\n%d %s" % [db.mod(m)["name"], price["amount"], cur], func() -> void:
+				if profile.bake_firmware_mod(db, id, m):
+					profile.save()
+					overlay.queue_free()
+					_refresh()
+					_show_detail(id), Vector2(150, 52), 13)
+			mb.disabled = profile.firmware_mod_block(db, id, m) != "" or baked == m
+			mb.tooltip_text = CardMods.describe(db.mod(m))
+			row.add_child(mb)
+		box.add_child(row)
 		return box
 	var price := profile.firmware_price(db, id)
 	var cur := Palette.w("dust").to_lower() if price["faction"] == "" else Jobs.rep_name(db, price["faction"])
@@ -178,7 +202,10 @@ func _show_detail(id: String) -> void:
 	var v: VBoxContainer = parts[1]
 	var holder := CenterContainer.new()
 	holder.custom_minimum_size = Vector2(0, CardView.SIZE.y * 1.7)
-	var cv := CardView.new().setup(db.instance(id))
+	var shown := db.instance(id, profile.firmware.has(id))
+	if profile.firmware_mods.has(id):
+		shown.mod = db.mod(profile.firmware_mods[id])
+	var cv := CardView.new().setup(shown)
 	cv.scale = Vector2(1.6, 1.6)
 	holder.add_child(cv)
 	v.add_child(holder)

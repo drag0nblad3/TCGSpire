@@ -265,3 +265,60 @@ func test_high_heat_adds_targets_with_one_client() -> void:
 	var base := RunState.start(db, profile, RunState.default_picks(db, profile, "ember"), 1, 3, "ember")
 	base.floor_num = 10
 	check(Jobs.rep_reward(db, r) > Jobs.rep_reward(db, base), "extra target pays more")
+
+
+# --- crew bosses, firmware mods, new perk keys ----------------------------------------
+
+func test_every_crew_has_a_boss_per_act_and_jobs_meet_them() -> void:
+	for f in Jobs.board(db):
+		for act in [1, 2]:
+			check(db.encounters.values().any(func(e: Dictionary) -> bool:
+				return e.get("faction", "") == f and e.get("kind", "") == "boss" and int(e.get("act", 1)) == act), "%s act %d boss" % [f, act])
+	var crew_bosses := 0
+	for s in 40:
+		var m := RunMap.generate(db, GameRng.new(s), 1, ["noise"])
+		var f := str(db.encounters[m.nodes.back()["encounter"]].get("faction", ""))
+		check(f in ["", "noise"], "boss from a non-target crew")
+		if f == "noise":
+			crew_bosses += 1
+	check(crew_bosses >= 20, "most job bosses are the target crew's (%d/40)" % crew_bosses)
+
+
+func test_firmware_mod_bakes_into_every_copy() -> void:
+	check(profile.firmware_mod_block(db, "kindle", "cached") != "", "needs firmware")
+	profile.firmware["kindle"] = true
+	profile.mastery["kindle"] = 10
+	check(profile.firmware_mod_block(db, "kindle", "cached").begins_with("Run it"), "needs mastery tier 2")
+	profile.mastery["kindle"] = 30
+	profile.rep["ember"] = 100
+	check(profile.bake_firmware_mod(db, "kindle", "cached"), "bake")
+	eq(profile.rep_of("ember"), 60, "common mod price")
+	var r := RunState.start(db, profile, ["kindle"], 1)
+	r.add_card("kindle")
+	for c in r.deck:
+		if c.def.id == "kindle":
+			eq(c.mod_id(), "cached", "baked mod")
+			check(c.upgraded, "and upgraded")
+	var q := Profile.from_dict(profile.to_dict())
+	eq(q.firmware_mods, {"kindle": "cached"}, "saved")
+
+
+func test_new_perk_keys() -> void:
+	profile.rig = {"pirate_coupons": 2, "wider_menu": 1, "contract_killer": 3}
+	var r := _run(1, "ember")
+	eq(r.remove_price(), int(db.balance["shop"]["remove_base"]) - 40, "deletion discount")
+	r.floor_num = 10
+	var base := RunState.start(db, Profile.new_player(db), RunState.default_picks(db, profile, "ember"), 1, 0, "ember")
+	base.floor_num = 10
+	eq(Jobs.rep_reward(db, r), int(Jobs.rep_reward(db, base) * 1.3), "rep bonus")
+	var elite := ""
+	for id in db.encounters:
+		if db.encounters[id].get("kind", "") == "elite" and not db.encounters[id].has("faction"):
+			elite = id
+			break
+	var c := r.start_combat(elite)
+	c.start()
+	for e in c.enemies:
+		e.hp = 0
+	c._check_end()
+	eq(r.finish_combat(c).get("perks", []).size(), 4, "extra subroutine choice")

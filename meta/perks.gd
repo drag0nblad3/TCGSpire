@@ -18,6 +18,9 @@ const MODS := {
 	"start_mods": "Random mods at run start",
 	"start_perks": "Random subroutines at run start",
 	"enemy_hp_pct": "Enemy HP",
+	"rep_pct": "Rep from the job",
+	"perk_choices": "Subroutine choices",
+	"remove_discount": "Cheaper program deletion",
 }
 const SCOPES := ["run", "rig"]
 const PCT := ["gold_pct", "rest_heal_pct", "shop_discount_pct"]
@@ -58,6 +61,12 @@ static func describe_mod(k: String, v: float) -> String:
 			return "Start runs with %d random mod%s installed." % [int(v), "" if int(v) == 1 else "s"]
 		"start_perks":
 			return "Start runs with %d random subroutine%s." % [int(v), "" if int(v) == 1 else "s"]
+		"rep_pct":
+			return "+%d%% rep from jobs." % roundi(v * 100)
+		"perk_choices":
+			return "+%d subroutine choice%s." % [int(v), "" if int(v) == 1 else "s"]
+		"remove_discount":
+			return "Deleting a program at the Fixer costs %d less." % int(v)
 		"enemy_hp_pct":
 			return "Enemies have %d%% %s HP." % [absi(roundi(v * 100)), "less" if v < 0 else "more"]
 	return "?"

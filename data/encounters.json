@@ -60,5 +60,17 @@
 "noise_a1e": {"faction": "noise", "kind": "elite", "enemies": ["the_anchor"]},
 "noise_a2t1": {"faction": "noise", "act": 2, "kind": "normal", "tier": 1, "enemies": ["shock_jock", "shock_jock"]},
 "noise_a2t2": {"faction": "noise", "act": 2, "kind": "normal", "tier": 2, "enemies": ["signal_tower", "pirate_jammer"]},
-"noise_a2e": {"faction": "noise", "act": 2, "kind": "elite", "enemies": ["the_anchor", "shock_jock"]}
+"noise_a2e": {"faction": "noise", "act": 2, "kind": "elite", "enemies": ["the_anchor", "shock_jock"]},
+"ember_a1b": {"faction": "ember", "kind": "boss", "enemies": ["kiln_mother"]},
+"ember_a2b": {"faction": "ember", "act": 2, "kind": "boss", "enemies": ["furnace_king"]},
+"tide_a1b": {"faction": "tide", "kind": "boss", "enemies": ["undertow_broker"]},
+"tide_a2b": {"faction": "tide", "act": 2, "kind": "boss", "enemies": ["tidal_exchange"]},
+"bloom_a1b": {"faction": "bloom", "kind": "boss", "enemies": ["chief_surgeon"]},
+"bloom_a2b": {"faction": "bloom", "act": 2, "kind": "boss", "enemies": ["gene_saint"]},
+"void_a1b": {"faction": "void", "kind": "boss", "enemies": ["zero_prime"]},
+"void_a2b": {"faction": "void", "act": 2, "kind": "boss", "enemies": ["the_absence"]},
+"chrome_a1b": {"faction": "chrome", "kind": "boss", "enemies": ["hive_overseer"]},
+"chrome_a2b": {"faction": "chrome", "act": 2, "kind": "boss", "enemies": ["chrome_queen"]},
+"noise_a1b": {"faction": "noise", "kind": "boss", "enemies": ["dj_feedback"]},
+"noise_a2b": {"faction": "noise", "act": 2, "kind": "boss", "enemies": ["the_broadcast"]}
 }

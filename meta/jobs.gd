@@ -93,7 +93,7 @@ static func rep_reward(db: CardDB, run: RunState) -> int:
 	var n := run.floor_num * int(cfg.get("rep_per_floor", 2)) + run.elites_won * int(cfg.get("rep_per_elite", 6)) \
 		+ run.acts_cleared * int(cfg.get("rep_per_act", 15)) + (int(cfg.get("rep_boss", 30)) if run.boss_won else 0)
 	var extra := maxi(run.banned.size() - banned(db, run.job).size(), 0)
-	return int(n * (1.0 + 0.1 * run.heat) * (1.0 + float(cfg.get("rep_per_extra_target", 0.25)) * extra))
+	return int(n * (1.0 + 0.1 * run.heat) * (1.0 + float(cfg.get("rep_per_extra_target", 0.25)) * extra) * (1.0 + run.perk_mod("rep_pct")))
 
 
 static func validate(db: CardDB) -> Array[String]:

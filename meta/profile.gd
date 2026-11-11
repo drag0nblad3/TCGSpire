@@ -31,6 +31,8 @@ var rep: Dictionary = {}
 var rig: Dictionary = {}
 ## Firmware cards: card id -> true. Every copy starts runs upgraded.
 var firmware: Dictionary = {}
+## Firmware tier 2: card id -> mod id baked in (needs firmware + mastery tier 2).
+var firmware_mods: Dictionary = {}
 
 
 static func new_player(db: CardDB) -> Profile:
@@ -225,6 +227,47 @@ func flash_firmware(db: CardDB, id: String) -> bool:
 	return true
 
 
+## Price of baking a mod into a firmware card: the card's crew rep, or dust.
+func firmware_mod_price(db: CardDB, id: String, mod_id: String) -> Dictionary:
+	var cfg: Dictionary = db.balance.get("firmware", {})
+	var c := db.card(id)
+	var r := str(db.mod(mod_id).get("rarity", "common"))
+	if c != null and c.rarity != "starter" and db.factions.has(c.faction):
+		return {"amount": int(cfg.get("mod_rep_cost", {}).get(r, 60)), "faction": c.faction}
+	return {"amount": int(cfg.get("mod_dust_cost", {}).get(r, 120)), "faction": ""}
+
+
+## "" if the mod can be baked into this card's firmware, else why not.
+func firmware_mod_block(db: CardDB, id: String, mod_id: String) -> String:
+	var c := db.card(id)
+	if c == null or not firmware.has(id):
+		return "Flash it to firmware first."
+	if not CardMods.can_apply(db.mod(mod_id), CardInstance.new(c, true)):
+		return "That mod doesn't fit."
+	var need := int(db.balance.get("firmware", {}).get("mod_mastery_tier", 2))
+	if c.rarity != "starter" and mastery_tier(db, id) < need:
+		var plays := int(db.balance.get("mastery", [])[need - 1].get("plays", 0))
+		return "Run it %d times to bake in a mod (%d so far)." % [plays, int(mastery.get(id, 0))]
+	var price := firmware_mod_price(db, id, mod_id)
+	var have := collection.dust if price["faction"] == "" else rep_of(price["faction"])
+	if have < int(price["amount"]):
+		return "Not enough %s." % ("dust" if price["faction"] == "" else Jobs.rep_name(db, price["faction"]))
+	return ""
+
+
+## Bakes (or replaces) the mod every copy of this card starts runs with.
+func bake_firmware_mod(db: CardDB, id: String, mod_id: String) -> bool:
+	if firmware_mod_block(db, id, mod_id) != "" or firmware_mods.get(id, "") == mod_id:
+		return false
+	var price := firmware_mod_price(db, id, mod_id)
+	if price["faction"] == "":
+		collection.dust -= int(price["amount"])
+	else:
+		rep[price["faction"]] = rep_of(price["faction"]) - int(price["amount"])
+	firmware_mods[id] = mod_id
+	return true
+
+
 func open_pack(db: CardDB, rng: GameRng) -> Array:
 	if packs_unopened <= 0:
 		return []
@@ -253,6 +296,7 @@ func to_dict() -> Dictionary:
 		"rep": rep,
 		"rig": rig,
 		"firmware": firmware.keys(),
+		"firmware_mods": firmware_mods,
 	}
 
 
@@ -276,6 +320,8 @@ static func from_dict(d: Dictionary) -> Profile:
 		p.rig[k] = int(d["rig"][k])
 	for id in d.get("firmware", []):
 		p.firmware[str(id)] = true
+	for id in d.get("firmware_mods", {}):
+		p.firmware_mods[str(id)] = str(d["firmware_mods"][id])
 	return p
 
 

@@ -57,7 +57,7 @@ static func sections(db: CardDB) -> Array:
 		rivals.append("%s bans %s" % [Lexicon.faction(f), " and ".join(Jobs.banned(db, f).map(func(x: String) -> String: return Lexicon.faction(x)))])
 	out.append(["Jobs and rep", [
 		"Every run is a job for one crew. At least %d%% of the programs you load must be theirs, and their rivals' programs are banned: you can't load them and nobody offers them during the job (%s)." % [share, "; ".join(rivals)],
-		"A job also runs against its targets: their crew's own enforcers guard most fights and black sentries on the map. From Heat %d, jobs run against extra crews too (still one client), and each extra target pays %d%% more rep." % [_first_heat(db, "extra_targets"), int(float(db.balance.get("jobs", {}).get("rep_per_extra_target", 0.25)) * 100)],
+		"A job also runs against its targets: their crew's own enforcers guard most fights and black sentries on the map, and usually the Core itself. From Heat %d, jobs run against extra crews too (still one client), and each extra target pays %d%% more rep." % [_first_heat(db, "extra_targets"), int(float(db.balance.get("jobs", {}).get("rep_per_extra_target", 0.25)) * 100)],
 		"A job pays the client's rep when it ends, more the further you climb. Rep buys that crew's rig upgrades and flashes its programs to firmware.",
 	]])
 	var mods: Array[String] = []
@@ -67,7 +67,7 @@ static func sections(db: CardDB) -> Array:
 		"This run only: recompile a program at a safehouse (+), or install a mod. Each program holds one mod. Safehouses let you tinker, the Fixer sells mods, and some signals install them.",
 		"Mods: " + " ".join(mods),
 		"Subroutines: after black sentries and the first Core, load one of %d subroutines. They run for the rest of the job." % int(db.balance.get("perk_choices", 3)),
-		"Permanent: rig upgrades (hideout) apply to every run. Firmware: once you've run a program enough, flash it and every copy joins your runs upgraded. Crew programs cost that crew's rep; Street and base programs cost %s." % Palette.w("dust").to_lower(),
+		"Permanent: rig upgrades (hideout) apply to every run. Firmware: once you've run a program enough, flash it and every copy joins your runs upgraded. Run it even more and you can bake a mod into its firmware too. Crew programs cost that crew's rep; Street and base programs cost %s." % Palette.w("dust").to_lower(),
 	]])
 	out.append(["Your library", [
 		"Your deck is built from programs you own. Before each run you load extra programs from your library.",

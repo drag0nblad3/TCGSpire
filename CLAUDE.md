@@ -26,7 +26,8 @@ Original design only: don't copy cards, names, characters or look from existing 
   `jobs.gd`: every run is a job for one client faction (data/factions.json, 6 crews in 3 rival pairs) run
   against targets (the rival, plus heat mod "extra_targets"): >= half the picks the client's, targets banned
   from picks and offers, targets' enemies (`data/enemies/factions.json`, encounters with "faction") fill
-  ~60% of fights/elites, pays the client's rep. `perks.gd`: scope "run" = subroutines (picked after
+  ~60% of fights/elites and 75% of bosses (12 crew bosses), pays the client's rep. Firmware tier 2 bakes a mod
+  into a card (`Profile.bake_firmware_mod`). `perks.gd`: scope "run" = subroutines (picked after
   elites/act boss), scope "rig" = permanent ranks bought with the perk's faction rep. Firmware
   (`Profile.flash_firmware`) permanently upgrades a card id: rep for faction cards, dust for Street/starter.
 - `ui/` presentation only, built in code (no .tscn besides main). `main.gd` is the screen flow;

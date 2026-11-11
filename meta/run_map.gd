@@ -13,7 +13,8 @@ var act := 1
 
 
 ## targets: crews the job runs against; their faction encounters replace a share
-## (balance.jobs.faction_encounter_share) of fights and elites. Bosses stay neutral.
+## (balance.jobs.faction_encounter_share) of fights and elites, and most bosses
+## (faction_boss_share).
 static func generate(db: CardDB, rng: GameRng, act: int = 1, targets: Array = []) -> RunMap:
 	var cfg: Dictionary = db.balance.get("map", {})
 	var m := RunMap.new()
@@ -95,7 +96,7 @@ func _add_link(node: Dictionary, to_id: int) -> void:
 
 
 func _assign_encounters(db: CardDB, rng: GameRng, targets: Array = []) -> void:
-	var share := float(db.balance.get("jobs", {}).get("faction_encounter_share", 0.6))
+	var jcfg: Dictionary = db.balance.get("jobs", {})
 	for node in nodes:
 		var kind := ""
 		match node["type"]:
@@ -122,6 +123,7 @@ func _assign_encounters(db: CardDB, rng: GameRng, targets: Array = []) -> void:
 					crew.append(id)
 		pool.sort()
 		crew.sort()
+		var share := float(jcfg.get("faction_boss_share" if kind == "boss" else "faction_encounter_share", 0.6))
 		if not crew.is_empty() and (pool.is_empty() or rng.chance(share)):
 			pool = crew
 		node["encounter"] = str(rng.pick(pool)) if not pool.is_empty() else ""

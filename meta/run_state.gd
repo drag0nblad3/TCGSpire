@@ -34,6 +34,8 @@ var perks: Array = []
 ## firmware cards (every copy of a firmware card joins the deck upgraded).
 var rig: Dictionary = {}
 var firmware: Dictionary = {}
+## Card id -> mod id baked into its firmware (every copy arrives with that mod).
+var firmware_mods: Dictionary = {}
 var mods_installed := 0
 ## The job: client faction ("" = freelance) and the crews it runs against.
 ## Targets are banned (picks and offers) and their enemies show up on the map.
@@ -54,6 +56,7 @@ static func start(db_in: CardDB, profile: Profile, picks: Array, seed_in: int, h
 	r.banned = targets.duplicate() if not targets.is_empty() else Jobs.banned(db_in, job_in)
 	r.rig = profile.rig.duplicate()
 	r.firmware = profile.firmware.duplicate()
+	r.firmware_mods = profile.firmware_mods.duplicate()
 	r.max_hp = int(db_in.balance.get("player", {}).get("max_hp", 60)) + int(r.heat_mod("max_hp", 0)) + int(r.perk_mod("max_hp"))
 	r.hp = r.max_hp
 	r.gold = int(db_in.balance.get("start_gold", 50)) + int(r.perk_mod("start_gold"))
@@ -210,7 +213,7 @@ func finish_combat(c: Combat) -> Dictionary:
 		rewards["healed"] = hp - before_hp
 	rewards["cards"] = reward_choices(kind)
 	if kind == "elite" or (kind == "boss" and act < total_acts()):
-		rewards["perks"] = perk_choices(int(db.balance.get("perk_choices", 3)), rng.fork("perks:%d" % floor_num))
+		rewards["perks"] = perk_choices(int(db.balance.get("perk_choices", 3)) + int(perk_mod("perk_choices")), rng.fork("perks:%d" % floor_num))
 	if kind == "elite":
 		elites_won += 1
 		rewards["talisman"] = roll_talisman("", rng.fork("elite_t:%d" % floor_num))
@@ -247,7 +250,10 @@ func reward_choices(kind: String = "normal") -> Array:
 
 ## New card for this run's deck (firmware cards arrive upgraded).
 func make_card(id: String, upgraded: bool = false) -> CardInstance:
-	return db.instance(id, upgraded or firmware.has(id))
+	var c := db.instance(id, upgraded or firmware.has(id))
+	if c != null and firmware_mods.has(id) and CardMods.can_apply(db.mod(firmware_mods[id]), c):
+		c.mod = db.mod(firmware_mods[id])
+	return c
 
 
 func add_card(id: String) -> void:
@@ -385,7 +391,12 @@ func make_shop() -> Dictionary:
 	var mp: Dictionary = cfg.get("mod_price", {})
 	for mid in mod_choices(int(cfg.get("mod_count", 2)), r):
 		mods.append({"id": mid, "price": int(int(mp.get(db.mods[mid]["rarity"], 60)) * off)})
-	return {"cards": cards, "talismans": tal, "mods": mods, "remove": remove_cost}
+	return {"cards": cards, "talismans": tal, "mods": mods, "remove": remove_price()}
+
+
+## What deleting a program costs right now (rig perks can discount it).
+func remove_price() -> int:
+	return maxi(remove_cost - int(perk_mod("remove_discount")), 0)
 
 
 ## Buys a shop mod and installs it on deck[deck_idx].
@@ -412,9 +423,9 @@ func buy(item: Dictionary, is_talisman: bool) -> bool:
 
 
 func remove_card(deck_idx: int) -> bool:
-	if gold < remove_cost or deck_idx < 0 or deck_idx >= deck.size():
+	if gold < remove_price() or deck_idx < 0 or deck_idx >= deck.size():
 		return false
-	gold -= remove_cost
+	gold -= remove_price()
 	deck.remove_at(deck_idx)
 	remove_cost += int(db.balance.get("shop", {}).get("remove_step", 25))
 	return true
