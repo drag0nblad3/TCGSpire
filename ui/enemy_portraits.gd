@@ -92,7 +92,41 @@ const GLITCH_OUTER := [
 const GLITCH_MIDDLE := [0, -13, 17, 0, 0, 0, 0, 0, 14, -10, 0, 0, 0, 0, 0, 16, -12, 0, 0, 0, 0, 0, 19, -9]
 
 
-static func draw(view: CanvasItem, center: Vector2, bounds: Vector2, profile: Array, time: float) -> void:
+# One shoulder silhouette and its illuminated inset, mirrored around the atlas center.
+# Burner stacks, Flux fins, Wetware growth, Null fragments, Chrome rails, Static antennae.
+const ELITE_GEAR := {
+	"ember": [[Vector2(23, 102), Vector2(19, 48), Vector2(12, 25), Vector2(34, 20), Vector2(50, 39), Vector2(57, 101)],
+		[Vector2(23, 31), Vector2(34, 29), Vector2(42, 40), Vector2(43, 57), Vector2(29, 56)]],
+	"tide": [[Vector2(30, 108), Vector2(9, 61), Vector2(9, 30), Vector2(26, 47), Vector2(37, 34), Vector2(51, 62), Vector2(69, 101)],
+		[Vector2(16, 47), Vector2(26, 59), Vector2(36, 49), Vector2(44, 67), Vector2(31, 77)]],
+	"bloom": [[Vector2(28, 107), Vector2(12, 77), Vector2(19, 56), Vector2(16, 35), Vector2(37, 41), Vector2(52, 20), Vector2(57, 49), Vector2(70, 61), Vector2(64, 103)],
+		[Vector2(29, 58), Vector2(48, 35), Vector2(49, 63), Vector2(59, 74), Vector2(38, 80)]],
+	"void": [[Vector2(12, 37), Vector2(39, 18), Vector2(53, 43), Vector2(27, 57), Vector2(41, 65), Vector2(60, 51), Vector2(69, 96), Vector2(32, 104), Vector2(19, 77), Vector2(24, 67)],
+		[Vector2(19, 38), Vector2(37, 26), Vector2(44, 40), Vector2(26, 49)]],
+	"chrome": [[Vector2(15, 103), Vector2(15, 46), Vector2(29, 32), Vector2(53, 32), Vector2(65, 45), Vector2(65, 103), Vector2(48, 112), Vector2(27, 111)],
+		[Vector2(22, 51), Vector2(32, 40), Vector2(50, 40), Vector2(57, 48), Vector2(49, 59), Vector2(30, 59)]],
+	"noise": [[Vector2(25, 104), Vector2(21, 62), Vector2(10, 23), Vector2(20, 16), Vector2(38, 46), Vector2(49, 38), Vector2(55, 44), Vector2(42, 66), Vector2(61, 104)],
+		[Vector2(17, 24), Vector2(21, 22), Vector2(35, 47), Vector2(31, 53)]],
+	"neutral": [[Vector2(22, 104), Vector2(14, 61), Vector2(21, 32), Vector2(42, 42), Vector2(55, 30), Vector2(63, 58), Vector2(61, 102)],
+		[Vector2(21, 48), Vector2(42, 56), Vector2(53, 45), Vector2(56, 52), Vector2(44, 65), Vector2(19, 56)]],
+}
+
+
+static func _draw_elite_gear(view: CanvasItem, origin: Vector2, scale: float, faction: String, accent: Color) -> void:
+	var layers: Array = ELITE_GEAR[faction]
+	for side in [1, -1]:
+		for i in layers.size():
+			var points := PackedVector2Array()
+			for point: Vector2 in layers[i]:
+				points.append(origin + Vector2(CELL.x * 0.5 + (point.x - CELL.x * 0.5) * side, point.y) * scale)
+			var fill := Color("#263247").lerp(accent, 0.20) if i == 0 else Color(accent, 0.92)
+			view.draw_colored_polygon(points, fill)
+			if i == 0:
+				points.append(points[0])
+				view.draw_polyline(points, accent, maxf(1.0, scale * 2.5), true)
+
+
+static func draw(view: CanvasItem, center: Vector2, bounds: Vector2, profile: Array, time: float, elite := false) -> void:
 	var faction: String = profile[0]
 	var slot: int = profile[1]
 	var effect: String = profile[2]
@@ -103,6 +137,8 @@ static func draw(view: CanvasItem, center: Vector2, bounds: Vector2, profile: Ar
 	var scale := minf(bounds.x / CELL.x, bounds.y / CELL.y)
 	var origin := center - CELL * scale * 0.5
 	var accent := Color(Themes.FACTIONS_DARK[faction])
+	if elite:
+		_draw_elite_gear(view, origin, scale, faction, accent)
 
 	if effect == "fracture":
 		_draw_glitch(view, atlas, source, origin, scale, accent, time)
