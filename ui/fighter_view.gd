@@ -35,6 +35,7 @@ var offline := false
 var boss_profile: Dictionary = {}
 var boss_large := false
 var boss_accent := Color.TRANSPARENT
+var enemy_faction := ""
 
 var _tap := Tap.new()
 
@@ -45,6 +46,8 @@ func setup(f: Fighter, c: Combat, kind_in: String) -> FighterView:
 	kind = kind_in
 	custom_minimum_size = Vector2(200, 274) if kind == "enemy" else (Vector2(120, 130) if kind == "unit" else Vector2(340, 70))
 	if kind == "enemy":
+		if combat != null and combat.db != null:
+			enemy_faction = str(combat.db.enemies.get(fighter.def_id, {}).get("faction", ""))
 		boss_profile = BossPresentation.PROFILES.get(fighter.def_id, {})
 		if not boss_profile.is_empty():
 			boss_accent = Palette.faction(boss_profile["faction"])
@@ -100,6 +103,8 @@ func _draw() -> void:
 	var font := Palette.font()
 	var w := size.x
 	var col := Palette.ENEMY if kind == "enemy" else (Palette.faction("ember") if kind == "unit" else Palette.TEXT)
+	if enemy_faction != "":
+		col = Palette.faction(enemy_faction)
 	var t := Time.get_ticks_msec() / 1000.0
 
 	var intent_items := intents()
@@ -162,7 +167,10 @@ func _draw() -> void:
 		y += 14
 	elif kind == "enemy":
 		var name_size := 24 if boss_large else 16
-		_draw_fitted(Palette.display(), fighter.name, Vector2(6, y + name_size), w - 12, name_size, Palette.TEXT)
+		var name_inset := 23.0 if enemy_faction != "" else 6.0
+		if enemy_faction != "":
+			Symbols.draw_on(self, Vector2(14, y + name_size * 0.58), 8, enemy_faction, col)
+		_draw_fitted(Palette.display(), fighter.name, Vector2(name_inset, y + name_size), w - 2.0 * name_inset, name_size, Palette.TEXT)
 		y += name_size + 7
 	else:
 		draw_string(Palette.display(), Vector2(12, 22), Palette.w("hero"), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Palette.TEXT)
