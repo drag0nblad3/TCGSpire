@@ -8,10 +8,6 @@ extends Control
 signal pressed(view: FighterView)
 signal inspected(view: FighterView)
 
-const PORTRAITS := {
-	"kiln_enforcer": preload("res://assets/combat/kiln_enforcer.svg"),
-	"burner_tagger": preload("res://assets/combat/burner_tagger.svg"),
-}
 const DRONE := preload("res://assets/combat/drone.svg")
 
 var fighter: Fighter
@@ -35,6 +31,8 @@ var offline := false
 var boss_profile: Dictionary = {}
 var boss_large := false
 var boss_accent := Color.TRANSPARENT
+var enemy_faction := ""
+var enemy_portrait: Array = []
 
 var _tap := Tap.new()
 
@@ -45,6 +43,9 @@ func setup(f: Fighter, c: Combat, kind_in: String) -> FighterView:
 	kind = kind_in
 	custom_minimum_size = Vector2(200, 274) if kind == "enemy" else (Vector2(120, 130) if kind == "unit" else Vector2(340, 70))
 	if kind == "enemy":
+		if combat != null and combat.db != null:
+			enemy_faction = str(combat.db.enemies.get(fighter.def_id, {}).get("faction", ""))
+		enemy_portrait = EnemyPortraits.ROSTER.get(fighter.def_id, [])
 		boss_profile = BossPresentation.PROFILES.get(fighter.def_id, {})
 		if not boss_profile.is_empty():
 			boss_accent = Palette.faction(boss_profile["faction"])
@@ -100,6 +101,8 @@ func _draw() -> void:
 	var font := Palette.font()
 	var w := size.x
 	var col := Palette.ENEMY if kind == "enemy" else (Palette.faction("ember") if kind == "unit" else Palette.TEXT)
+	if enemy_faction != "":
+		col = Palette.faction(enemy_faction)
 	var t := Time.get_ticks_msec() / 1000.0
 
 	var intent_items := intents()
@@ -137,10 +140,14 @@ func _draw() -> void:
 			draw_arc(c, halo, 0, TAU, 72, Color(heat, 0.18 + charge * 0.40), 2.0, true)
 			if charging:
 				draw_arc(c, halo + 6.0 + charge * 7.0, 0, TAU, 72, Color(heat, 0.30 - charge * 0.19), 2.0, true)
-		var portrait: Texture2D = boss_profile["portrait"] if boss else PORTRAITS.get(fighter.def_id)
+		var portrait: Texture2D = boss_profile["portrait"] if boss else null
 		if kind == "unit" and fighter.name == "Drone":
 			portrait = DRONE
-		if portrait != null:
+		if not enemy_portrait.is_empty() and not boss:
+			var width := w - 18.0
+			var height := art_height if fighter.def_id == "burner_tagger" else art_height * 0.94
+			EnemyPortraits.draw(self, c, Vector2(width, height), enemy_portrait, t + float(fighter.id.hash() % 29) * 0.11)
+		elif portrait != null:
 			var art_size := portrait.get_size()
 			art_size *= minf((w - 20.0) / art_size.x, art_height / art_size.y)
 			var tint := Palette.UPGRADED if kind == "unit" else Color.WHITE
@@ -162,7 +169,10 @@ func _draw() -> void:
 		y += 14
 	elif kind == "enemy":
 		var name_size := 24 if boss_large else 16
-		_draw_fitted(Palette.display(), fighter.name, Vector2(6, y + name_size), w - 12, name_size, Palette.TEXT)
+		var name_inset := 23.0 if enemy_faction != "" else 6.0
+		if enemy_faction != "":
+			Symbols.draw_on(self, Vector2(14, y + name_size * 0.58), 8, enemy_faction, col)
+		_draw_fitted(Palette.display(), fighter.name, Vector2(name_inset, y + name_size), w - 2.0 * name_inset, name_size, Palette.TEXT)
 		y += name_size + 7
 	else:
 		draw_string(Palette.display(), Vector2(12, 22), Palette.w("hero"), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Palette.TEXT)

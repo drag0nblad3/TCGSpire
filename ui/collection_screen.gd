@@ -58,7 +58,17 @@ func _ready() -> void:
 	for f in FILTERS:
 		if pick_mode and f in targets:
 			continue
-		filters.add_child(UiKit.button("All" if f == "all" else Lexicon.faction(f), func() -> void: _set_filter(f), Vector2(76, 44), 13))
+		var filter := UiKit.button("All" if f == "all" else Lexicon.faction(f), func() -> void: _set_filter(f), Vector2(76, 44), 13)
+		if f != "all":
+			filter.icon = Symbols.texture(f)
+			filter.add_theme_constant_override("icon_max_width", 14)
+			var accent := Palette.faction(f)
+			# Filter buttons retain their dark fill even in Parchment.
+			if Palette.CARD_BG.get_luminance() > 0.5:
+				accent = Color(Themes.FACTIONS_DARK[f])
+			for state in ["normal", "hover", "pressed", "focus"]:
+				filter.add_theme_color_override("icon_" + state + "_color", accent)
+		filters.add_child(filter)
 	v.add_child(filters)
 	var inner := UiKit.scroll(v)
 	_grid = UiKit.flow(10)

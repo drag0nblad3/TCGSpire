@@ -125,7 +125,7 @@ func _draw() -> void:
 	# Faction band + sigil "art".
 	var art := Rect2(rect.position + Vector2(8, 26), Vector2(SIZE.x - 16, 50))
 	var band := StyleBoxFlat.new()
-	band.bg_color = Color(fc, 0.16 * dim)
+	band.bg_color = Color(fc, 0.23 * dim)
 	band.set_corner_radius_all(maxi(Palette.RADIUS - 4, 0))
 	draw_style_box(band, art)
 	var t := Time.get_ticks_msec() / 1000.0 if d.rarity in ["rare", "mythic"] else 0.0
@@ -146,7 +146,7 @@ func _draw() -> void:
 	# Type line; a modded card shows its mod there instead.
 	if card.mod.is_empty():
 		draw_string(font, rect.position + Vector2(6, 88), "%s · %s" % [Lexicon.type_name(d.type), Lexicon.faction(d.faction)],
-			HORIZONTAL_ALIGNMENT_CENTER, SIZE.x - 12, 10, Color(Palette.CARD_TEXT_DIM, dim))
+			HORIZONTAL_ALIGNMENT_CENTER, SIZE.x - 12, 10, Color(fc, dim))
 	else:
 		draw_string(font, rect.position + Vector2(6, 88), "[ %s ]" % card.mod_name(),
 			HORIZONTAL_ALIGNMENT_CENTER, SIZE.x - 12, 10, Color(Palette.UPGRADED, dim))

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bgp5bufndnov"
-path="res://.godot/imported/burner_tagger.svg-3629e4139b77dfce32e81b46e2164193.ctex"
+uid="uid://ujo1x2pwlc7"
+path="res://.godot/imported/noise.svg-42eb2d57f6a49745bc260b3e035fc7bd.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/combat/burner_tagger.svg"
-dest_files=["res://.godot/imported/burner_tagger.svg-3629e4139b77dfce32e81b46e2164193.ctex"]
+source_file="res://assets/combat/regular/noise.svg"
+dest_files=["res://.godot/imported/noise.svg-42eb2d57f6a49745bc260b3e035fc7bd.ctex"]
 
 [params]
 

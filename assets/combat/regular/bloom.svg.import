@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bc8govkpttgx2"
-path="res://.godot/imported/kiln_enforcer.svg-7e595e5e4fef1c9b62cd1a19f702ae88.ctex"
+uid="uid://8g0rmtdjmu28"
+path="res://.godot/imported/bloom.svg-50345457f9d1c1b8e97ec9874c82c6f4.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/combat/kiln_enforcer.svg"
-dest_files=["res://.godot/imported/kiln_enforcer.svg-7e595e5e4fef1c9b62cd1a19f702ae88.ctex"]
+source_file="res://assets/combat/regular/bloom.svg"
+dest_files=["res://.godot/imported/bloom.svg-50345457f9d1c1b8e97ec9874c82c6f4.ctex"]
 
 [params]
 
