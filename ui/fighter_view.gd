@@ -8,6 +8,12 @@ extends Control
 signal pressed(view: FighterView)
 signal inspected(view: FighterView)
 
+const PORTRAITS := {
+	"kiln_enforcer": preload("res://assets/combat/kiln_enforcer.svg"),
+	"burner_tagger": preload("res://assets/combat/burner_tagger.svg"),
+}
+const DRONE := preload("res://assets/combat/drone.svg")
+
 var fighter: Fighter
 var combat: Combat
 var kind := "enemy"  # enemy | unit | player
@@ -20,9 +26,12 @@ var shown_hp := -1
 var shown_ward := -1
 ## Set while an action plays out so the intent doesn't change mid-animation.
 var frozen_intents = null
+var frozen_move := ""
 ## Draw offset (lunges, recoil) and white hit flash, both tweened by CombatScreen.
 var offset := Vector2.ZERO
 var flash := 0.0
+var firewall_flash := 0.0
+var offline := false
 
 var _tap := Tap.new()
 
@@ -49,6 +58,7 @@ func freeze() -> void:
 	shown_ward = fighter.ward
 	if kind == "enemy":
 		frozen_intents = Intents.of(combat, fighter)
+		frozen_move = str(fighter.current_move().get("name", ""))
 
 
 func intents() -> Array:
@@ -67,6 +77,7 @@ func _process(dt: float) -> void:
 	if _tap.poll_long():
 		inspected.emit(self)
 	flash = maxf(flash - dt * 4.0, 0.0)
+	firewall_flash = maxf(firewall_flash - dt * 4.0, 0.0)
 	queue_redraw()
 
 
@@ -79,57 +90,72 @@ func _draw() -> void:
 	var col := Palette.ENEMY if kind == "enemy" else (Palette.faction("ember") if kind == "unit" else Palette.TEXT)
 	var t := Time.get_ticks_msec() / 1000.0
 
+	var panel := StyleBoxFlat.new()
+	panel.bg_color = Color(Palette.PANEL_BG, 0.88 if kind == "player" else 0.72)
+	panel.border_color = Palette.ENERGY if targetable else Color(Palette.TEXT, 0.23)
+	panel.set_border_width_all(2 if targetable else 1)
+	panel.set_corner_radius_all(maxi(Palette.RADIUS, 6))
 	if targetable:
-		var glow := StyleBoxFlat.new()
-		glow.bg_color = Color(Palette.ENERGY, 0.08 + 0.05 * sin(t * 5.0))
-		glow.border_color = Palette.ENERGY
-		glow.set_border_width_all(2)
-		glow.set_corner_radius_all(maxi(Palette.RADIUS, 4))
-		draw_style_box(glow, Rect2(Vector2.ZERO, size))
-	elif kind == "player":
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = Palette.PANEL_BG
-		sb.set_corner_radius_all(maxi(Palette.RADIUS, 4))
-		draw_style_box(sb, Rect2(Vector2.ZERO, size))
+		panel.shadow_color = Color(Palette.ENERGY, 0.20 + 0.12 * sin(t * 5.0))
+		panel.shadow_size = 9
+	draw_style_box(panel, Rect2(Vector2.ZERO, size))
+	if targetable:
+		_draw_target()
 
 	var y := 4.0
 	if kind == "enemy":
 		y = _draw_intents(font, w, y)
 	if kind != "player":
-		var r := 54.0 if kind == "enemy" else 24.0
+		var art_height := 108.0 if kind == "enemy" else 47.0
+		var r := minf(art_height * 0.45, w * 0.34)
 		var bob := sin(t * 1.7 + fighter.id.hash() % 7) * 3.0
-		var c := Vector2(w / 2, y + r + 4 + bob)
-		Sigil.draw(self, c, r, fighter.def_id + fighter.name, col, t)
-		if flash > 0.0:
-			draw_circle(c, r * 1.1, Color(Palette.HP, flash * 0.5))
-		y += r * 2 + 12
+		var c := Vector2(w / 2, y + art_height * 0.5 + bob)
+		var portrait: Texture2D = PORTRAITS.get(fighter.def_id)
+		if kind == "unit" and fighter.name == "Drone":
+			portrait = DRONE
+		if portrait != null:
+			var art_size := portrait.get_size()
+			art_size *= minf((w - 20.0) / art_size.x, art_height / art_size.y)
+			var tint := Palette.UPGRADED if kind == "unit" else Color.WHITE
+			draw_texture_rect(portrait, Rect2(c - art_size * 0.5, art_size), false, tint)
+		else:
+			Sigil.draw(self, c, r, fighter.def_id + fighter.name, col, t)
+		if offline:
+			var diagonal := Vector2(r * 0.6, r * 0.6)
+			draw_line(c - diagonal, c + diagonal, Palette.HP, 3, true)
+			diagonal.x *= -1
+			draw_line(c - diagonal, c + diagonal, Palette.HP, 3, true)
+		if targetable:
+			_draw_fitted(font, "TARGET", Vector2(6, y + art_height + 4), w - 12, 12, Palette.ENERGY)
+		y += art_height + (16 if kind == "enemy" else 4)
 	if kind == "unit":
-		draw_string(font, Vector2(0, y + 10), fighter.name, HORIZONTAL_ALIGNMENT_CENTER, w, 12, Palette.TEXT)
+		draw_string(font, Vector2(4, y + 10), fighter.name, HORIZONTAL_ALIGNMENT_CENTER, w - 8, 12, Palette.TEXT)
 		y += 14
 	elif kind == "enemy":
-		draw_string(Palette.display(), Vector2(0, y + 12), fighter.name, HORIZONTAL_ALIGNMENT_CENTER, w, 15, Palette.TEXT)
-		y += 18
+		_draw_fitted(Palette.display(), fighter.name, Vector2(6, y + 15), w - 12, 16, Palette.TEXT)
+		y += 22
 	else:
 		draw_string(Palette.display(), Vector2(12, 22), Palette.w("hero"), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Palette.TEXT)
 		y = 30.0
 
 	# HP bar (+ Ward shield badge on its left).
-	var bar := Rect2(22, y, w - 34, 14)
+	var bar := Rect2(26, y, w - 38, 17)
 	draw_rect(bar, Color(Palette.CARD_BG, 0.85))
 	draw_rect(Rect2(bar.position, Vector2(bar.size.x * clampf(float(hp()) / fighter.max_hp, 0, 1), bar.size.y)), Palette.HP)
 	if flash > 0.0 and kind == "player":
 		draw_rect(bar.grow(3), Color(Palette.HP, flash * 0.6), false, 3)
 	draw_rect(bar, Color(Palette.TEXT, 0.4), false, 1)
-	draw_string(font, bar.position + Vector2(0, 12), "%d/%d" % [hp(), fighter.max_hp], HORIZONTAL_ALIGNMENT_CENTER, bar.size.x, 12, Palette.TEXT)
+	var hp_text := "%d/%d HP" % [hp(), fighter.max_hp]
+	_draw_fitted(font, hp_text, bar.position + Vector2(0, 13), bar.size.x, 14, Palette.TEXT)
 	if ward() > 0:
-		IntentIcon.draw(self, bar.position + Vector2(-10, 7), 13, "ward")
-		draw_string(font, bar.position + Vector2(-24, 12), str(ward()), HORIZONTAL_ALIGNMENT_CENTER, 28, 12, Palette.TEXT)
-	y += 20
+		IntentIcon.draw(self, bar.position + Vector2(-12, 8), 13, "ward")
+		draw_string(font, bar.position + Vector2(-26, 13), str(ward()), HORIZONTAL_ALIGNMENT_CENTER, 28, 12, Palette.TEXT)
+	y += 22
 
 	# Status chips.
 	var chips: Array = []
 	if kind == "unit":
-		chips.append(["ATK %d" % fighter.atk, Palette.ENERGY])
+		chips.append(["Offline", Palette.HP] if offline else ["ATK %d" % fighter.atk, Palette.ENERGY])
 	for k in fighter.statuses:
 		var debuff: bool = Statuses.DEFS.get(k, {}).get("debuff", false)
 		chips.append(["%s %d" % [Lexicon.status(str(k)), fighter.statuses[k]], Palette.ENEMY if debuff else Palette.UPGRADED])
@@ -151,39 +177,76 @@ func _draw() -> void:
 		draw_style_box(sb, Rect2(x, cy, cw, 16))
 		draw_string(font, Vector2(x + 5, cy + 12), chip[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Palette.TEXT)
 		x += cw + 4
+	_draw_impact()
 	draw_set_transform(Vector2.ZERO)
+
+
+func _draw_target() -> void:
+	var ink := Palette.ENERGY
+	for corner in [Vector2(7, 7), Vector2(size.x - 7, 7), Vector2(7, size.y - 7), size - Vector2(7, 7)]:
+		var dx := 12.0 if corner.x < size.x * 0.5 else -12.0
+		var dy := 12.0 if corner.y < size.y * 0.5 else -12.0
+		draw_polyline(PackedVector2Array([corner + Vector2(dx, 0), corner, corner + Vector2(0, dy)]), ink, 3, true)
+
+
+func _draw_impact() -> void:
+	if firewall_flash > 0.0:
+		var shield := Rect2(Vector2(4, 4), size - Vector2(8, 8))
+		var ink := Color(Palette.WARD, firewall_flash * 0.9)
+		for x in [shield.position.x, shield.end.x]:
+			draw_dashed_line(Vector2(x, shield.position.y), Vector2(x, shield.end.y), ink, 3.0, 7.0, true, true)
+		for y in [shield.position.y, shield.end.y]:
+			draw_dashed_line(Vector2(shield.position.x, y), Vector2(shield.end.x, y), ink, 3.0, 7.0, true, true)
+	if flash > 0.0:
+		var c := size * 0.5
+		var ink := Color(Palette.HP, flash * 0.8)
+		var slash := Vector2(minf(size.x * 0.28, 45.0), -minf(size.y * 0.21, 35.0))
+		draw_line(c - slash, c + slash, ink, 6.0 * flash, true)
+
+
+func _draw_fitted(font: Font, text: String, pos: Vector2, width: float, fs: int, col: Color) -> void:
+	while fs > 9 and font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > width:
+		fs -= 1
+	draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_CENTER, width, fs, col)
 
 
 func _draw_intents(font: Font, w: float, y: float) -> float:
 	var items := intents()
-	if items.is_empty() or fighter.is_dead():
-		return y + 44
-	# Big, bordered pill so the enemy's plan reads at a glance on a phone.
-	var fs := 21
-	var ir := 15.0
-	var widths: Array = []
-	var total := 0.0
-	for it in items:
-		var lw := font.get_string_size(IntentIcon.label(it), HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		widths.append(ir * 2 + 6 + lw + 10)
-		total += widths[-1]
-	var x := (w - total) / 2
+	if items.is_empty() or hp() <= 0:
+		return y + 59
 	var main_col := IntentIcon.color(items[0]["kind"])
-	var pulse := 0.55 + 0.25 * sin(Time.get_ticks_msec() / 1000.0 * 3.0)
+	for it in items:
+		if it["kind"] == "attack":
+			main_col = IntentIcon.color("attack")
+			break
 	var pill := StyleBoxFlat.new()
-	pill.bg_color = Color(Palette.CARD_BG, 0.92)
-	pill.border_color = Color(main_col, pulse)
-	pill.set_border_width_all(2)
-	pill.set_corner_radius_all(19)
-	pill.shadow_color = Color(main_col, 0.35)
-	pill.shadow_size = 6
-	draw_style_box(pill, Rect2(x - 8, y, total + 16, 40))
-	for i in items.size():
-		var it: Dictionary = items[i]
-		IntentIcon.draw(self, Vector2(x + ir, y + 20), ir, it["kind"])
-		draw_string(Palette.display(), Vector2(x + ir * 2 + 6, y + 28), IntentIcon.label(it), HORIZONTAL_ALIGNMENT_LEFT, -1, fs, IntentIcon.color(it["kind"]))
-		x += widths[i]
-	return y + 44
+	pill.bg_color = Palette.CARD_BG.lerp(main_col, 0.12)
+	pill.border_color = Color(main_col, 0.68)
+	pill.set_border_width_all(1)
+	pill.set_corner_radius_all(6)
+	draw_style_box(pill, Rect2(8, y + 3, w - 16, 51))
+
+	# Use the engine's values, including hits and area, while keeping wide combinations inside the tile.
+	var slot := (w - 20) / items.size()
+	var x := 10.0
+	for it in items:
+		var attack: bool = it["kind"] == "attack"
+		var label := IntentIcon.label(it)
+		var r := clampf(slot * 0.17, 3.0, 10.0)
+		var fs := 21 if attack else 14
+		var icon_width := 2.0 * r + 3.0 if label != "" else 0.0
+		var text_width := maxf(1.0, slot - icon_width)
+		while fs > 9 and font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > text_width:
+			fs -= 1
+		var label_width := minf(text_width, font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x)
+		var start := x + (slot - icon_width - label_width) * 0.5
+		IntentIcon.draw(self, Vector2(start + r if icon_width > 0 else x + slot * 0.5, y + 21), r, it["kind"])
+		if label != "":
+			draw_string(font, Vector2(start + icon_width, y + 28), label, HORIZONTAL_ALIGNMENT_LEFT, text_width, fs, Palette.TEXT)
+		x += slot
+	var move := frozen_move if frozen_intents != null else str(fighter.current_move().get("name", ""))
+	_draw_fitted(font, move, Vector2(12, y + 46), w - 24, 13, Palette.TEXT)
+	return y + 59
 
 
 ## Text for the inspect popup.

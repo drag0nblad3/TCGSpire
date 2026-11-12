@@ -27,7 +27,10 @@ func _ready() -> void:
 	add_child(top)
 	if run.job != "":
 		var against: Array = run.banned.map(func(x: String) -> String: return Lexicon.faction(x))
-		add_child(UiKit.label("Job for %s  ·  against %s" % [Jobs.info(run.db, run.job).get("client", run.job), " + ".join(against)], 14, Palette.faction(run.job)))
+		var job_row := UiKit.hbox(8)
+		job_row.add_child(Symbols.badge(run.job, 28))
+		add_child(job_row)
+		job_row.add_child(UiKit.label("Job for %s  ·  against %s" % [Jobs.info(run.db, run.job).get("client", run.job), " + ".join(against)], 14, Palette.faction(run.job)))
 	if not run.talismans.is_empty():
 		var row := UiKit.hbox(6)
 		for tid in run.talismans:

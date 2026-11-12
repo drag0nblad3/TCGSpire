@@ -43,9 +43,9 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 				c.attack(src, t, amt)
 		"ward":
 			for t in targets(c, e, src, target, "self"):
-				var w := int(n * 0.75) if t.status("frail") > 0 else n
-				t.ward += w
-				c.emit("ward", {"target": t.id, "amount": w, "ward": t.ward})
+				var gain := ward_gain(t, n)
+				t.ward += gain
+				c.emit("ward", {"target": t.id, "amount": gain, "ward": t.ward})
 		"heal":
 			for t in targets(c, e, src, target, "self"):
 				var before: int = t.hp
@@ -103,6 +103,10 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 				_lose_hp(c, t, n, src)
 		_:
 			push_error("Unknown effect op: %s" % op)
+
+
+static func ward_gain(f: Fighter, amount: int) -> int:
+	return int(amount * 0.75) if f.status("frail") > 0 else amount
 
 
 ## HP loss ignores Ward.

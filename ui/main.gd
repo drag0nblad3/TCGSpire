@@ -53,6 +53,7 @@ func _show(node: Control) -> void:
 	if _screen != null:
 		_screen.queue_free()
 	_screen = node
+	_bg_mat.set_shader_parameter("glass_intensity", 1.45 if node is CombatScreen else 1.0)
 	add_child(node)
 
 
@@ -97,11 +98,31 @@ func _show_jobs(heat: int) -> void:
 		var f: String = offer["client"]
 		var j := Jobs.info(db, f)
 		var against: Array = offer["targets"].map(func(x: String) -> String: return Lexicon.faction(x))
-		var b := UiKit.button("%s  (%s)\n%s\nLoad %d+ %s programs. Against: %s (banned). Pays %s (you have %d)." % [
-			j.get("client", f), Lexicon.faction(f), j.get("job", ""), Jobs.required(db, f, n), Lexicon.faction(f),
-			" + ".join(against), Jobs.rep_name(db, f), profile.rep_of(f)],
-			_show_picker.bind(heat, f, offer["targets"]), Vector2(620, 104), 15)
-		b.add_theme_color_override("font_color", Palette.faction(f))
+		var b := UiKit.button("", _show_picker.bind(heat, f, offer["targets"]), Vector2(640, 144), 15)
+		var margin := MarginContainer.new()
+		margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		for side in ["left", "right", "top", "bottom"]:
+			margin.add_theme_constant_override("margin_" + side, 12)
+		b.add_child(margin)
+		var row := UiKit.hbox(16)
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		margin.add_child(row)
+		row.add_child(Symbols.badge(f, 54))
+		var copy := UiKit.vbox(4)
+		copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		copy.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(copy)
+		var lines := [
+			[j.get("client", f) + "  /  " + Lexicon.faction(f), 19, Palette.faction(f)],
+			[j.get("job", ""), 15, Palette.TEXT],
+			["Load %d+ %s programs · Against: %s (banned)" % [Jobs.required(db, f, n), Lexicon.faction(f), " + ".join(against)], 14, Palette.TEXT_DIM],
+			["Pays %s · You have %d" % [Jobs.rep_name(db, f), profile.rep_of(f)], 14, Palette.faction(f)]]
+		for line in lines:
+			var label := UiKit.label(line[0], line[1], line[2])
+			label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+			copy.add_child(label)
 		v.add_child(b)
 	v.add_child(UiKit.button("Back", show_hub, Vector2(200, 56)))
 	_show(parts[0])
@@ -202,10 +223,10 @@ func _on_combat_finished(_won: bool) -> void:
 		run.add_talisman(rewards["talisman"])
 		lines.append("Recovered implant: %s" % db.talismans[rewards["talisman"]]["name"])
 		tals.append(rewards["talisman"])
-	_show_reward(lines, tals, rewards["cards"], rewards.get("perks", []))
+	_show_reward(lines, tals, rewards["cards"], rewards.get("perks", []), rewards["kind"])
 
 
-func _show_reward(lines: Array, tals: Array, choices: Array, perks: Array = []) -> void:
+func _show_reward(lines: Array, tals: Array, choices: Array, perks: Array = [], kind: String = "") -> void:
 	var next := show_map if perks.is_empty() else _show_perk_pick.bind(perks)
 	var parts := UiKit.screen(20)
 	var v: VBoxContainer = parts[1]
@@ -223,6 +244,13 @@ func _show_reward(lines: Array, tals: Array, choices: Array, perks: Array = []) 
 			next.call())
 		row.add_child(cv)
 	v.add_child(row)
+	if kind != "" and not choices.is_empty() and run.reward_rerolls_left > 0:
+		v.add_child(UiKit.button("Reroll programs (%d left)" % run.reward_rerolls_left, func() -> void:
+			var replacement := run.reroll_reward(kind, choices)
+			if replacement.is_empty():
+				UiKit.toast(self, "No alternate program set available.")
+			else:
+				_show_reward(lines, tals, replacement, perks, kind)))
 	v.add_child(UiKit.button("Skip", next))
 	_show(parts[0])
 
@@ -366,6 +394,11 @@ func _show_event(ev: Dictionary) -> void:
 			_show_message(ev["title"], lines if not lines.is_empty() else ["Nothing happens."], gained), Vector2(520, 72), 16)
 		b.disabled = not run.can_choose(ch)
 		v.add_child(b)
+	if run.event_rerolls_left > 0 and db.events.size() > 1:
+		v.add_child(UiKit.button("Reroll Signal (%d left)" % run.event_rerolls_left, func() -> void:
+			var replacement := run.reroll_event(ev["id"])
+			if not replacement.is_empty():
+				_show_event(replacement)))
 	_show(parts[0])
 
 

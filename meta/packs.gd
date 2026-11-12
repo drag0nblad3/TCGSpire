@@ -16,7 +16,7 @@ static func open(db: CardDB, rng: GameRng) -> Array:
 
 ## Distinct card choices. kind = normal | elite | boss | shop (balance.reward).
 ## extra adds choices (perks); banned factions (the job's rivals) are never offered.
-static func reward_choices(db: CardDB, rng: GameRng, kind: String = "normal", extra: int = 0, banned: Array = []) -> Array:
+static func reward_choices(db: CardDB, rng: GameRng, kind: String = "normal", extra: int = 0, banned: Array = [], excluded: Array = []) -> Array:
 	var cfg: Dictionary = db.balance.get("reward", {})
 	var weights: Dictionary = cfg.get("weights", {}).get(kind, {"common": 1})
 	var count := int(cfg.get("shop_count", 5)) if kind == "shop" else int(cfg.get("choices", 3)) + extra
@@ -24,25 +24,25 @@ static func reward_choices(db: CardDB, rng: GameRng, kind: String = "normal", ex
 	var guard := 0
 	while out.size() < count and guard < 100:
 		guard += 1
-		var id := roll_card(db, rng, weights, banned)
+		var id := roll_card(db, rng, weights, banned, excluded)
 		if id != "" and id not in out:
 			out.append(id)
 	return out
 
 
-static func roll_card(db: CardDB, rng: GameRng, weights: Dictionary, banned: Array = []) -> String:
+static func roll_card(db: CardDB, rng: GameRng, weights: Dictionary, banned: Array = [], excluded: Array = []) -> String:
 	# Drop rarities with no cards so a roll never comes up empty.
 	var usable := {}
 	for r in weights:
-		if not _pool(db, r, banned).is_empty():
+		if not _pool(db, r, banned, excluded).is_empty():
 			usable[r] = weights[r]
 	if usable.is_empty():
 		return ""
 	var rarity: String = rng.weighted(usable)
-	return rng.pick(_pool(db, rarity, banned))
+	return rng.pick(_pool(db, rarity, banned, excluded))
 
 
-static func _pool(db: CardDB, rarity: String, banned: Array = []) -> Array:
-	var ids := db.ids_where(func(c: CardDef) -> bool: return c.rarity == rarity and rarity not in ["starter", "curse"] and c.faction not in banned)
+static func _pool(db: CardDB, rarity: String, banned: Array = [], excluded: Array = []) -> Array:
+	var ids := db.ids_where(func(c: CardDef) -> bool: return c.rarity == rarity and rarity not in ["starter", "curse"] and c.faction not in banned and c.id not in excluded)
 	ids.sort()
 	return ids

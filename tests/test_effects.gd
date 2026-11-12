@@ -80,6 +80,20 @@ func test_damage_per_ward() -> void:
 	eq(c.enemies[0].hp, 21)
 
 
+func test_bot_counts_firewall_granted_by_data_flood_against_all_enemies() -> void:
+	for enemy in c.enemies:
+		enemy.moves = []
+	c.player.add_status("frail", 1)
+	var idx := give(c, "crashing_wave")
+	# 4 Firewall with Fragmented, then 4 damage to each enemy.
+	var expected := (4.0 * 0.08 + 8.0) / 2.0 + 0.01
+	check(is_equal_approx(Bot.score(c, c.hand[idx]), expected), "score uses Firewall from this card")
+	eq(c.player.ward, 0, "scoring leaves combat state untouched")
+	c.play_card(idx)
+	eq(c.enemies[0].hp, 26)
+	eq(c.enemies[1].hp, 26)
+
+
 func test_summon_and_board_limit() -> void:
 	for i in 3:
 		check(c.play_card(give(c, "sparring_dummy")), "summon %d" % i)

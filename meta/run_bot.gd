@@ -26,6 +26,8 @@ static func play(db: CardDB, profile: Profile, seed_in: int, heat: int = 0, job:
 					died_to = node["encounter"]
 					break
 				var pick := _pick_reward(run, rewards["cards"])
+				if pick == "" and run.reward_rerolls_left > 0:
+					pick = _pick_reward(run, run.reroll_reward(rewards["kind"], rewards["cards"]))
 				if pick != "":
 					run.add_card(pick)
 				run.add_talisman(rewards["talisman"])
@@ -55,19 +57,13 @@ static func play(db: CardDB, profile: Profile, seed_in: int, heat: int = 0, job:
 						run.buy_mod(item, _mod_target(run, item["id"]))
 			"event":
 				var ev := run.pick_event()
-				var best_ch: Dictionary = {}
-				var best_v := -999.0
-				for ch in ev["choices"]:
-					if not run.can_choose(ch):
-						continue
-					var v := 0.0
-					for o in ch.get("outcomes", []):
-						v += _outcome_value(run, o)
-					if v > best_v:
-						best_v = v
-						best_ch = ch
-				if not best_ch.is_empty():
-					run.choose(best_ch)
+				var choice := _pick_event_choice(run, ev)
+				if choice["value"] <= 0.0 and run.event_rerolls_left > 0:
+					var replacement := run.reroll_event(ev["id"])
+					if not replacement.is_empty():
+						choice = _pick_event_choice(run, replacement)
+				if not choice["choice"].is_empty():
+					run.choose(choice["choice"])
 			"treasure":
 				run.add_talisman(run.roll_talisman("", run.rng.fork("treasure:%d" % run.floor_num)))
 	return {
@@ -198,6 +194,21 @@ static func _pick_reward(run: RunState, ids: Array) -> String:
 			best_v = v
 			best = id
 	return best if best != "" and best_v >= _deck_bar(run) * 0.7 else ""
+
+
+static func _pick_event_choice(run: RunState, ev: Dictionary) -> Dictionary:
+	var best_ch: Dictionary = {}
+	var best_v := -999.0
+	for ch in ev["choices"]:
+		if not run.can_choose(ch):
+			continue
+		var v := 0.0
+		for o in ch.get("outcomes", []):
+			v += _outcome_value(run, o)
+		if v > best_v:
+			best_v = v
+			best_ch = ch
+	return {"choice": best_ch, "value": best_v}
 
 
 ## Event outcomes in rough "HP-equivalent" points.

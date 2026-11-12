@@ -35,6 +35,7 @@ const KEYWORD := {
 	"unplayable": "Locked",
 	"innate": "Preload",
 	"ethereal": "Volatile",
+	"once_per_turn": "Once per turn",
 }
 
 const FACTION := {"neutral": "Street", "ember": "Burner", "tide": "Flux", "bloom": "Wetware", "void": "Null", "chrome": "Chrome", "noise": "Static"}

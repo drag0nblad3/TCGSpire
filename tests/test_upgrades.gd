@@ -177,6 +177,66 @@ func test_rig_costs_rep_and_refunds() -> void:
 	eq(profile.rig, {})
 
 
+func test_v4_rig_keeps_original_refund_value() -> void:
+	var old := {
+		"version": 4,
+		"rep": {"bloom": 7, "ember": 10, "tide": 11},
+		"rig": {"chassis": 2, "thermal_runaway": 1},
+		"firmware": {"kindle": 2},
+	}
+	var p := Profile.from_dict(old, db)
+	eq(p.rep, old["rep"], "prices match v4")
+	eq(p.rig, old["rig"], "keeps purchased ranks")
+	eq(p.firmware, {"kindle": 2}, "keeps firmware")
+	var reloaded := Profile.from_dict(p.to_dict(), db)
+	eq(reloaded.rep, p.rep, "does not credit twice")
+	reloaded.reset_rig(db)
+	eq(reloaded.rep, {"bloom": 127, "ember": 510, "tide": 11}, "original total rep restored")
+
+
+func test_v5_rig_refunds_discounted_ranks_and_new_purchases_at_price_paid() -> void:
+	var p := Profile.from_dict({
+		"version": 5,
+		"rep": {"bloom": 200, "ember": 10},
+		"rig": {"chassis": 2, "thermal_runaway": 1},
+	}, db)
+	check(p.buy_rig(db, "chassis"), "buys rank three at the restored price")
+	eq(p.rep_of("bloom"), 20, "new rank costs 180")
+	var reloaded := Profile.from_dict(p.to_dict(), db)
+	reloaded.reset_rig(db)
+	eq(reloaded.rep, {"bloom": 275, "ember": 310}, "refunds 75 + 180 and 300")
+	reloaded.reset_rig(db)
+	eq(reloaded.rep, {"bloom": 275, "ember": 310}, "refund adjustment applies once")
+
+
+func test_moved_rig_perks_keep_ranks_and_refunds_in_the_original_faction() -> void:
+	for version in [5, 6]:
+		var p := Profile.from_dict({
+			"version": version,
+			"rig": {"contract_killer": 2, "crowd_funding": 1, "dividend_plan": 3},
+		}, db)
+		eq(p.rig, {"signal_override": 2, "contract_killer": 1, "reward_reroute": 3})
+		eq(Profile.from_dict(p.to_dict(), db).rig, p.rig, "migration applies once")
+		p.reset_rig(db)
+		eq(p.rep, {"ember": 50, "noise": 10, "tide": 195} if version == 5 else
+			{"ember": 80, "noise": 20, "tide": 300}, "refunds match the prices paid")
+
+
+func test_rig_rerolls_replace_choices_and_spend_only_their_own_charge() -> void:
+	profile.rig = {"signal_override": 1, "reward_reroute": 1}
+	var r := _run(17, "ember")
+	var original := r.reward_choices("elite")
+	var replacement := r.reroll_reward("elite", original)
+	eq(replacement.size(), original.size())
+	check(replacement.all(func(id: String) -> bool: return id not in original and db.card(id).faction not in r.banned), "reroll offers different legal cards")
+	eq(r.reroll_reward("elite", replacement), [], "reward charge exhausted")
+	var signal_id: String = r.pick_event()["id"]
+	var signal_roll := r.reroll_event(signal_id)
+	check(not signal_roll.is_empty() and signal_roll["id"] != signal_id, "reroll offers a different Signal")
+	eq(r.reroll_event(signal_roll["id"]), {}, "Signal charge exhausted")
+	eq(_run(17, "ember").reroll_reward("elite", original), replacement, "reward rerolls are seeded")
+
+
 func test_rig_start_mods_and_perks() -> void:
 	profile.rig = {"mod_cache": 1, "seed_subroutine": 1}
 	var r := _run()
@@ -329,7 +389,7 @@ func test_new_perk_keys() -> void:
 	r.floor_num = 10
 	var base := RunState.start(db, Profile.new_player(db), RunState.default_picks(db, profile, "ember"), 1, 0, "ember")
 	base.floor_num = 10
-	eq(Jobs.rep_reward(db, r), int(Jobs.rep_reward(db, base) * 1.3), "rep bonus")
+	eq(Jobs.rep_reward(db, r), int(Jobs.rep_reward(db, base) * 1.15), "rep bonus")
 	var elite := ""
 	for id in db.encounters:
 		if db.encounters[id].get("kind", "") == "elite" and not db.encounters[id].has("faction"):
@@ -431,11 +491,58 @@ func test_capstone_needs_crew_maxed_and_changes_combat() -> void:
 				pass
 	check(profile.buy_rig(db, "thermal_runaway"), "unlocked")
 	var r := RunState.start(db, profile, [], 1)
+	r.perks.clear() # Isolate the capstone from randomly installed start perks.
 	var c := r.start_combat(db.encounters.keys()[0])
-	eq(c.max_energy, int(db.balance["player"]["max_energy"]) + 1, "+1 RAM")
+	var base_ram := int(db.balance["player"]["max_energy"])
+	c.start()
+	for turn_index in range(1, 5):
+		eq(c.energy, base_ram + (1 if turn_index <= 3 else 0), "Thermal Runaway turn %d" % turn_index)
+		c._start_player_turn()
+
+
+
+func test_liquidity_engine_preserves_thirty_percent_firewall_and_extra_draw() -> void:
+	profile.rig = {"liquidity_engine": 1, "boot_firewall": 3}
+	var r := _run()
+	var c := r.start_combat(db.encounters.keys()[0])
+	for enemy in c.enemies:
+		enemy.moves = []
+	c.start()
+	eq(c.hand.size(), int(db.balance["player"]["hand_size"]) + 1, "extra draw")
+	eq(c.player.ward, 9, "Boot Firewall grants its full opening amount")
+	c.end_turn()
+	eq(c.player.ward, 3, "retained Firewall rounds up")
+	var starts := c.events.filter(func(e: Dictionary) -> bool: return e["t"] == "turn_start")
+	eq(starts.back()["ward"], 3, "turn animation shows retained Firewall")
+	c.player.ward = 10
+	c.end_turn()
+	eq(c.player.ward, 3, "30% of 10")
+	c.player.add_status("fortify", 1)
+	c.end_turn()
+	eq(c.player.ward, 3, "Hardened keeps all Firewall")
+
+
+func test_hive_link_explodes_once_for_each_destroyed_daemon() -> void:
 	profile.rig["hive_link"] = 1
-	var r2 := RunState.start(db, profile, [], 1)
-	var c2 := r2.start_combat(db.encounters.keys()[0])
-	c2.start()
-	eq(c2.board_slots, int(db.balance["board_slots"]) + 1, "+1 daemon slot")
-	eq(c2.units.size(), 1, "capstone trigger summons a drone")
+	var c := _run().start_combat("mites")
+	c.start()
+	eq(c.units.size(), 0, "Hive Link starts with an empty board")
+	eq(c.board_slots, int(db.balance["board_slots"]), "normal board capacity")
+	c.summon("Drone", 1, 2)
+	c.summon("Backup", 1, 8)
+	var drone: Fighter = c.units[0]
+	var first: Fighter = c.enemies[0]
+	var second: Fighter = c.enemies[1]
+	var blast := int(db.perks["hive_link"]["mods"]["daemon_death_damage"])
+	first.hp = 30
+	first.ward = 2
+	second.hp = 30
+	c.deal_damage(drone, 1)
+	eq(second.hp, 30, "surviving damage doesn't trigger the blast")
+	c.deal_damage(drone, 1)
+	eq(first.hp, 32 - blast, "enemy Firewall blocks part of the blast")
+	eq(second.hp, 30 - blast, "blast hits every living enemy")
+	eq(c.player.hp, c.player.max_hp, "blast leaves the player unharmed")
+	eq(c.units[0].hp, 8, "blast leaves other daemons unharmed")
+	c.deal_damage(drone, 1)
+	eq(second.hp, 30 - blast, "a dead daemon can't explode twice")

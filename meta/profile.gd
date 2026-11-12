@@ -11,7 +11,7 @@ extends RefCounted
 ##   rig       -> rep buys ranks of that faction's rig upgrades (permanent perks)
 ##   firmware  -> rep (dust for Street/starter cards) permanently upgrades a card
 
-const SAVE_VERSION := 4
+const SAVE_VERSION := 7
 const DEFAULT_PATH := "user://profile.json"
 
 var collection := Collection.new()
@@ -29,6 +29,8 @@ var settings: Dictionary = {}
 var rep: Dictionary = {}
 ## Rig upgrades (permanent perks): perk id -> rank.
 var rig: Dictionary = {}
+## Subtracts the v5 price difference on the first respec, by faction.
+var _rig_refund_adjustment: Dictionary = {}
 ## Firmware cards: card id -> true. Every copy starts runs upgraded.
 var firmware: Dictionary = {}
 ## Firmware tier 2: card id -> mod id baked in (needs firmware + mastery tier 2).
@@ -175,7 +177,7 @@ func rep_of(faction: String) -> int:
 	return int(rep.get(faction, 0))
 
 
-## Rep price of the next rank (base cost x next rank).
+## Rep price of the next rank.
 func rig_cost(db: CardDB, id: String) -> int:
 	return rank_cost(db, id, int(rig.get(id, 0)) + 1)
 
@@ -221,6 +223,9 @@ func reset_rig(db: CardDB) -> void:
 		var f := str(p.get("faction", ""))
 		for k in range(1, int(rig[id]) + 1):
 			rep[f] = rep_of(f) + rank_cost(db, id, k)
+	for f in _rig_refund_adjustment:
+		rep[f] = rep_of(f) - int(_rig_refund_adjustment[f])
+	_rig_refund_adjustment.clear()
 	rig = {}
 
 
@@ -353,13 +358,14 @@ func to_dict() -> Dictionary:
 		"settings": settings,
 		"rep": rep,
 		"rig": rig,
+		"rig_refund_adjustment": _rig_refund_adjustment,
 		"firmware": firmware,
 		"firmware_mods": firmware_mods,
 	}
 
 
-static func from_dict(d: Dictionary) -> Profile:
-	d = _migrate(d)
+static func from_dict(d: Dictionary, db: CardDB = null) -> Profile:
+	d = _migrate(d.duplicate(), db)
 	var p := Profile.new()
 	p.collection = Collection.from_dict(d.get("collection", {}))
 	p.unlocks = d.get("unlocks", {})
@@ -376,6 +382,7 @@ static func from_dict(d: Dictionary) -> Profile:
 		p.rep[k] = int(d["rep"][k])
 	for k in d.get("rig", {}):
 		p.rig[k] = int(d["rig"][k])
+	p._rig_refund_adjustment = d.get("rig_refund_adjustment", {}).duplicate()
 	var fw: Variant = d.get("firmware", {})
 	for id in fw:
 		p.firmware[str(id)] = int(fw[id]) if fw is Dictionary else 1
@@ -384,7 +391,7 @@ static func from_dict(d: Dictionary) -> Profile:
 	return p
 
 
-static func _migrate(d: Dictionary) -> Dictionary:
+static func _migrate(d: Dictionary, db: CardDB) -> Dictionary:
 	var v := int(d.get("version", 1))
 	if v < 2:
 		# v2 added progression. Credit old players some XP for runs already played.
@@ -404,9 +411,45 @@ static func _migrate(d: Dictionary) -> Dictionary:
 		for id in d.get("firmware", []):
 			fw[str(id)] = 1
 		d["firmware"] = fw
-		v = 4
+	if v < 7:
+		# Keep the rank and refund value in the faction that sold it.
+		var prior: Dictionary = d.get("rig", {})
+		var rig_names := {
+			"contract_killer": "signal_override",
+			"crowd_funding": "contract_killer",
+			"dividend_plan": "reward_reroute",
+		}
+		var updated := {}
+		for id in prior:
+			updated[rig_names.get(id, id)] = prior[id]
+		d["rig"] = updated
+	if v == 5 and not d.get("rig", {}).is_empty():
+		_adjust_v5_rig_refunds(d, db if db != null else CardDB.shared())
+	if v < 7:
+		v = 7
 	d["version"] = v
 	return d
+
+
+## Existing v5 ranks carry their discounted refund value. New ranks use v6 prices.
+static func _adjust_v5_rig_refunds(d: Dictionary, db: CardDB) -> void:
+	var adjustment := {}
+	var v5_multipliers := [1, 4, 8]
+	var v5_capstones := {
+		"thermal_runaway": 300, "liquidity_engine": 225, "regrowth_protocol": 275,
+		"absolute_zero": 275, "hive_link": 225, "dead_air_protocol": 225,
+	}
+	for id in d["rig"]:
+		var perk: Dictionary = db.perks.get(id, {})
+		if perk.get("scope", "") != "rig":
+			continue
+		var faction: String = perk["faction"]
+		var old_base := int(v5_capstones.get(id, perk["cost"]))
+		var ranks := clampi(int(d["rig"][id]), 0, mini(int(perk["max_rank"]), v5_multipliers.size()))
+		for rank in range(1, ranks + 1):
+			var old_price := old_base * int(v5_multipliers[rank - 1])
+			adjustment[faction] = int(adjustment.get(faction, 0)) + rank_cost(db, id, rank) - old_price
+	d["rig_refund_adjustment"] = adjustment
 
 
 func save(path: String = DEFAULT_PATH) -> Error:
@@ -425,6 +468,6 @@ static func load_or_new(db: CardDB, path: String = DEFAULT_PATH) -> Profile:
 		return new_player(db)
 	var v: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
 	if v is Dictionary:
-		return from_dict(v)
+		return from_dict(v, db)
 	push_error("Corrupt profile at %s, starting fresh" % path)
 	return new_player(db)

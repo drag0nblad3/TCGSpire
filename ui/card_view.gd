@@ -1,6 +1,6 @@
 class_name CardView
 extends Control
-## Draws a card entirely in code: frame, faction band, procedural sigil, cost,
+## Draws a card entirely in code: frame, faction band, program icon, cost,
 ## name and generated rules text. Rare+ and foil cards get the holo shader.
 
 signal pressed(view: CardView)
@@ -8,6 +8,8 @@ signal pressed(view: CardView)
 signal inspected(view: CardView)
 
 const SIZE := Vector2(128, 184)
+const DRONE := preload("res://assets/combat/drone.svg")
+const TYPE_GLYPH := {"attack": "attack", "skill": "ward", "power": "power"}
 const HOLO := preload("res://shaders/holo.gdshader")
 
 var card: CardInstance
@@ -109,7 +111,7 @@ func _draw() -> void:
 		_draw_circuit(rect, Color(fc if not selected else Palette.ENERGY, dim))
 
 	# Name (shrinks to fit) + cost orb.
-	var name_w := SIZE.x - 36
+	var name_w := SIZE.x - 48
 	var name_fs := 13
 	while name_fs > 8 and title_font.get_string_size(card.display_name(), HORIZONTAL_ALIGNMENT_LEFT, -1, name_fs).x > name_w:
 		name_fs -= 1
@@ -118,6 +120,7 @@ func _draw() -> void:
 	var orb := rect.position + Vector2(15, 14)
 	draw_circle(orb, 11, Color(Palette.ENERGY, dim))
 	draw_string(title_font, orb + Vector2(-11, 5), str(card.cost()), HORIZONTAL_ALIGNMENT_CENTER, 22, 14, Palette.CARD_BG)
+	Symbols.draw_on(self, rect.position + Vector2(SIZE.x - 11, 14), 8, d.faction, Color(fc, dim))
 
 	# Faction band + sigil "art".
 	var art := Rect2(rect.position + Vector2(8, 26), Vector2(SIZE.x - 16, 50))
@@ -129,7 +132,15 @@ func _draw() -> void:
 	if Palette.FRAME == "circuit":
 		for yy in range(int(art.position.y) + 2, int(art.end.y), 3):
 			draw_line(Vector2(art.position.x, yy), Vector2(art.end.x, yy), Color(fc, 0.07 * dim), 1.0)
-	Sigil.draw(self, art.get_center(), 19.0, d.id, Color(fc, dim), t)
+	var glyph_ink := Color(Palette.CARD_TEXT.lerp(fc, 0.55), dim)
+	if d.type == "unit":
+		draw_texture_rect(DRONE, Rect2(art.get_center() - Vector2(20, 18), Vector2(40, 36)), false, glyph_ink)
+	elif TYPE_GLYPH.has(d.type):
+		IntentIcon.draw(self, art.get_center(), 19.0, TYPE_GLYPH[d.type], glyph_ink)
+	else:
+		Sigil.draw(self, art.get_center(), 19.0, d.id, Color(fc, dim), t)
+	if d.type == "unit" or TYPE_GLYPH.has(d.type):
+		Sigil.draw(self, art.get_center() + Vector2(31, 0), 11.0, d.id, Color(fc, 0.35 * dim), t)
 
 	# Type line.
 	# Type line; a modded card shows its mod there instead.
