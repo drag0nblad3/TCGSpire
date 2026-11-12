@@ -76,6 +76,8 @@ Original design only: don't copy cards, names, characters or look from existing 
 - `scripts/build_apk.sh` -> `build/tcgspire.apk` (debug, arm64). Needs Godot 4.4.1 export templates
   in `~/.local/share/godot/export_templates/4.4.1.stable/`, a JDK and an Android SDK with build-tools.
 - GitHub: Actions tab -> "android-apk" -> Run workflow (manual only, never on push). APK is the artifact.
+- Signing: `signing/debug.keystore` (pass "android") is committed on purpose so every APK has the same signature
+  and installs over the last one. Never regenerate it, or phones must uninstall (losing the save).
 - `export_presets.cfg` includes `data/**/*.json` (data files aren't resources); keep that filter.
 - Cloud sessions can't reach dl.google.com, so there's no real SDK there. A stand-in apksigner can be
   built from `com.android.tools.build:apksig` on Maven Central (v2 signing only, Android 7+).

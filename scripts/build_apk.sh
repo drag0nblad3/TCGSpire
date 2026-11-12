@@ -7,7 +7,8 @@ cd "$(dirname "$0")/.."
 GODOT="${GODOT:-godot}"
 SDK="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/Android/Sdk}}"
 JAVA="${JAVA_HOME:-$(dirname "$(dirname "$(readlink -f "$(command -v java)")")")}"
-KS="${DEBUG_KEYSTORE:-$HOME/.android/debug.keystore}"
+# Fixed debug key checked into the repo so every APK installs over the last one.
+KS="${DEBUG_KEYSTORE:-$(pwd)/signing/debug.keystore}"
 if [ ! -f "$KS" ]; then
   mkdir -p "$(dirname "$KS")"
   keytool -genkeypair -v -keystore "$KS" -storepass android -alias androiddebugkey -keypass android \
