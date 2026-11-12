@@ -168,12 +168,20 @@ func _draw() -> void:
 		draw_string(font, Vector2(4, y + 10), fighter.name, HORIZONTAL_ALIGNMENT_CENTER, w - 8, 12, Palette.TEXT)
 		y += 14
 	elif kind == "enemy":
-		var name_size := 24 if boss_large else 16
+		var name_size := 28 if boss_large else 20
 		var name_inset := 23.0 if enemy_faction != "" else 6.0
 		if enemy_faction != "":
 			Symbols.draw_on(self, Vector2(14, y + name_size * 0.58), 8, enemy_faction, col)
-		_draw_fitted(Palette.display(), fighter.name, Vector2(name_inset, y + name_size), w - 2.0 * name_inset, name_size, Palette.TEXT)
-		y += name_size + 7
+		var name_font := Palette.NAME_FONT
+		var name_width := w - 2.0 * name_inset
+		if name_font.get_string_size(fighter.name, HORIZONTAL_ALIGNMENT_CENTER, -1, 14).x > name_width:
+			var name_height := name_font.get_multiline_string_size(fighter.name, HORIZONTAL_ALIGNMENT_CENTER, name_width, 13).y
+			draw_multiline_string(name_font, Vector2(name_inset, y + name_font.get_ascent(13)), fighter.name,
+				HORIZONTAL_ALIGNMENT_CENTER, name_width, 13, 2, Palette.TEXT)
+			y += name_height + 5
+		else:
+			_draw_fitted(name_font, fighter.name, Vector2(name_inset, y + name_size), name_width, name_size, Palette.TEXT)
+			y += name_size + 7
 	else:
 		draw_string(Palette.display(), Vector2(12, 22), Palette.w("hero"), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Palette.TEXT)
 		y = 30.0

@@ -6,6 +6,9 @@ extends RefCounted
 
 static var theme_id := "glassnet"
 
+## Rajdhani SemiBold keeps the cyberpunk look at small card and combat sizes.
+const NAME_FONT := preload("res://assets/fonts/Rajdhani.ttf")
+
 static var FACTION := Themes.FACTIONS_DARK
 
 static var RARITY := {
