@@ -5,6 +5,7 @@
 *.apk
 *.aab
 *.keystore
+!signing/debug.keystore
 # tool output
 /tmp/
 build/

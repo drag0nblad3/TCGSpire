@@ -528,3 +528,51 @@ func choose(choice: Dictionary) -> Array:
 
 func summary() -> String:
 	return "act %d floor %d hp %d/%d gold %d deck %d talismans %s perks %s" % [act, floor_num, hp, max_hp, gold, deck.size(), ",".join(talismans), ",".join(perks)]
+
+
+# --- save / resume --------------------------------------------------------------
+
+## Plain fields copied as-is by to_dict()/from_dict(). Everything random forks
+## from seed_value, so restoring these replays the rest of the run exactly.
+const SAVED := ["seed_value", "hp", "max_hp", "gold", "floor_num", "heat", "talismans", "node_id", "path",
+	"combats_won", "elites_won", "boss_won", "act", "acts_cleared", "double_crossed", "over", "card_plays",
+	"remove_cost", "outcome_counter", "locked_talismans", "perks", "rig", "firmware", "firmware_mods",
+	"mods_installed", "job", "banned"]
+
+
+func to_dict() -> Dictionary:
+	var d := {}
+	for k in SAVED:
+		var v: Variant = get(k)
+		d[k] = v.duplicate(true) if v is Array or v is Dictionary else v
+	var cards: Array = []
+	for c: CardInstance in deck:
+		cards.append({"id": c.def.id, "up": c.upgraded, "fw": c.fw, "foil": c.foil, "mod": str(c.mod.get("id", ""))})
+	d["deck"] = cards
+	d["map"] = {"nodes": map.nodes.duplicate(true), "rows": map.rows.duplicate(true), "act": map.act}
+	return d
+
+
+static func from_dict(db_in: CardDB, d: Dictionary) -> RunState:
+	var r := RunState.new()
+	r.db = db_in
+	for k in SAVED:
+		if d.has(k):
+			var v: Variant = d[k]
+			r.set(k, v.duplicate(true) if v is Array or v is Dictionary else v)
+	r.rng = GameRng.new(r.seed_value)
+	for c in d.get("deck", []):
+		var inst := db_in.instance(str(c["id"]), bool(c.get("up", false)), int(c.get("fw", 0)))
+		if inst == null:
+			continue
+		inst.fw_scale = db_in.firmware_scale()
+		inst.foil = bool(c.get("foil", false))
+		if str(c.get("mod", "")) != "":
+			inst.mod = db_in.mod(str(c["mod"]))
+		r.deck.append(inst)
+	var m := RunMap.new()
+	m.nodes = d["map"]["nodes"].duplicate(true)
+	m.rows = d["map"]["rows"].duplicate(true)
+	m.act = int(d["map"]["act"])
+	r.map = m
+	return r

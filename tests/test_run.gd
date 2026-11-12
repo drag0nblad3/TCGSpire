@@ -188,3 +188,38 @@ func test_act_boss_advances_to_next_act() -> void:
 	for n in r.map.nodes:
 		if n["encounter"] != "":
 			eq(int(db.encounters[n["encounter"]].get("act", 1)), 2, "act 2 encounter")
+
+
+## Plays a few nodes, saves, restores: the copy must be the same run and play on identically.
+func test_run_save_round_trip() -> void:
+	var r := _run(7, 2)
+	for i in 3:
+		r.enter(r.available_nodes()[0])
+	r.gold += 33
+	r.card_plays["jab"] = 4
+	r.deck[0].level_up()
+	r.add_card(r.deck[1].def.id)
+	var path := "user://test_run.save"
+	eq(RunSave.save(r, {"screen": "reward", "choices": ["jab"]}, path), OK, "save")
+	var data := RunSave.load_run(db, path)
+	check(not data.is_empty(), "loads")
+	var r2: RunState = data["run"]
+	eq(data["resume"]["screen"], "reward")
+	eq(r2.summary(), r.summary(), "summary")
+	eq(r2.map.ascii(), r.map.ascii(), "map")
+	eq(r2.deck.map(func(c: CardInstance) -> String: return c.key()), r.deck.map(func(c: CardInstance) -> String: return c.key()), "deck")
+	eq(r2.available_nodes(), r.available_nodes(), "next nodes")
+	check(typeof(r2.node_id) == TYPE_INT and typeof(r2.map.node(r2.node_id)["next"][0]) == TYPE_INT, "ints stay ints")
+	var nid: int = r.available_nodes()[0]
+	var a := r.enter(nid)
+	var b := r2.enter(nid)
+	eq(b, a, "same node")
+	if a["type"] in ["fight", "elite", "boss"]:
+		var c1 := r.start_combat(a["encounter"])
+		var c2 := r2.start_combat(b["encounter"])
+		c1.start()
+		c2.start()
+		eq(c2.hand.map(func(c: CardInstance) -> String: return c.key()), c1.hand.map(func(c: CardInstance) -> String: return c.key()), "same opening hand")
+	RunSave.clear(path)
+	check(not RunSave.exists(path), "cleared")
+	eq(RunSave.load_run(db, path), {}, "no save = empty")
