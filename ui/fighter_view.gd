@@ -116,18 +116,21 @@ func _draw() -> void:
 		y = 30.0
 
 	# HP bar (+ Ward shield badge on its left).
-	var bar := Rect2(34, y, w - 44, 16 if kind != "player" else 20)
+	# HP text sizes per kind; the bar is a bit taller than its number.
+	var hfs: int = {"enemy": 19, "unit": 16, "player": 22}[kind]
+	var bar := Rect2(34, y, w - 44, hfs + 6)
 	draw_rect(bar, Color(Palette.CARD_BG, 0.85))
 	draw_rect(Rect2(bar.position, Vector2(bar.size.x * clampf(float(hp()) / fighter.max_hp, 0, 1), bar.size.y)), Palette.HP)
 	if flash > 0.0 and kind == "player":
 		draw_rect(bar.grow(3), Color(Palette.HP, flash * 0.6), false, 3)
 	draw_rect(bar, Color(Palette.TEXT, 0.4), false, 1)
-	var hfs := 13 if kind != "player" else 16
-	draw_string(font, bar.position + Vector2(0, bar.size.y / 2 + hfs * 0.36), "%d/%d" % [hp(), fighter.max_hp], HORIZONTAL_ALIGNMENT_CENTER, bar.size.x, hfs, Palette.TEXT)
+	var hp_pos := bar.position + Vector2(0, bar.size.y / 2 + hfs * 0.36)
+	draw_string_outline(font, hp_pos, "%d/%d" % [hp(), fighter.max_hp], HORIZONTAL_ALIGNMENT_CENTER, bar.size.x, hfs, 4, Color(Palette.CARD_BG, 0.9))
+	draw_string(font, hp_pos, "%d/%d" % [hp(), fighter.max_hp], HORIZONTAL_ALIGNMENT_CENTER, bar.size.x, hfs, Palette.TEXT)
 	if ward() > 0:
 		var wc := bar.position + Vector2(-16, bar.size.y / 2)
-		IntentIcon.draw(self, wc, 19, "ward")
-		draw_string(font, wc + Vector2(-16, 6), str(ward()), HORIZONTAL_ALIGNMENT_CENTER, 32, 16, Palette.TEXT)
+		IntentIcon.draw(self, wc, 21, "ward")
+		draw_string(font, wc + Vector2(-16, 7), str(ward()), HORIZONTAL_ALIGNMENT_CENTER, 32, 18, Palette.TEXT)
 	y += bar.size.y + 6
 
 	# Status chips.

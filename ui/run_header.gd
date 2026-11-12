@@ -15,7 +15,7 @@ func setup(r: RunState) -> RunHeader:
 func _ready() -> void:
 	add_theme_constant_override("separation", 6)
 	var top := UiKit.hbox(18)
-	top.add_child(UiKit.label("HP %d/%d" % [run.hp, run.max_hp], 18, Palette.HP))
+	top.add_child(UiKit.label("HP %d/%d" % [run.hp, run.max_hp], 22, Palette.HP))
 	top.add_child(UiKit.label("%d creds" % run.gold, 18, Palette.ENERGY))
 	top.add_child(UiKit.label("Layer %d · Node %d" % [run.act, run.floor_num], 18, Palette.TEXT_DIM))
 	if run.heat > 0:
