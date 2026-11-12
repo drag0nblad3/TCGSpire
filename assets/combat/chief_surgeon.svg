@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="290" viewBox="0 0 420 290">
+  <defs>
+    <linearGradient id="shell" x1="0" x2="0" y1="0" y2="1">
+      <stop stop-color="#3b6455"/><stop offset="1" stop-color="#17362d"/>
+    </linearGradient>
+  </defs>
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <path d="M33 227 58 184 99 162 130 152 137 74 165 48 210 43 257 49 281 75 286 152 320 162 363 183 387 228 348 247 294 232 271 263 149 263 126 233 73 247Z" fill="#17362d" stroke="#120e1b" stroke-width="11"/>
+    <path d="M33 227 58 184 99 162 130 152 137 74 165 48 210 43 257 49 281 75 286 152 320 162 363 183 387 228 348 247 294 232 271 263 149 263 126 233 73 247Z" fill="url(#shell)" stroke="#aaf7a5" stroke-width="3"/>
+    <path d="M149 78l32-20h58l32 20-8 71-29 27h-48l-29-27Z M50 220l73-42 20 31-76 24Z M370 220l-73-42-20 31 76 24Z M158 183l52 23 52-23-10 65h-84Z" fill="#17362d" stroke="#aaf7a5" stroke-opacity=".72" stroke-width="2.5"/>
+    <path d="M163 94h36l9 11-11 14h-24l-10-8ZM257 94h-36l-9 11 11 14h24l10-8ZM200 212h20v21h-20z" fill="#aaf7a5" fill-rule="evenodd"/>
+    <path d="M175 129l35 17 35-17m-61 13v13m52-13v13M67 217l31-17m255 17-31-17M210 57v28" fill="none" stroke="#aaf7a5" stroke-opacity=".62" stroke-width="3"/>
+  </g>
+</svg>

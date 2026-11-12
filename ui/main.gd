@@ -11,6 +11,7 @@ var run: RunState
 var _screen: Control
 var _combat: Combat
 var _bg_mat: ShaderMaterial
+var _glass_pulse: Tween
 ## Screenshot/smoke tools turn this off so they never touch the real save.
 var persist := true
 
@@ -53,6 +54,10 @@ func _show(node: Control) -> void:
 	if _screen != null:
 		_screen.queue_free()
 	_screen = node
+	if _glass_pulse != null:
+		_glass_pulse.kill()
+		_glass_pulse = null
+	_bg_mat.set_shader_parameter("boss_entrance", -1.0)
 	_bg_mat.set_shader_parameter("glass_intensity", 1.45 if node is CombatScreen else 1.0)
 	add_child(node)
 
@@ -204,6 +209,13 @@ func _start_combat(node: Dictionary) -> void:
 	var s := CombatScreen.new().setup(_combat, run)
 	s.finished.connect(_on_combat_finished)
 	_show(s)
+	var accent := s.reveal_boss()
+	if accent.a > 0.0 and Palette.BACKDROP["style"] == 4:
+		_bg_mat.set_shader_parameter("boss_color", accent)
+		_bg_mat.set_shader_parameter("boss_entrance", -0.18)
+		_glass_pulse = create_tween()
+		_glass_pulse.tween_property(_bg_mat, "shader_parameter/boss_entrance", 1.22, 1.10)
+		_glass_pulse.tween_callback(_bg_mat.set_shader_parameter.bind("boss_entrance", -1.0))
 
 
 func _on_combat_finished(_won: bool) -> void:

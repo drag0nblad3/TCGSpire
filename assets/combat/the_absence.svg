@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="290" viewBox="0 0 420 290">
+  <defs>
+    <linearGradient id="shell" x1="0" x2="0" y1="0" y2="1">
+      <stop stop-color="#4d3866"/><stop offset="1" stop-color="#191529"/>
+    </linearGradient>
+  </defs>
+  <g stroke-linecap="round" stroke-linejoin="round">
+    <path d="M210 28C120 30 71 80 62 144l-26 30 47 8 20 31-24 27 61-5 26 31 44-20 44 20 26-31 61 5-24-27 20-31 47-8-26-30C349 80 300 30 210 28Z" fill="#191529" stroke="#120e1b" stroke-width="11"/>
+    <path d="M210 28C120 30 71 80 62 144l-26 30 47 8 20 31-24 27 61-5 26 31 44-20 44 20 26-31 61 5-24-27 20-31 47-8-26-30C349 80 300 30 210 28Z" fill="url(#shell)" stroke="#c8a2ff" stroke-width="3"/>
+    <path d="M210 52c-70 0-123 50-123 110l43-21 29-44 51-21 51 21 29 44 43 21c0-60-53-110-123-110Z M117 205l27-55 25 48 41 28-43 15Z M303 205l-27-55-25 48-41 28 43 15Z" fill="#191529" stroke="#c8a2ff" stroke-opacity=".72" stroke-width="2.5"/>
+    <path d="M147 133l31-26 32 12-22 18-25 9ZM273 133l-31-26-32 12 22 18 25 9Z" fill="#c8a2ff" fill-rule="evenodd"/>
+    <path d="M190 166l20 11 20-11m-40 26 20 8 20-8M38 109h25m294 0h25" fill="none" stroke="#c8a2ff" stroke-opacity=".62" stroke-width="3"/>
+  </g>
+</svg>

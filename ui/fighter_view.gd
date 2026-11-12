@@ -32,6 +32,9 @@ var offset := Vector2.ZERO
 var flash := 0.0
 var firewall_flash := 0.0
 var offline := false
+var boss_profile: Dictionary = {}
+var boss_large := false
+var boss_accent := Color.TRANSPARENT
 
 var _tap := Tap.new()
 
@@ -41,8 +44,17 @@ func setup(f: Fighter, c: Combat, kind_in: String) -> FighterView:
 	combat = c
 	kind = kind_in
 	custom_minimum_size = Vector2(200, 274) if kind == "enemy" else (Vector2(120, 130) if kind == "unit" else Vector2(340, 70))
+	if kind == "enemy":
+		boss_profile = BossPresentation.PROFILES.get(fighter.def_id, {})
+		if not boss_profile.is_empty():
+			boss_accent = Palette.faction(boss_profile["faction"])
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	return self
+
+
+func set_enemy_width(width: float) -> void:
+	boss_large = not boss_profile.is_empty() and width >= 300.0
+	custom_minimum_size = Vector2(width, 415.0 if boss_large else 274.0)
 
 
 func hp() -> int:
@@ -90,6 +102,11 @@ func _draw() -> void:
 	var col := Palette.ENEMY if kind == "enemy" else (Palette.faction("ember") if kind == "unit" else Palette.TEXT)
 	var t := Time.get_ticks_msec() / 1000.0
 
+	var intent_items := intents()
+	var boss := not boss_profile.is_empty()
+	var charging: bool = boss and hp() > 0 and _move_name() == boss_profile["signature"] and not intent_items.is_empty()
+	var heat := boss_accent
+	var charge := 0.5 + 0.5 * sin(t * 3.2) if charging else 0.0
 	var panel := StyleBoxFlat.new()
 	panel.bg_color = Color(Palette.PANEL_BG, 0.88 if kind == "player" else 0.72)
 	panel.border_color = Palette.ENERGY if targetable else Color(Palette.TEXT, 0.23)
@@ -98,25 +115,37 @@ func _draw() -> void:
 	if targetable:
 		panel.shadow_color = Color(Palette.ENERGY, 0.20 + 0.12 * sin(t * 5.0))
 		panel.shadow_size = 9
+	elif boss:
+		panel.border_color = Color(heat, 0.45 + charge * 0.45)
+		panel.shadow_color = Color(heat, 0.16 + charge * 0.25)
+		panel.shadow_size = 12
 	draw_style_box(panel, Rect2(Vector2.ZERO, size))
 	if targetable:
 		_draw_target()
 
 	var y := 4.0
 	if kind == "enemy":
-		y = _draw_intents(font, w, y)
+		y = _draw_intents(font, w, y, intent_items, charging)
 	if kind != "player":
-		var art_height := 108.0 if kind == "enemy" else 47.0
+		var art_height := 252.0 if boss_large else (108.0 if kind == "enemy" else 47.0)
 		var r := minf(art_height * 0.45, w * 0.34)
 		var bob := sin(t * 1.7 + fighter.id.hash() % 7) * 3.0
 		var c := Vector2(w / 2, y + art_height * 0.5 + bob)
-		var portrait: Texture2D = PORTRAITS.get(fighter.def_id)
+		if boss:
+			var halo := minf(w * 0.38, art_height * 0.54)
+			draw_circle(c, halo, Color(heat, 0.06 + charge * 0.10), true, -1, true)
+			draw_arc(c, halo, 0, TAU, 72, Color(heat, 0.18 + charge * 0.40), 2.0, true)
+			if charging:
+				draw_arc(c, halo + 6.0 + charge * 7.0, 0, TAU, 72, Color(heat, 0.30 - charge * 0.19), 2.0, true)
+		var portrait: Texture2D = boss_profile["portrait"] if boss else PORTRAITS.get(fighter.def_id)
 		if kind == "unit" and fighter.name == "Drone":
 			portrait = DRONE
 		if portrait != null:
 			var art_size := portrait.get_size()
 			art_size *= minf((w - 20.0) / art_size.x, art_height / art_size.y)
 			var tint := Palette.UPGRADED if kind == "unit" else Color.WHITE
+			if boss:
+				tint = Color.WHITE.lerp(heat.lightened(0.62), charge * 0.28)
 			draw_texture_rect(portrait, Rect2(c - art_size * 0.5, art_size), false, tint)
 		else:
 			Sigil.draw(self, c, r, fighter.def_id + fighter.name, col, t)
@@ -132,8 +161,9 @@ func _draw() -> void:
 		draw_string(font, Vector2(4, y + 10), fighter.name, HORIZONTAL_ALIGNMENT_CENTER, w - 8, 12, Palette.TEXT)
 		y += 14
 	elif kind == "enemy":
-		_draw_fitted(Palette.display(), fighter.name, Vector2(6, y + 15), w - 12, 16, Palette.TEXT)
-		y += 22
+		var name_size := 24 if boss_large else 16
+		_draw_fitted(Palette.display(), fighter.name, Vector2(6, y + name_size), w - 12, name_size, Palette.TEXT)
+		y += name_size + 7
 	else:
 		draw_string(Palette.display(), Vector2(12, 22), Palette.w("hero"), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Palette.TEXT)
 		y = 30.0
@@ -210,8 +240,11 @@ func _draw_fitted(font: Font, text: String, pos: Vector2, width: float, fs: int,
 	draw_string(font, pos, text, HORIZONTAL_ALIGNMENT_CENTER, width, fs, col)
 
 
-func _draw_intents(font: Font, w: float, y: float) -> float:
-	var items := intents()
+func _move_name() -> String:
+	return frozen_move if frozen_intents != null else str(fighter.current_move().get("name", ""))
+
+
+func _draw_intents(font: Font, w: float, y: float, items: Array, charging: bool) -> float:
 	if items.is_empty() or hp() <= 0:
 		return y + 59
 	var main_col := IntentIcon.color(items[0]["kind"])
@@ -219,6 +252,8 @@ func _draw_intents(font: Font, w: float, y: float) -> float:
 		if it["kind"] == "attack":
 			main_col = IntentIcon.color("attack")
 			break
+	if charging:
+		main_col = boss_accent
 	var pill := StyleBoxFlat.new()
 	pill.bg_color = Palette.CARD_BG.lerp(main_col, 0.12)
 	pill.border_color = Color(main_col, 0.68)
@@ -233,7 +268,7 @@ func _draw_intents(font: Font, w: float, y: float) -> float:
 		var attack: bool = it["kind"] == "attack"
 		var label := IntentIcon.label(it)
 		var r := clampf(slot * 0.17, 3.0, 10.0)
-		var fs := 21 if attack else 14
+		var fs := (26 if charging else 21) if attack else 14
 		var icon_width := 2.0 * r + 3.0 if label != "" else 0.0
 		var text_width := maxf(1.0, slot - icon_width)
 		while fs > 9 and font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > text_width:
@@ -244,8 +279,7 @@ func _draw_intents(font: Font, w: float, y: float) -> float:
 		if label != "":
 			draw_string(font, Vector2(start + icon_width, y + 28), label, HORIZONTAL_ALIGNMENT_LEFT, text_width, fs, Palette.TEXT)
 		x += slot
-	var move := frozen_move if frozen_intents != null else str(fighter.current_move().get("name", ""))
-	_draw_fitted(font, move, Vector2(12, y + 46), w - 24, 13, Palette.TEXT)
+	_draw_fitted(font, _move_name(), Vector2(12, y + 47), w - 24, 16 if charging else 13, Palette.TEXT)
 	return y + 59
 
 

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="290" viewBox="0 0 420 290">
+  <defs>
+    <linearGradient id="iron" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#58404f"/>
+      <stop offset="1" stop-color="#1a1727"/>
+    </linearGradient>
+    <linearGradient id="heat" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#fff0b8"/>
+      <stop offset=".52" stop-color="#ffac49"/>
+      <stop offset="1" stop-color="#ef592a"/>
+    </linearGradient>
+  </defs>
+  <g stroke-linejoin="round">
+    <path d="M103 154 63 109 57 55 41 36 40 19 70 13 91 31 90 90 129 122M317 154l40-45 6-54 16-19 1-17-30-6-21 18 1 59-39 32" fill="#2c2336" stroke="#bf765b" stroke-width="3"/>
+    <path d="m48 35 31-5m-21 34 27-3m-21 34 22-5m286-55-31-5m21 34-27-3m21 34-22-5" stroke="#e0946a" stroke-width="3"/>
+    <path d="M20 218 41 155l58-39 43-8 20-34 48-28 48 28 20 34 43 8 58 39 21 63-27 29-55 4-21-18-21 31-66 15-66-15-21-31-21 18-55-4z" fill="#10101e" stroke="#180e1d" stroke-width="12"/>
+    <path d="M20 218 41 155l58-39 43-8 20-34 48-28 48 28 20 34 43 8 58 39 21 63-27 29-55 4-21-18-21 31-66 15-66-15-21-31-21 18-55-4z" fill="url(#iron)" stroke="#ffba77" stroke-width="3"/>
+    <path d="m20 218 49-13 27-47 46-15v-35l-43 8-58 39zm380 0-49-13-27-47-46-15v-35l43 8 58 39z" fill="#69404b" stroke="#d98a62" stroke-width="3"/>
+    <path d="m34 212 48-21 19-31-41 14zm352 0-48-21-19-31 41 14z" fill="#241f32" stroke="#ff975c" stroke-width="2"/>
+    <path d="m51 223 48-14 23-42 14 17-24 47-18 10-45-5zm318 0-48-14-23-42-14 17 24 47 18 10 45-5z" fill="#271e2f" stroke="#87525a" stroke-width="3"/>
+    <path d="m153 160-17 32 10 41 64 30 64-30 10-41-17-32z" fill="#1e1828" stroke="#e69269" stroke-width="3"/>
+    <path d="m171 189 39-17 39 17-5 38-34 17-34-17z" fill="#f05c2f" stroke="#ffcd8e" stroke-width="3"/>
+    <path d="m184 195 26-11 26 11-4 24-22 12-22-12z" fill="url(#heat)"/>
+    <path d="M155 189v29m10-33v42m90-38v38m10-42v33M184 192l4 35m9-42 3 49m10-53v60m13-56-3 49m16-42-4 35" fill="none" stroke="#452435" stroke-width="5"/>
+    <path d="M150 126 160 91l50-28 50 28 10 35-12 35-48 24-48-24z" fill="#211a2c" stroke="#ffbd83" stroke-width="3"/>
+    <path d="m161 91 49-28 50 28-10 14-40-15-40 15z" fill="#785257"/>
+    <path d="m150 126 35 3 25 15 25-15 35-3-14 24-46 25-46-25z" fill="#362536"/>
+    <path d="m169 111 36 12-5 10-25-7zm82 0-36 12 5 10 25-7z" fill="url(#heat)" stroke="#ffd49b" stroke-width="1.5"/>
+    <path d="m200 103 10-17 10 17-10 8z" fill="#f38855"/>
+    <path d="M153 86 135 51l10-14 30 37m92 12 18-35-10-14-30 37M196 62l-2-32 16-18 16 18-2 32" fill="#3a2a3e" stroke="#ffb376" stroke-width="3"/>
+    <path d="m205 36 5-7 5 7-5 13zM79 130l16-10m246 10-16-10m-192 104 10 16m144-16-10 16" stroke="#ffd394" stroke-width="4"/>
+    <path d="m70 180 14-7m252 0 14 7m-204 75 18 7m110-7-18 7" stroke="#fc8550" stroke-width="2"/>
+    <g fill="#ffb779">
+      <circle cx="110" cy="135" r="3"/><circle cx="310" cy="135" r="3"/>
+      <circle cx="47" cy="204" r="2.5"/><circle cx="373" cy="204" r="2.5"/>
+      <circle cx="154" cy="242" r="2.5"/><circle cx="266" cy="242" r="2.5"/>
+    </g>
+  </g>
+</svg>
