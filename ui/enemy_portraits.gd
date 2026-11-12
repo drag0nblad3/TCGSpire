@@ -112,8 +112,26 @@ const ELITE_GEAR := {
 }
 
 
-static func _draw_elite_gear(view: CanvasItem, origin: Vector2, scale: float, faction: String, accent: Color) -> void:
-	var layers: Array = ELITE_GEAR[faction]
+# Draw the lower mounts in front of the portrait so the attachments wrap into the armor.
+const ELITE_MOUNTS := {
+	"ember": [[Vector2(22, 76), Vector2(55, 75), Vector2(62, 98), Vector2(92, 116), Vector2(88, 132), Vector2(61, 123), Vector2(33, 108)],
+		[Vector2(33, 85), Vector2(45, 84), Vector2(50, 100), Vector2(77, 119), Vector2(75, 122), Vector2(42, 107)]],
+	"tide": [[Vector2(20, 76), Vector2(49, 72), Vector2(69, 96), Vector2(92, 113), Vector2(92, 126), Vector2(65, 120), Vector2(40, 104)],
+		[Vector2(32, 85), Vector2(44, 81), Vector2(61, 102), Vector2(83, 116), Vector2(81, 120), Vector2(58, 109)]],
+	"bloom": [[Vector2(17, 74), Vector2(62, 72), Vector2(60, 91), Vector2(81, 103), Vector2(93, 121), Vector2(85, 129), Vector2(60, 114), Vector2(42, 115), Vector2(26, 99)],
+		[Vector2(28, 82), Vector2(50, 81), Vector2(48, 94), Vector2(66, 104), Vector2(83, 121), Vector2(79, 122), Vector2(56, 108), Vector2(38, 106)]],
+	"void": [[Vector2(20, 76), Vector2(48, 69), Vector2(65, 81), Vector2(63, 94), Vector2(83, 107), Vector2(92, 128), Vector2(67, 123), Vector2(56, 111), Vector2(38, 109)],
+		[Vector2(29, 81), Vector2(47, 76), Vector2(58, 86), Vector2(48, 99), Vector2(40, 99)]],
+	"chrome": [[Vector2(15, 78), Vector2(65, 77), Vector2(66, 96), Vector2(91, 108), Vector2(91, 125), Vector2(62, 125), Vector2(48, 112), Vector2(27, 111), Vector2(15, 103)],
+		[Vector2(23, 86), Vector2(57, 85), Vector2(57, 91), Vector2(23, 92)]],
+	"noise": [[Vector2(22, 65), Vector2(43, 65), Vector2(54, 89), Vector2(73, 98), Vector2(94, 120), Vector2(85, 129), Vector2(62, 114), Vector2(37, 107)],
+		[Vector2(29, 73), Vector2(37, 72), Vector2(47, 96), Vector2(66, 104), Vector2(80, 120), Vector2(74, 119), Vector2(42, 104)]],
+	"neutral": [[Vector2(18, 78), Vector2(62, 77), Vector2(62, 95), Vector2(92, 116), Vector2(85, 130), Vector2(59, 121), Vector2(34, 105)],
+		[Vector2(30, 87), Vector2(50, 85), Vector2(54, 99), Vector2(79, 118), Vector2(75, 121), Vector2(45, 102)]],
+}
+
+
+static func _draw_elite_gear(view: CanvasItem, origin: Vector2, scale: float, layers: Array, accent: Color) -> void:
 	for side in [1, -1]:
 		for i in layers.size():
 			var points := PackedVector2Array()
@@ -138,21 +156,23 @@ static func draw(view: CanvasItem, center: Vector2, bounds: Vector2, profile: Ar
 	var origin := center - CELL * scale * 0.5
 	var accent := Color(Themes.FACTIONS_DARK[faction])
 	if elite:
-		_draw_elite_gear(view, origin, scale, faction, accent)
+		_draw_elite_gear(view, origin, scale, ELITE_GEAR[faction], accent)
 
 	if effect == "fracture":
 		_draw_glitch(view, atlas, source, origin, scale, accent, time)
-		return
-	_draw_background_effect(view, effect, origin, scale, accent, time)
-	view.draw_texture_rect_region(atlas, Rect2(origin, CELL * scale), source)
-	if effect == "coolant":
-		_draw_coolant(view, origin, scale, time)
-	elif effect == "bio":
-		var intensity := 0.5 + 0.5 * sin(time * 3.4)
-		view.draw_circle(origin + Vector2(110, 124) * scale, (15.0 + 5.0 * intensity) * scale, Color(accent, 0.21), true, -1, true)
-		view.draw_circle(origin + Vector2(110, 124) * scale, 5.0 * scale, Color.WHITE.lerp(accent, 0.32 + 0.25 * intensity), true, -1, true)
-	if waveform:
-		_draw_waveform(view, origin, scale, accent, time)
+	else:
+		_draw_background_effect(view, effect, origin, scale, accent, time)
+		view.draw_texture_rect_region(atlas, Rect2(origin, CELL * scale), source)
+		if effect == "coolant":
+			_draw_coolant(view, origin, scale, time)
+		elif effect == "bio":
+			var intensity := 0.5 + 0.5 * sin(time * 3.4)
+			view.draw_circle(origin + Vector2(110, 124) * scale, (15.0 + 5.0 * intensity) * scale, Color(accent, 0.21), true, -1, true)
+			view.draw_circle(origin + Vector2(110, 124) * scale, 5.0 * scale, Color.WHITE.lerp(accent, 0.32 + 0.25 * intensity), true, -1, true)
+		if waveform:
+			_draw_waveform(view, origin, scale, accent, time)
+	if elite:
+		_draw_elite_gear(view, origin, scale, ELITE_MOUNTS[faction], accent)
 
 
 static func _draw_background_effect(view: CanvasItem, effect: String, o: Vector2, s: float, ink: Color, time: float) -> void:
