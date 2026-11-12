@@ -5,19 +5,24 @@ extends Control
 signal start_pressed(heat: int)
 signal collection_pressed
 signal packs_pressed
-signal theme_pressed
+signal settings_pressed
+signal resume_pressed
+signal abandon_pressed
 signal rig_pressed
 
 var db: CardDB
 var profile: Profile
 var heat := 0
+## Summary of a saved run in progress ("" = none): shows Resume/Abandon instead of a new job.
+var saved_run := ""
 var _heat_label: Label
 var _heat_desc: Label
 
 
-func setup(db_in: CardDB, p: Profile) -> HubScreen:
+func setup(db_in: CardDB, p: Profile, saved: String = "") -> HubScreen:
 	db = db_in
 	profile = p
+	saved_run = saved
 	heat = p.max_heat
 	return self
 
@@ -71,7 +76,11 @@ func _ready() -> void:
 	v.add_child(_heat_desc)
 	_set_heat(heat)
 
-	v.add_child(UiKit.button("Take a job", func() -> void: start_pressed.emit(heat), Vector2(300, 72), 24))
+	if saved_run != "":
+		v.add_child(UiKit.button("Resume run\n%s" % saved_run, func() -> void: resume_pressed.emit(), Vector2(300, 84), 20))
+		v.add_child(UiKit.button("Abandon run", func() -> void: abandon_pressed.emit(), Vector2(300, 48), 16))
+	else:
+		v.add_child(UiKit.button("Take a job", func() -> void: start_pressed.emit(heat), Vector2(300, 72), 24))
 	v.add_child(UiKit.button("Program library", func() -> void: collection_pressed.emit(), Vector2(300, 60)))
 	var pk := UiKit.button("Open %s (%d)" % [Palette.w("packs").to_lower(), profile.packs_unopened], func() -> void: packs_pressed.emit(), Vector2(300, 60))
 	pk.disabled = profile.packs_unopened <= 0
@@ -79,7 +88,7 @@ func _ready() -> void:
 	v.add_child(UiKit.button("Rig upgrades", func() -> void: rig_pressed.emit(), Vector2(300, 60)))
 	var row := UiKit.hbox(12)
 	row.add_child(UiKit.button("How to play", func() -> void: Rules.open(self), Vector2(200, 52), 16))
-	row.add_child(UiKit.button("Look: %s" % Themes.ALL[Palette.theme_id]["name"], func() -> void: theme_pressed.emit(), Vector2(300, 52), 16))
+	row.add_child(UiKit.button("Settings", func() -> void: settings_pressed.emit(), Vector2(200, 52), 16))
 	v.add_child(row)
 
 
