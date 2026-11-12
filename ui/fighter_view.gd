@@ -25,13 +25,15 @@ var offset := Vector2.ZERO
 var flash := 0.0
 
 var _tap := Tap.new()
+## Status chip text size (units draw a bit smaller).
+const CHIP_FONT := 17
 
 
 func setup(f: Fighter, c: Combat, kind_in: String) -> FighterView:
 	fighter = f
 	combat = c
 	kind = kind_in
-	custom_minimum_size = Vector2(200, 274) if kind == "enemy" else (Vector2(120, 130) if kind == "unit" else Vector2(340, 70))
+	custom_minimum_size = _base_size()
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	return self
 
@@ -114,17 +116,19 @@ func _draw() -> void:
 		y = 30.0
 
 	# HP bar (+ Ward shield badge on its left).
-	var bar := Rect2(22, y, w - 34, 14)
+	var bar := Rect2(34, y, w - 44, 16 if kind != "player" else 20)
 	draw_rect(bar, Color(Palette.CARD_BG, 0.85))
 	draw_rect(Rect2(bar.position, Vector2(bar.size.x * clampf(float(hp()) / fighter.max_hp, 0, 1), bar.size.y)), Palette.HP)
 	if flash > 0.0 and kind == "player":
 		draw_rect(bar.grow(3), Color(Palette.HP, flash * 0.6), false, 3)
 	draw_rect(bar, Color(Palette.TEXT, 0.4), false, 1)
-	draw_string(font, bar.position + Vector2(0, 12), "%d/%d" % [hp(), fighter.max_hp], HORIZONTAL_ALIGNMENT_CENTER, bar.size.x, 12, Palette.TEXT)
+	var hfs := 13 if kind != "player" else 16
+	draw_string(font, bar.position + Vector2(0, bar.size.y / 2 + hfs * 0.36), "%d/%d" % [hp(), fighter.max_hp], HORIZONTAL_ALIGNMENT_CENTER, bar.size.x, hfs, Palette.TEXT)
 	if ward() > 0:
-		IntentIcon.draw(self, bar.position + Vector2(-10, 7), 13, "ward")
-		draw_string(font, bar.position + Vector2(-24, 12), str(ward()), HORIZONTAL_ALIGNMENT_CENTER, 28, 12, Palette.TEXT)
-	y += 20
+		var wc := bar.position + Vector2(-16, bar.size.y / 2)
+		IntentIcon.draw(self, wc, 19, "ward")
+		draw_string(font, wc + Vector2(-16, 6), str(ward()), HORIZONTAL_ALIGNMENT_CENTER, 32, 16, Palette.TEXT)
+	y += bar.size.y + 6
 
 	# Status chips.
 	var chips: Array = []
@@ -133,25 +137,33 @@ func _draw() -> void:
 	for k in fighter.statuses:
 		var debuff: bool = Statuses.DEFS.get(k, {}).get("debuff", false)
 		chips.append(["%s %d" % [Lexicon.status(str(k)), fighter.statuses[k]], Palette.ENEMY if debuff else Palette.UPGRADED])
-	var x := 6.0 if kind != "player" else bar.position.x
-	var cy := y if kind != "player" else bar.end.y + 4
-	if kind == "player":
-		x = 80.0
-		cy = 8.0
+	# Big enough to read at a glance on a phone; wraps to more rows as needed.
+	var fs := CHIP_FONT if kind != "unit" else CHIP_FONT - 3
+	var ch := fs + 10.0
+	var x := 6.0
+	var cy := y if kind != "player" else bar.end.y + 6
 	for chip in chips:
-		var cw := font.get_string_size(chip[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x + 10
-		if x + cw > w - 4:
+		var cw := font.get_string_size(chip[0], HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x + 14
+		if x + cw > w - 4 and x > 6.0:
 			x = 6.0
-			cy += 18
+			cy += ch + 4
 		var sb := StyleBoxFlat.new()
-		sb.bg_color = Color(chip[1], 0.22)
+		sb.bg_color = Color(chip[1], 0.28)
 		sb.border_color = chip[1]
-		sb.set_border_width_all(1)
-		sb.set_corner_radius_all(7)
-		draw_style_box(sb, Rect2(x, cy, cw, 16))
-		draw_string(font, Vector2(x + 5, cy + 12), chip[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Palette.TEXT)
-		x += cw + 4
+		sb.set_border_width_all(2)
+		sb.set_corner_radius_all(int(ch / 2))
+		draw_style_box(sb, Rect2(x, cy, cw, ch))
+		draw_string(font, Vector2(x + 7, cy + ch / 2 + fs * 0.36), chip[0], HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Palette.TEXT)
+		x += cw + 5
 	draw_set_transform(Vector2.ZERO)
+	# Grow (or shrink back) to fit every row of chips.
+	var need := maxf(_base_size().y, (cy + ch + 6) if not chips.is_empty() else 0.0)
+	if not is_equal_approx(need, custom_minimum_size.y):
+		custom_minimum_size.y = need
+
+
+func _base_size() -> Vector2:
+	return Vector2(200, 274) if kind == "enemy" else (Vector2(120, 130) if kind == "unit" else Vector2(340, 56))
 
 
 func _draw_intents(font: Font, w: float, y: float) -> float:
