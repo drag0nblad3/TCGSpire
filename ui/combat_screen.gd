@@ -196,7 +196,7 @@ func _add_enemy_view(e: Fighter, i: int) -> FighterView:
 	var enemy_count := _enemies_row.get_child_count()
 	var width := minf(250.0, (_layout_width() - 38 - 8 * (enemy_count - 1)) / enemy_count)
 	for tile in _enemies_row.get_children():
-		tile.custom_minimum_size.x = width
+		tile.custom_minimum_size.x = minf(432.0, _layout_width() - 38.0) if tile.kiln_mother and enemy_count == 1 else width
 	return v
 
 
