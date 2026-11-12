@@ -83,6 +83,15 @@ static func fit_size(font: Font, text: String, width: float, height: float, max_
 	return min_size
 
 
+static func title_size(name_text: String, width: float, height: float) -> int:
+	var font := Palette.NAME_FONT
+	var max_size := 16
+	for word in name_text.split(" ", false):
+		while max_size > 11 and font.get_string_size(word, HORIZONTAL_ALIGNMENT_LEFT, -1, max_size).x > width:
+			max_size -= 1
+	return fit_size(font, name_text, width, height, max_size, 11)
+
+
 func _draw() -> void:
 	if card == null:
 		return
@@ -110,20 +119,22 @@ func _draw() -> void:
 	if Palette.FRAME == "circuit":
 		_draw_circuit(rect, Color(fc if not selected else Palette.ENERGY, dim))
 
-	# Name (shrinks to fit) + cost orb.
-	var name_w := SIZE.x - 48
-	var name_fs := 13
-	while name_fs > 8 and title_font.get_string_size(card.display_name(), HORIZONTAL_ALIGNMENT_LEFT, -1, name_fs).x > name_w:
-		name_fs -= 1
-	draw_string(title_font, rect.position + Vector2(29, 18), card.display_name(), HORIZONTAL_ALIGNMENT_LEFT, name_w, name_fs,
+	# Use a second line before reducing the size of long program names.
+	var name_font := Palette.NAME_FONT
+	var name_box := Rect2(rect.position + Vector2(28, 2), Vector2(SIZE.x - 48, 30))
+	var name_text := card.display_name()
+	var name_size := title_size(name_text, name_box.size.x, name_box.size.y)
+	var name_height := name_font.get_multiline_string_size(name_text, HORIZONTAL_ALIGNMENT_LEFT, name_box.size.x, name_size).y
+	var name_y := name_box.position.y + maxf(0.0, (name_box.size.y - name_height) * 0.5) + name_font.get_ascent(name_size)
+	draw_multiline_string(name_font, Vector2(name_box.position.x, name_y), name_text, HORIZONTAL_ALIGNMENT_LEFT, name_box.size.x, name_size, 2,
 		Color(Palette.UPGRADED, dim) if card.upgraded else ink)
-	var orb := rect.position + Vector2(15, 14)
+	var orb := rect.position + Vector2(15, 16)
 	draw_circle(orb, 11, Color(Palette.ENERGY, dim))
 	draw_string(title_font, orb + Vector2(-11, 5), str(card.cost()), HORIZONTAL_ALIGNMENT_CENTER, 22, 14, Palette.CARD_BG)
-	Symbols.draw_on(self, rect.position + Vector2(SIZE.x - 11, 14), 8, d.faction, Color(fc, dim))
+	Symbols.draw_on(self, rect.position + Vector2(SIZE.x - 11, 16), 8, d.faction, Color(fc, dim))
 
 	# Faction band + sigil "art".
-	var art := Rect2(rect.position + Vector2(8, 26), Vector2(SIZE.x - 16, 50))
+	var art := Rect2(rect.position + Vector2(8, 34), Vector2(SIZE.x - 16, 42))
 	var band := StyleBoxFlat.new()
 	band.bg_color = Color(fc, 0.23 * dim)
 	band.set_corner_radius_all(maxi(Palette.RADIUS - 4, 0))
