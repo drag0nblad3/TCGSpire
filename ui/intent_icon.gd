@@ -50,6 +50,13 @@ static func draw(ci: CanvasItem, c: Vector2, r: float, kind: String, col: Color 
 			for i in 3:
 				var a := TAU * i / 3.0 - PI / 2
 				ci.draw_circle(c + Vector2(cos(a), sin(a)) * r * 0.45, r * 0.28, col)
+		"power":
+			var diamond := PackedVector2Array([c + Vector2(0, -r), c + Vector2(r, 0),
+				c + Vector2(0, r), c + Vector2(-r, 0), c + Vector2(0, -r)])
+			ci.draw_polyline(diamond, col, w * 0.8, true)
+			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(r * 0.14, -r * 0.68), c + Vector2(-r * 0.42, r * 0.1),
+				c + Vector2(-r * 0.05, r * 0.1), c + Vector2(-r * 0.15, r * 0.68),
+				c + Vector2(r * 0.42, -r * 0.12), c + Vector2(r * 0.06, -r * 0.12)]), col)
 		"curse":
 			var card := Rect2(c - Vector2(r * 0.5, r * 0.7), Vector2(r, r * 1.4))
 			ci.draw_rect(card, Color(col, 0.3))

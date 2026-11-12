@@ -55,10 +55,13 @@ func _ready() -> void:
 	v.add_child(UiKit.label("Runs %d   Wins %d   Best floor %d   Cards %d   %s %d" % [
 		int(s.get("runs", 0)), int(s.get("wins", 0)), int(s.get("best_floor", 0)),
 		profile.collection.owned_ids().size(), Palette.w("dust"), profile.collection.dust], 15, Palette.TEXT_DIM))
-	var reps: Array[String] = []
+	var reps := UiKit.flow(12)
 	for f in Jobs.board(db):
-		reps.append("%s %d" % [Jobs.rep_name(db, f), profile.rep_of(f)])
-	v.add_child(UiKit.label("   ".join(reps), 14, Palette.TEXT_DIM, true))
+		var rep := UiKit.hbox(5)
+		rep.add_child(Symbols.badge(f, 28))
+		rep.add_child(UiKit.label("%s %d" % [Jobs.rep_name(db, f), profile.rep_of(f)], 14, Palette.faction(f)))
+		reps.add_child(rep)
+	v.add_child(reps)
 
 	var heat_row := UiKit.hbox(16)
 	heat_row.add_child(UiKit.button("<", func() -> void: _set_heat(heat - 1), Vector2(56, 48)))

@@ -5,7 +5,6 @@ extends Control
 signal node_chosen(id: int)
 
 const ROW_H := 104.0
-const GLYPH := {"fight": "S", "elite": "X", "rest": "H", "shop": "$", "event": "?", "treasure": "C", "boss": "B"}
 const NAMES := {"fight": "Sentry", "elite": "Black sentry", "rest": "Safehouse", "shop": "Fixer", "event": "Signal", "treasure": "Cache", "boss": "Core"}
 
 var run: RunState
@@ -24,16 +23,26 @@ func _ready() -> void:
 	add_child(parts[0])
 	var v: VBoxContainer = parts[1]
 	v.add_child(RunHeader.new().setup(run))
-	var legend := UiKit.hbox(14)
-	for t in ["fight", "elite", "event", "rest", "shop", "treasure"]:
-		legend.add_child(UiKit.label("%s %s" % [GLYPH[t], NAMES[t]], 12, Palette.NODE[t]))
+	var title := UiKit.hbox(12)
+	title.add_child(UiKit.label("THE STACK / %02d" % run.act, 24, Palette.ENERGY))
+	v.add_child(title)
+	v.add_child(UiKit.label("Choose a lit node · Scroll upward toward the Core", 15, Palette.TEXT_DIM))
+	var legend := UiKit.flow(12)
+	for kind in ["fight", "elite", "event", "rest", "shop", "treasure", "boss"]:
+		var item := UiKit.hbox(4)
+		var icon := Symbols.badge(kind, 26)
+		icon.modulate = Palette.NODE[kind]
+		item.add_child(icon)
+		item.add_child(UiKit.label(NAMES[kind], 14, Palette.TEXT))
+		legend.add_child(item)
 	v.add_child(legend)
 	_scroll = ScrollContainer.new()
 	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	v.add_child(_scroll)
 	_canvas = Control.new()
-	_canvas.custom_minimum_size = Vector2(680, ROW_H * (run.map.rows.size() + 0.6))
+	_canvas.custom_minimum_size = Vector2(0, ROW_H * (run.map.rows.size() + 0.6))
+	_canvas.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_canvas.draw.connect(_draw_map)
 	_canvas.gui_input.connect(_on_canvas_input)
 	_scroll.add_child(_canvas)
@@ -49,7 +58,7 @@ func _process(_dt: float) -> void:
 
 
 func _node_pos(col: int, cols: int, row: int) -> Vector2:
-	var w := _canvas.custom_minimum_size.x
+	var w := _canvas.size.x
 	var jitter := float(((col * 7 + row * 13) % 5) - 2) * 6.0
 	return Vector2((col + 0.5) / cols * w + jitter, (run.map.rows.size() - row) * ROW_H - 20)
 
@@ -63,41 +72,93 @@ func _draw_map() -> void:
 	var avail := run.available_nodes()
 	var t := Time.get_ticks_msec() / 1000.0
 	var font := Palette.font()
+	var width := _canvas.size.x
+	_canvas.draw_rect(Rect2(Vector2.ZERO, _canvas.size), Color(Palette.CARD_BG, 0.48))
+	# Quiet server architecture behind the route: stacked decks, rails and rack lights.
+	for row in run.map.rows.size():
+		var y := _node_pos(0, 1, row).y
+		var deck := Rect2(8, y - 43, width - 16, 86)
+		_canvas.draw_style_box(_plate(Color(Palette.PANEL_BG, 0.18), Color(Palette.TEXT_DIM, 0.08)), deck)
+		_canvas.draw_string(font, Vector2(17, y - 24), "%02d" % (row + 1), HORIZONTAL_ALIGNMENT_LEFT, 30, 12, Palette.TEXT_DIM)
+		for side in [18.0, width - 21]:
+			for k in 3:
+				_canvas.draw_rect(Rect2(side, y + 14 + k * 6, 3, 2), Color(Palette.ENERGY, 0.25))
 	for n in run.map.nodes:
 		for nx in n["next"]:
 			var on_path: bool = n["id"] in run.path and nx in run.path
-			var col := Color(Palette.ENERGY, 0.9) if on_path else Color(Palette.TEXT_DIM, 0.25)
-			_dashed(_pos(n["id"]), _pos(nx), col, 3.0 if on_path else 2.0)
+			var next_step: bool = n["id"] == run.node_id and nx in avail
+			var phase := float(int(n["id"]) * 17 + int(nx) * 7) * 0.31
+			# Slow breathing with restrained signal jitter; never blink a route off.
+			var breathe := 0.5 + 0.5 * sin(t * 1.8 + phase)
+			var jitter := sin(t * 7.0 + phase) * sin(t * 4.3 + phase * 2.0)
+			var strength := clampf(0.48 + breathe * 0.30 + jitter * 0.05, 0.43, 0.83)
+			var col := Color(Palette.ENERGY if next_step else Palette.TEXT_DIM, strength)
+			if on_path:
+				col = Palette.ENERGY
+			var a := _pos(n["id"])
+			var b := _pos(nx)
+			var mid := (a.y + b.y) / 2
+			var wire := PackedVector2Array([a, Vector2(a.x, mid + 10), Vector2(b.x, mid - 10), b])
+			_canvas.draw_polyline(wire, Color(Palette.CARD_BG, 0.95), 8, true)
+			if on_path:
+				_canvas.draw_polyline(wire, Color(Palette.ENERGY, 0.16), 10, true)
+			_canvas.draw_polyline(wire, col, 5 if on_path else 3, true)
+			if not on_path:
+				_route_pulse(wire, fposmod(t * 0.24 + phase, 1.0), Color(Palette.ENERGY, 0.65 if next_step else 0.38))
 	for n in run.map.nodes:
 		var p := _pos(n["id"])
 		var col: Color = Palette.NODE[n["type"]]
-		var r := 30.0 if n["type"] == "boss" else 18.0
+		var r := 30.0 if n["type"] == "boss" else 24.0
 		var is_avail: bool = n["id"] in avail
 		var visited: bool = n["id"] in run.path
+		var current: bool = n["id"] == run.node_id
 		if not is_avail and not visited and run.node_id >= 0 and n["row"] <= run.map.node(run.node_id)["row"]:
 			col = Color(col, 0.3)
 		if is_avail:
-			draw_glow(p, r + 8 + 3 * sin(t * 4.0), col)
-		_canvas.draw_circle(p, r, Palette.CARD_BG)
-		_canvas.draw_arc(p, r, 0, TAU, 32, col, 3.0 if is_avail else 2.0, true)
-		if n["type"] == "boss":
-			Sigil.draw(_canvas, p, r * 0.7, "boss:" + str(n["encounter"]), col, t)
-		else:
-			_canvas.draw_string(font, p + Vector2(-r, 6), GLYPH[n["type"]], HORIZONTAL_ALIGNMENT_CENTER, r * 2, 18, col)
+			draw_glow(p, r + 8 + 2 * sin(t * 3.0), col)
+		_canvas.draw_style_box(_plate(Palette.CARD_BG, col, 3 if is_avail or current else 1), Rect2(p - Vector2.ONE * r, Vector2.ONE * r * 2))
+		Symbols.draw_on(_canvas, p, r * 0.75, n["type"], col)
+		# Labels and shapes make node types readable without relying on color.
+		_canvas.draw_string(font, p + Vector2(-55, r + 17), NAMES[n["type"]], HORIZONTAL_ALIGNMENT_CENTER, 110, 14, col)
 		if visited:
-			_canvas.draw_circle(p + Vector2(r * 0.75, -r * 0.75), 5, Palette.ENERGY)
+			var c := p + Vector2(r - 1, -r + 1)
+			_canvas.draw_circle(c, 8, Palette.ENERGY)
+			_canvas.draw_polyline(PackedVector2Array([c + Vector2(-4, 0), c + Vector2(-1, 3), c + Vector2(4, -3)]), Palette.CARD_BG, 2, true)
+		if current:
+			_canvas.draw_arc(p, r + 7, PI * 0.1, PI * 0.9, 24, Palette.ENERGY, 3, true)
+
+
+## A short packet of light travels along the actual elbowed wire, bottom to top.
+func _route_pulse(wire: PackedVector2Array, progress: float, color: Color) -> void:
+	var length := 0.0
+	for i in range(wire.size() - 1):
+		length += wire[i].distance_to(wire[i + 1])
+	var head := progress * (length + 28.0)
+	var cursor := 0.0
+	for i in range(wire.size() - 1):
+		var segment := wire[i].distance_to(wire[i + 1])
+		if segment <= 0.0:
+			continue
+		var start := maxf(head - 28.0, cursor)
+		var end := minf(head, cursor + segment)
+		if end > start:
+			var a := wire[i].lerp(wire[i + 1], (start - cursor) / segment)
+			var b := wire[i].lerp(wire[i + 1], (end - cursor) / segment)
+			_canvas.draw_line(a, b, color, 4, true)
+		cursor += segment
+
+
+func _plate(fill: Color, edge: Color, border: int = 1) -> StyleBoxFlat:
+	var plate := StyleBoxFlat.new()
+	plate.bg_color = fill
+	plate.border_color = edge
+	plate.set_border_width_all(border)
+	plate.set_corner_radius_all(7)
+	return plate
 
 
 func draw_glow(p: Vector2, r: float, col: Color) -> void:
 	_canvas.draw_circle(p, r, Color(col, 0.18))
-
-
-func _dashed(a: Vector2, b: Vector2, col: Color, w: float) -> void:
-	var d := a.distance_to(b)
-	var steps := int(d / 12.0)
-	for i in steps:
-		if i % 2 == 0:
-			_canvas.draw_line(a.lerp(b, float(i) / steps), a.lerp(b, float(i + 1) / steps), col, w, true)
 
 
 var _tap := Tap.new()

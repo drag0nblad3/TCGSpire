@@ -7,8 +7,8 @@ extends RefCounted
 ##               baked mod, max starting picks.
 
 ## Rig perks in the order a player would likely buy them (cheap survival first).
-const RIG_ORDER := ["chassis", "hardpoint", "crowd_funding", "cred_stash", "field_clinic", "repair_drones", "boot_firewall",
-	"cooling_loop", "salvage_rights", "dividend_plan", "fence_network", "signal_jammer", "pirate_coupons", "contract_killer",
+const RIG_ORDER := ["chassis", "hardpoint", "contract_killer", "cred_stash", "field_clinic", "repair_drones", "boot_firewall",
+	"cooling_loop", "salvage_rights", "reward_reroute", "fence_network", "signal_jammer", "pirate_coupons", "signal_override",
 	"mod_cache", "wider_scan", "wider_menu", "seed_subroutine",
 	"thermal_runaway", "liquidity_engine", "regrowth_protocol", "absolute_zero", "hive_link", "dead_air_protocol"]
 ## Mods worth baking, best first.

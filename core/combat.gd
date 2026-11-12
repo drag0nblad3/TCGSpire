@@ -17,6 +17,7 @@ var draw_pile: Array = []
 var hand: Array = []
 var discard_pile: Array = []
 var exhaust_pile: Array = []
+var _played_once_per_turn: Array[CardInstance] = []
 var energy := 0
 var max_energy := 3
 var hand_size := 5
@@ -33,9 +34,11 @@ var talisman_counters: Dictionary = {}
 var perks: Array = []
 ## Firewall gained when combat starts (perks).
 var start_ward := 0
+var ward_retention := 0.0
+var daemon_death_damage := 0
 var _unit_counter := 0
 var _enemy_counter := 0
-## Difficulty modifiers from heat levels (see RunState.combat_opts).
+## Difficulty modifiers from the encounter's act and RunState.combat_opts.
 var enemy_hp_mult := 1.0
 var enemy_might := 0
 var enemy_dmg_mult := 1.0
@@ -43,7 +46,7 @@ var enemy_dmg_mult := 1.0
 
 ## deck: Array of CardInstance (copied, not mutated). hp < 0 means full HP.
 ## opts (all optional): max_hp, talismans (Array of ids), perks (Array of perk dicts),
-## start_ward, enemy_hp_mult, enemy_might, enemy_dmg_mult, extra_energy, extra_hand, extra_slots.
+## start_ward, ward_retention, daemon_death_damage, enemy_hp_mult, enemy_might, enemy_dmg_mult, extra_energy, extra_hand, extra_slots.
 static func create(db_in: CardDB, deck: Array, encounter_id: String, rng_in: GameRng, hp: int = -1, opts: Dictionary = {}) -> Combat:
 	var c := Combat.new()
 	c.db = db_in
@@ -55,7 +58,6 @@ static func create(db_in: CardDB, deck: Array, encounter_id: String, rng_in: Gam
 	c.max_energy += int(opts.get("extra_energy", 0))
 	c.hand_size += int(opts.get("extra_hand", 0))
 	var max_hp := int(opts.get("max_hp", p.get("max_hp", 60)))
-	c.enemy_hp_mult = float(opts.get("enemy_hp_mult", 1.0))
 	c.enemy_might = int(opts.get("enemy_might", 0))
 	c.enemy_dmg_mult = float(opts.get("enemy_dmg_mult", 1.0))
 	for tid in opts.get("talismans", []):
@@ -65,6 +67,8 @@ static func create(db_in: CardDB, deck: Array, encounter_id: String, rng_in: Gam
 		if not pd.get("triggers", []).is_empty():
 			c.perks.append(pd)
 	c.start_ward = int(opts.get("start_ward", 0))
+	c.ward_retention = clampf(float(opts.get("ward_retention", 0.0)), 0.0, 1.0)
+	c.daemon_death_damage = int(opts.get("daemon_death_damage", 0))
 	c.player = Fighter.make("player", "You", max_hp)
 	if hp > 0:
 		c.player.hp = mini(hp, max_hp)
@@ -72,6 +76,8 @@ static func create(db_in: CardDB, deck: Array, encounter_id: String, rng_in: Gam
 	var enc: Dictionary = db_in.encounters.get(encounter_id, {})
 	if enc.is_empty():
 		push_error("Unknown encounter '%s'" % encounter_id)
+	var act_hp_mult: Dictionary = db_in.balance.get("enemy_hp_mult_by_act", {})
+	c.enemy_hp_mult = float(opts.get("enemy_hp_mult", 1.0)) * float(act_hp_mult.get(str(int(enc.get("act", 1))), 1.0))
 	for eid in enc.get("enemies", []):
 		c.enemies.append(c._make_enemy(str(eid)))
 	c.draw_pile = deck.duplicate()
@@ -86,7 +92,8 @@ func _make_enemy(eid: String) -> Fighter:
 		push_error("Unknown enemy '%s'" % eid)
 		return Fighter.make("e%d" % idx, eid, 1)
 	var r: Array = d.get("hp", [10, 10])
-	var hp := int(round(rng.range_i(int(r[0]), int(r[1])) * enemy_hp_mult))
+	var hp_mult := enemy_hp_mult * float(d.get("hp_mult", 1.0))
+	var hp := maxi(1, roundi(rng.range_i(int(r[0]), int(r[1])) * hp_mult))
 	var f := Fighter.make("e%d" % idx, str(d.get("name", eid)), hp)
 	if enemy_might > 0:
 		f.add_status("might", enemy_might)
@@ -116,11 +123,12 @@ func start() -> void:
 func _start_player_turn() -> void:
 	turn += 1
 	phase = Phase.PLAYER
+	_played_once_per_turn.clear()
 	if player.status("fortify") <= 0:
-		player.ward = 0
+		player.ward = ceili(player.ward * ward_retention)
 	energy = maxi(max_energy - player.status("overcharge"), 0)
 	player.statuses.erase("overcharge")
-	emit("turn_start", {"turn": turn})
+	emit("turn_start", {"turn": turn, "ward": player.ward})
 	if turn == 1:
 		# After the Ward reset, so start-of-combat Ward sticks for turn 1.
 		if start_ward > 0:
@@ -138,11 +146,15 @@ func can_play(hand_idx: int) -> bool:
 	if phase != Phase.PLAYER or hand_idx < 0 or hand_idx >= hand.size():
 		return false
 	var card: CardInstance = hand[hand_idx]
-	if card.has_keyword("unplayable") or card.cost() > energy:
+	if card.has_keyword("unplayable") or card.cost() > energy or was_played_this_turn(card):
 		return false
 	if _summons(card) and units.size() >= board_slots:
 		return false
 	return true
+
+
+func was_played_this_turn(card: CardInstance) -> bool:
+	return card in _played_once_per_turn
 
 
 func needs_target(card: CardInstance) -> bool:
@@ -163,6 +175,8 @@ func play_card(hand_idx: int, target_idx: int = -1) -> bool:
 		target = enemies[target_idx]
 	hand.remove_at(hand_idx)
 	energy -= card.cost()
+	if card.has_keyword("once_per_turn"):
+		_played_once_per_turn.append(card)
 	emit("play", {"card": card.key(), "target": target.id if target != null else ""})
 	var repeats := 1
 	if player.status("echo") > 0 and card.def.type != "power":
@@ -279,8 +293,13 @@ func deal_damage(t: Fighter, amount: int, source_id: String = "", kind: String =
 	emit("damage", {"target": t.id, "amount": dealt, "blocked": blocked, "source": source_id, "kind": kind, "hp": t.hp, "ward": t.ward})
 	if t.is_dead():
 		emit("death", {"target": t.id})
-		units.erase(t)
-		if enemies.has(t) and phase == Phase.PLAYER:
+		if units.has(t):
+			units.erase(t)
+			if daemon_death_damage > 0:
+				emit("daemon_explosion", {"target": t.id})
+				for enemy in living(enemies):
+					deal_damage(enemy, daemon_death_damage, t.id, "daemon_explosion")
+		elif enemies.has(t) and phase == Phase.PLAYER:
 			Talismans.fire(self, "kill", {"target": t})
 	return dealt
 

@@ -4,7 +4,7 @@ extends Control
 ## keyword text comes straight from Statuses.DEFS / CardDef.KEYWORD_DESC, so
 ## new content documents itself. Open with Rules.open(node).
 
-const WARD := "Firewall: absorbs damage before HP. Your Firewall is cleared at the start of your turn (unless you are Hardened)."
+const WARD := "Firewall absorbs damage before HP and normally clears at the start of your turn. Hardened keeps all remaining Firewall. Liquidity Engine keeps 30%, rounded up."
 const UNITS := "Daemons: programs that stay on your board. Each hits the front enemy at the end of your turn. Area attacks and attacks aimed at the front can crash them."
 
 var _tap := Tap.new()
