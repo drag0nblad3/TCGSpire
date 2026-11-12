@@ -57,7 +57,7 @@ func _show(node: Control) -> void:
 	if _glass_pulse != null:
 		_glass_pulse.kill()
 		_glass_pulse = null
-	_bg_mat.set_shader_parameter("kiln_entrance", -1.0)
+	_bg_mat.set_shader_parameter("boss_entrance", -1.0)
 	_bg_mat.set_shader_parameter("glass_intensity", 1.45 if node is CombatScreen else 1.0)
 	add_child(node)
 
@@ -209,27 +209,13 @@ func _start_combat(node: Dictionary) -> void:
 	var s := CombatScreen.new().setup(_combat, run)
 	s.finished.connect(_on_combat_finished)
 	_show(s)
-	for enemy in _combat.enemies:
-		if enemy.def_id == FighterView.KILN_MOTHER_ID:
-			_play_kiln_entrance(s, enemy)
-			break
-
-
-func _play_kiln_entrance(screen: CombatScreen, enemy: Fighter) -> void:
-	var portrait: FighterView = screen._views.get(enemy.id)
-	if portrait == null:
-		return
-	var reveal := portrait.create_tween().set_parallel()
-	portrait.modulate.a = 0.20
-	portrait.offset.y = -22.0
-	reveal.tween_property(portrait, "modulate:a", 1.0, 0.45)
-	reveal.tween_property(portrait, "offset", Vector2.ZERO, 0.55).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	if Palette.BACKDROP["style"] == 4:
-		_bg_mat.set_shader_parameter("kiln_color", Palette.faction("ember"))
-		_bg_mat.set_shader_parameter("kiln_entrance", -0.18)
+	var accent := s.reveal_boss()
+	if accent.a > 0.0 and Palette.BACKDROP["style"] == 4:
+		_bg_mat.set_shader_parameter("boss_color", accent)
+		_bg_mat.set_shader_parameter("boss_entrance", -0.18)
 		_glass_pulse = create_tween()
-		_glass_pulse.tween_property(_bg_mat, "shader_parameter/kiln_entrance", 1.22, 1.10)
-		_glass_pulse.tween_callback(_bg_mat.set_shader_parameter.bind("kiln_entrance", -1.0))
+		_glass_pulse.tween_property(_bg_mat, "shader_parameter/boss_entrance", 1.22, 1.10)
+		_glass_pulse.tween_callback(_bg_mat.set_shader_parameter.bind("boss_entrance", -1.0))
 
 
 func _on_combat_finished(_won: bool) -> void:

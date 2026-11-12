@@ -196,8 +196,23 @@ func _add_enemy_view(e: Fighter, i: int) -> FighterView:
 	var enemy_count := _enemies_row.get_child_count()
 	var width := minf(250.0, (_layout_width() - 38 - 8 * (enemy_count - 1)) / enemy_count)
 	for tile in _enemies_row.get_children():
-		tile.custom_minimum_size.x = minf(432.0, _layout_width() - 38.0) if tile.kiln_mother and enemy_count == 1 else width
+		var solo_boss: bool = not tile.boss_profile.is_empty() and enemy_count == 1
+		tile.set_enemy_width(minf(432.0, _layout_width() - 38.0) if solo_boss else width)
 	return v
+
+
+## Reveal the opening boss portrait and report its accent to the shared backdrop.
+func reveal_boss() -> Color:
+	for portrait: FighterView in _enemies_row.get_children():
+		if portrait.boss_profile.is_empty():
+			continue
+		portrait.modulate.a = 0.20
+		portrait.offset.y = -22.0
+		var reveal := portrait.create_tween().set_parallel()
+		reveal.tween_property(portrait, "modulate:a", 1.0, 0.45)
+		reveal.tween_property(portrait, "offset", Vector2.ZERO, 0.55).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		return portrait.boss_accent
+	return Color.TRANSPARENT
 
 
 func _add_unit_view(u: Fighter) -> FighterView:
