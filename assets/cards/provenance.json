@@ -1,0 +1,882 @@
+{
+  "jab": {
+    "name": "Ping Spike",
+    "source": "361b46fa-e8ff-432c-86b4-e48aaf999fbd",
+    "crop": [
+      10,
+      121,
+      534,
+      258
+    ]
+  },
+  "brace": {
+    "name": "Quick Wall",
+    "source": "361b46fa-e8ff-432c-86b4-e48aaf999fbd",
+    "crop": [
+      552,
+      121,
+      1077,
+      258
+    ]
+  },
+  "second_wind": {
+    "name": "Soft Reboot",
+    "source": "361b46fa-e8ff-432c-86b4-e48aaf999fbd",
+    "crop": [
+      10,
+      313,
+      534,
+      453
+    ]
+  },
+  "sparring_dummy": {
+    "name": "Decoy Process",
+    "source": "361b46fa-e8ff-432c-86b4-e48aaf999fbd",
+    "crop": [
+      552,
+      313,
+      1077,
+      453
+    ]
+  },
+  "rally_cry": {
+    "name": "Sync Pulse",
+    "source": "8751cb3c-81d6-4cff-ad93-150849964da1",
+    "crop": [
+      16,
+      147,
+      576,
+      496
+    ]
+  },
+  "field_medic": {
+    "name": "Hotfix",
+    "source": "361b46fa-e8ff-432c-86b4-e48aaf999fbd",
+    "crop": [
+      552,
+      507,
+      1077,
+      643
+    ]
+  },
+  "focus": {
+    "name": "Defrag",
+    "source": "361b46fa-e8ff-432c-86b4-e48aaf999fbd",
+    "crop": [
+      10,
+      694,
+      534,
+      812
+    ]
+  },
+  "reckless_swing": {
+    "name": "Brute Force",
+    "source": "361b46fa-e8ff-432c-86b4-e48aaf999fbd",
+    "crop": [
+      552,
+      694,
+      1077,
+      812
+    ]
+  },
+  "purge": {
+    "name": "Sanitize",
+    "source": "361b46fa-e8ff-432c-86b4-e48aaf999fbd",
+    "crop": [
+      10,
+      862,
+      534,
+      988
+    ]
+  },
+  "opening_gambit": {
+    "name": "Zero-Day",
+    "source": "361b46fa-e8ff-432c-86b4-e48aaf999fbd",
+    "crop": [
+      552,
+      862,
+      1077,
+      988
+    ]
+  },
+  "measured_strike": {
+    "name": "Precision Probe",
+    "source": "361b46fa-e8ff-432c-86b4-e48aaf999fbd",
+    "crop": [
+      10,
+      1043,
+      534,
+      1145
+    ]
+  },
+  "scrap_golem": {
+    "name": "Junk Bot",
+    "source": "361b46fa-e8ff-432c-86b4-e48aaf999fbd",
+    "crop": [
+      552,
+      1043,
+      1077,
+      1145
+    ]
+  },
+  "adrenaline": {
+    "name": "Stim Spike",
+    "source": "361b46fa-e8ff-432c-86b4-e48aaf999fbd",
+    "crop": [
+      10,
+      1199,
+      534,
+      1312
+    ]
+  },
+  "doubt": {
+    "name": "Adware",
+    "source": "361b46fa-e8ff-432c-86b4-e48aaf999fbd",
+    "crop": [
+      552,
+      1199,
+      1077,
+      1312
+    ]
+  },
+  "lingering_chill": {
+    "name": "Memory Leak",
+    "source": "361b46fa-e8ff-432c-86b4-e48aaf999fbd",
+    "crop": [
+      10,
+      1358,
+      1077,
+      1436
+    ]
+  },
+  "kindle": {
+    "name": "Seed Virus",
+    "source": "d2520ffd-56fb-4ecc-92a4-ce307c41a5be",
+    "crop": [
+      10,
+      121,
+      534,
+      284
+    ]
+  },
+  "flare_volley": {
+    "name": "Packet Storm",
+    "source": "d2520ffd-56fb-4ecc-92a4-ce307c41a5be",
+    "crop": [
+      552,
+      121,
+      1077,
+      284
+    ]
+  },
+  "ember_whelp": {
+    "name": "Burnworm",
+    "source": "d2520ffd-56fb-4ecc-92a4-ce307c41a5be",
+    "crop": [
+      10,
+      333,
+      534,
+      505
+    ]
+  },
+  "searing_brand": {
+    "name": "Thermal Tag",
+    "source": "d2520ffd-56fb-4ecc-92a4-ce307c41a5be",
+    "crop": [
+      552,
+      333,
+      1077,
+      505
+    ]
+  },
+  "overclock": {
+    "name": "Overclock",
+    "source": "d2520ffd-56fb-4ecc-92a4-ce307c41a5be",
+    "crop": [
+      10,
+      555,
+      534,
+      717
+    ]
+  },
+  "blaze_heart": {
+    "name": "Hot Core",
+    "source": "d2520ffd-56fb-4ecc-92a4-ce307c41a5be",
+    "crop": [
+      552,
+      555,
+      1077,
+      717
+    ]
+  },
+  "cinder_storm": {
+    "name": "Meltdown",
+    "source": "d2520ffd-56fb-4ecc-92a4-ce307c41a5be",
+    "crop": [
+      10,
+      769,
+      534,
+      917
+    ]
+  },
+  "spark": {
+    "name": "Short Circuit",
+    "source": "d2520ffd-56fb-4ecc-92a4-ce307c41a5be",
+    "crop": [
+      552,
+      769,
+      1077,
+      917
+    ]
+  },
+  "ash_veil": {
+    "name": "Smoke Screen",
+    "source": "d2520ffd-56fb-4ecc-92a4-ce307c41a5be",
+    "crop": [
+      10,
+      969,
+      534,
+      1105
+    ]
+  },
+  "pyre": {
+    "name": "Firestorm Protocol",
+    "source": "8751cb3c-81d6-4cff-ad93-150849964da1",
+    "crop": [
+      599,
+      563,
+      1170,
+      870
+    ]
+  },
+  "phoenix_rite": {
+    "name": "Rekindle Protocol",
+    "source": "8751cb3c-81d6-4cff-ad93-150849964da1",
+    "crop": [
+      16,
+      939,
+      576,
+      1315
+    ]
+  },
+  "molten_shield": {
+    "name": "Heat Sink",
+    "source": "d2520ffd-56fb-4ecc-92a4-ce307c41a5be",
+    "crop": [
+      552,
+      1156,
+      1077,
+      1272
+    ]
+  },
+  "flashfire": {
+    "name": "Flash Burn",
+    "source": "d2520ffd-56fb-4ecc-92a4-ce307c41a5be",
+    "crop": [
+      10,
+      1322,
+      534,
+      1440
+    ]
+  },
+  "salamander": {
+    "name": "Firewyrm",
+    "source": "d2520ffd-56fb-4ecc-92a4-ce307c41a5be",
+    "crop": [
+      552,
+      1322,
+      1077,
+      1440
+    ]
+  },
+  "sprout": {
+    "name": "Spawn Cell",
+    "source": "f460fe91-670e-4a90-9f97-6fa67755942c",
+    "crop": [
+      10,
+      121,
+      534,
+      314
+    ]
+  },
+  "thornhide": {
+    "name": "Barbed Skin",
+    "source": "f460fe91-670e-4a90-9f97-6fa67755942c",
+    "crop": [
+      552,
+      121,
+      1077,
+      314
+    ]
+  },
+  "bramble_lash": {
+    "name": "Nerve Lash",
+    "source": "f460fe91-670e-4a90-9f97-6fa67755942c",
+    "crop": [
+      10,
+      365,
+      534,
+      538
+    ]
+  },
+  "mending_moss": {
+    "name": "Nanite Mend",
+    "source": "f460fe91-670e-4a90-9f97-6fa67755942c",
+    "crop": [
+      552,
+      365,
+      1077,
+      538
+    ]
+  },
+  "overgrowth": {
+    "name": "Mutation Spike",
+    "source": "f460fe91-670e-4a90-9f97-6fa67755942c",
+    "crop": [
+      10,
+      595,
+      534,
+      747
+    ]
+  },
+  "seed_burst": {
+    "name": "Spore Burst",
+    "source": "f460fe91-670e-4a90-9f97-6fa67755942c",
+    "crop": [
+      552,
+      595,
+      1077,
+      747
+    ]
+  },
+  "wild_bloom": {
+    "name": "Wild Graft",
+    "source": "f460fe91-670e-4a90-9f97-6fa67755942c",
+    "crop": [
+      10,
+      797,
+      534,
+      960
+    ]
+  },
+  "verdant_titan": {
+    "name": "Flesh Titan",
+    "source": "f460fe91-670e-4a90-9f97-6fa67755942c",
+    "crop": [
+      552,
+      797,
+      1077,
+      960
+    ]
+  },
+  "ancient_grove": {
+    "name": "Hive Mind",
+    "source": "f460fe91-670e-4a90-9f97-6fa67755942c",
+    "crop": [
+      10,
+      1016,
+      534,
+      1178
+    ]
+  },
+  "barkskin": {
+    "name": "Dermal Plate",
+    "source": "f460fe91-670e-4a90-9f97-6fa67755942c",
+    "crop": [
+      552,
+      1016,
+      1077,
+      1178
+    ]
+  },
+  "stampede": {
+    "name": "Swarm Rush",
+    "source": "f460fe91-670e-4a90-9f97-6fa67755942c",
+    "crop": [
+      10,
+      1230,
+      534,
+      1437
+    ]
+  },
+  "rootbound_sentinel": {
+    "name": "Neural Sentinel",
+    "source": "f460fe91-670e-4a90-9f97-6fa67755942c",
+    "crop": [
+      552,
+      1230,
+      1077,
+      1437
+    ]
+  },
+  "undertow": {
+    "name": "Packet Drag",
+    "source": "de276835-fbd8-44cc-bc55-fcfa7c228feb",
+    "crop": [
+      10,
+      122,
+      534,
+      288
+    ]
+  },
+  "tidewall": {
+    "name": "Flux Wall",
+    "source": "de276835-fbd8-44cc-bc55-fcfa7c228feb",
+    "crop": [
+      552,
+      122,
+      1077,
+      288
+    ]
+  },
+  "low_tide": {
+    "name": "Low Latency",
+    "source": "de276835-fbd8-44cc-bc55-fcfa7c228feb",
+    "crop": [
+      10,
+      338,
+      534,
+      494
+    ]
+  },
+  "riptide": {
+    "name": "Backflow",
+    "source": "de276835-fbd8-44cc-bc55-fcfa7c228feb",
+    "crop": [
+      552,
+      338,
+      1077,
+      494
+    ]
+  },
+  "reef_warden": {
+    "name": "Gatekeeper",
+    "source": "de276835-fbd8-44cc-bc55-fcfa7c228feb",
+    "crop": [
+      10,
+      548,
+      534,
+      693
+    ]
+  },
+  "crashing_wave": {
+    "name": "Data Flood",
+    "source": "de276835-fbd8-44cc-bc55-fcfa7c228feb",
+    "crop": [
+      552,
+      548,
+      1077,
+      693
+    ]
+  },
+  "leviathan_call": {
+    "name": "Leviathan Server",
+    "source": "8751cb3c-81d6-4cff-ad93-150849964da1",
+    "crop": [
+      599,
+      939,
+      1170,
+      1315
+    ]
+  },
+  "tidal_echo": {
+    "name": "Mirror Packet",
+    "source": "de276835-fbd8-44cc-bc55-fcfa7c228feb",
+    "crop": [
+      552,
+      746,
+      1077,
+      871
+    ]
+  },
+  "bulwark_stance": {
+    "name": "Bulwark Mode",
+    "source": "de276835-fbd8-44cc-bc55-fcfa7c228feb",
+    "crop": [
+      10,
+      925,
+      534,
+      1043
+    ]
+  },
+  "maelstrom": {
+    "name": "Traffic Maelstrom",
+    "source": "de276835-fbd8-44cc-bc55-fcfa7c228feb",
+    "crop": [
+      552,
+      925,
+      1077,
+      1043
+    ]
+  },
+  "current_shift": {
+    "name": "Reroute",
+    "source": "de276835-fbd8-44cc-bc55-fcfa7c228feb",
+    "crop": [
+      10,
+      1096,
+      534,
+      1236
+    ]
+  },
+  "deep_pressure": {
+    "name": "Deep Packet",
+    "source": "de276835-fbd8-44cc-bc55-fcfa7c228feb",
+    "crop": [
+      552,
+      1096,
+      1077,
+      1236
+    ]
+  },
+  "kraken_spawn": {
+    "name": "Kraken Cluster",
+    "source": "de276835-fbd8-44cc-bc55-fcfa7c228feb",
+    "crop": [
+      10,
+      1287,
+      1077,
+      1437
+    ]
+  },
+  "static_build": {
+    "name": "Static Buffer",
+    "source": "73744b10-cf9d-42dc-9f21-d00ab60734bb",
+    "crop": [
+      10,
+      123,
+      534,
+      323
+    ]
+  },
+  "arc_bolt": {
+    "name": "Arc Bolt",
+    "source": "73744b10-cf9d-42dc-9f21-d00ab60734bb",
+    "crop": [
+      552,
+      123,
+      1077,
+      323
+    ]
+  },
+  "discharge": {
+    "name": "Discharge",
+    "source": "73744b10-cf9d-42dc-9f21-d00ab60734bb",
+    "crop": [
+      10,
+      384,
+      534,
+      611
+    ]
+  },
+  "spark_wisp": {
+    "name": "Glitch Wisp",
+    "source": "73744b10-cf9d-42dc-9f21-d00ab60734bb",
+    "crop": [
+      552,
+      384,
+      1077,
+      611
+    ]
+  },
+  "resonance": {
+    "name": "Resonance",
+    "source": "73744b10-cf9d-42dc-9f21-d00ab60734bb",
+    "crop": [
+      10,
+      669,
+      534,
+      881
+    ]
+  },
+  "mirror_step": {
+    "name": "Ghost Step",
+    "source": "73744b10-cf9d-42dc-9f21-d00ab60734bb",
+    "crop": [
+      552,
+      669,
+      1077,
+      881
+    ]
+  },
+  "thunder_coil": {
+    "name": "Capacitor Coil",
+    "source": "8751cb3c-81d6-4cff-ad93-150849964da1",
+    "crop": [
+      599,
+      147,
+      1170,
+      496
+    ]
+  },
+  "void_lance": {
+    "name": "Null Lance",
+    "source": "8751cb3c-81d6-4cff-ad93-150849964da1",
+    "crop": [
+      16,
+      563,
+      576,
+      870
+    ]
+  },
+  "twin_cast": {
+    "name": "Fork Bomb",
+    "source": "73744b10-cf9d-42dc-9f21-d00ab60734bb",
+    "crop": [
+      10,
+      1210,
+      534,
+      1437
+    ]
+  },
+  "singularity": {
+    "name": "Kernel Panic",
+    "source": "73744b10-cf9d-42dc-9f21-d00ab60734bb",
+    "crop": [
+      552,
+      1210,
+      1077,
+      1437
+    ]
+  },
+  "jam_signal": {
+    "name": "Jam Signal",
+    "source": "2d0458a1-ca49-43bb-8f4d-8c989215750b",
+    "crop": [
+      10,
+      122,
+      534,
+      314
+    ]
+  },
+  "shriek": {
+    "name": "Shriek",
+    "source": "2d0458a1-ca49-43bb-8f4d-8c989215750b",
+    "crop": [
+      552,
+      122,
+      1077,
+      314
+    ]
+  },
+  "channel_surf": {
+    "name": "Channel Surf",
+    "source": "2d0458a1-ca49-43bb-8f4d-8c989215750b",
+    "crop": [
+      10,
+      367,
+      534,
+      552
+    ]
+  },
+  "dead_air": {
+    "name": "Dead Air",
+    "source": "2d0458a1-ca49-43bb-8f4d-8c989215750b",
+    "crop": [
+      552,
+      367,
+      1077,
+      552
+    ]
+  },
+  "pirate_cast": {
+    "name": "Pirate Cast",
+    "source": "2d0458a1-ca49-43bb-8f4d-8c989215750b",
+    "crop": [
+      10,
+      604,
+      534,
+      780
+    ]
+  },
+  "broadcast_storm": {
+    "name": "Broadcast Storm",
+    "source": "2d0458a1-ca49-43bb-8f4d-8c989215750b",
+    "crop": [
+      552,
+      604,
+      1077,
+      780
+    ]
+  },
+  "leak_files": {
+    "name": "Leak the Files",
+    "source": "2d0458a1-ca49-43bb-8f4d-8c989215750b",
+    "crop": [
+      10,
+      831,
+      534,
+      1008
+    ]
+  },
+  "signal_relay": {
+    "name": "Signal Relay",
+    "source": "2d0458a1-ca49-43bb-8f4d-8c989215750b",
+    "crop": [
+      552,
+      831,
+      1077,
+      1008
+    ]
+  },
+  "static_flood": {
+    "name": "Static Flood",
+    "source": "2d0458a1-ca49-43bb-8f4d-8c989215750b",
+    "crop": [
+      10,
+      1061,
+      534,
+      1213
+    ]
+  },
+  "hijack_feed": {
+    "name": "Hijack Feed",
+    "source": "2d0458a1-ca49-43bb-8f4d-8c989215750b",
+    "crop": [
+      552,
+      1061,
+      1077,
+      1213
+    ]
+  },
+  "interference": {
+    "name": "Interference",
+    "source": "2d0458a1-ca49-43bb-8f4d-8c989215750b",
+    "crop": [
+      10,
+      1266,
+      534,
+      1437
+    ]
+  },
+  "total_blackout": {
+    "name": "Total Blackout",
+    "source": "2d0458a1-ca49-43bb-8f4d-8c989215750b",
+    "crop": [
+      552,
+      1266,
+      1077,
+      1437
+    ]
+  },
+  "drone_swarm": {
+    "name": "Drone Swarm",
+    "source": "c1424045-babc-40a9-9cd6-7c3ab15c642c",
+    "crop": [
+      10,
+      102,
+      507,
+      318
+    ]
+  },
+  "plate_up": {
+    "name": "Plate Up",
+    "source": "c1424045-babc-40a9-9cd6-7c3ab15c642c",
+    "crop": [
+      518,
+      102,
+      1015,
+      318
+    ]
+  },
+  "rivet_gun": {
+    "name": "Rivet Gun",
+    "source": "c1424045-babc-40a9-9cd6-7c3ab15c642c",
+    "crop": [
+      10,
+      363,
+      507,
+      590
+    ]
+  },
+  "hydraulic_slam": {
+    "name": "Hydraulic Slam",
+    "source": "c1424045-babc-40a9-9cd6-7c3ab15c642c",
+    "crop": [
+      518,
+      363,
+      1015,
+      590
+    ]
+  },
+  "swarm_link": {
+    "name": "Swarm Link",
+    "source": "c1424045-babc-40a9-9cd6-7c3ab15c642c",
+    "crop": [
+      10,
+      636,
+      507,
+      839
+    ]
+  },
+  "hunter_drone": {
+    "name": "Hunter Drone",
+    "source": "c1424045-babc-40a9-9cd6-7c3ab15c642c",
+    "crop": [
+      518,
+      636,
+      1015,
+      839
+    ]
+  },
+  "bulwark_frame": {
+    "name": "Bulwark Frame",
+    "source": "c1424045-babc-40a9-9cd6-7c3ab15c642c",
+    "crop": [
+      10,
+      874,
+      507,
+      1066
+    ]
+  },
+  "overwatch": {
+    "name": "Overwatch Protocol",
+    "source": "c1424045-babc-40a9-9cd6-7c3ab15c642c",
+    "crop": [
+      518,
+      874,
+      1015,
+      1066
+    ]
+  },
+  "flak_burst": {
+    "name": "Flak Burst",
+    "source": "c1424045-babc-40a9-9cd6-7c3ab15c642c",
+    "crop": [
+      10,
+      1111,
+      507,
+      1305
+    ]
+  },
+  "carrier_drone": {
+    "name": "Carrier Drone",
+    "source": "c1424045-babc-40a9-9cd6-7c3ab15c642c",
+    "crop": [
+      518,
+      1111,
+      1015,
+      1305
+    ]
+  },
+  "titanium_skin": {
+    "name": "Titanium Skin",
+    "source": "c1424045-babc-40a9-9cd6-7c3ab15c642c",
+    "crop": [
+      10,
+      1350,
+      507,
+      1528
+    ]
+  },
+  "war_foundry": {
+    "name": "War Foundry",
+    "source": "c1424045-babc-40a9-9cd6-7c3ab15c642c",
+    "crop": [
+      518,
+      1350,
+      1015,
+      1528
+    ]
+  }
+}

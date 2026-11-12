@@ -1,6 +1,6 @@
 class_name CardView
 extends Control
-## Draws a card entirely in code: frame, faction band, program icon, cost,
+## Draws a card frame, Field Service illustration, faction identity, cost,
 ## name and generated rules text. Rare+ and foil cards get the holo shader.
 
 signal pressed(view: CardView)
@@ -133,26 +133,27 @@ func _draw() -> void:
 	draw_string(title_font, orb + Vector2(-11, 5), str(card.cost()), HORIZONTAL_ALIGNMENT_CENTER, 22, 14, Palette.CARD_BG)
 	Symbols.draw_on(self, rect.position + Vector2(SIZE.x - 11, 16), 8, d.faction, Color(fc, dim))
 
-	# Faction band + sigil "art".
+	# Every card surface uses the same cached art; keep procedural fallback for future content.
 	var art := Rect2(rect.position + Vector2(8, 34), Vector2(SIZE.x - 16, 42))
-	var band := StyleBoxFlat.new()
-	band.bg_color = Color(fc, 0.23 * dim)
-	band.set_corner_radius_all(maxi(Palette.RADIUS - 4, 0))
-	draw_style_box(band, art)
-	var t := Time.get_ticks_msec() / 1000.0 if d.rarity in ["rare", "mythic"] else 0.0
-	if Palette.FRAME == "circuit":
-		for yy in range(int(art.position.y) + 2, int(art.end.y), 3):
-			draw_line(Vector2(art.position.x, yy), Vector2(art.end.x, yy), Color(fc, 0.07 * dim), 1.0)
-	var glyph_ink := Color(Palette.CARD_TEXT.lerp(fc, 0.55), dim)
-	if d.type == "unit":
-		draw_texture_rect(DRONE, Rect2(art.get_center() - Vector2(20, 18), Vector2(40, 36)), false, glyph_ink)
-	elif TYPE_GLYPH.has(d.type):
-		IntentIcon.draw(self, art.get_center(), 19.0, TYPE_GLYPH[d.type], glyph_ink)
+	var illustration := CardArt.texture_for(d.id)
+	if illustration != null:
+		draw_texture_rect(illustration, art, false, Color(1, 1, 1, dim))
+		draw_rect(art, Color(fc, 0.65 * dim), false, 1.0)
 	else:
-		Sigil.draw(self, art.get_center(), 19.0, d.id, Color(fc, dim), t)
-	if d.type == "unit" or TYPE_GLYPH.has(d.type):
-		Sigil.draw(self, art.get_center() + Vector2(31, 0), 11.0, d.id, Color(fc, 0.35 * dim), t)
-
+		draw_rect(art, Color(fc, 0.23 * dim))
+		var t := Time.get_ticks_msec() / 1000.0 if d.rarity in ["rare", "mythic"] else 0.0
+		if Palette.FRAME == "circuit":
+			for yy in range(int(art.position.y) + 2, int(art.end.y), 3):
+				draw_line(Vector2(art.position.x, yy), Vector2(art.end.x, yy), Color(fc, 0.07 * dim), 1.0)
+		var glyph_ink := Color(Palette.CARD_TEXT.lerp(fc, 0.55), dim)
+		if d.type == "unit":
+			draw_texture_rect(DRONE, Rect2(art.get_center() - Vector2(20, 18), Vector2(40, 36)), false, glyph_ink)
+		elif TYPE_GLYPH.has(d.type):
+			IntentIcon.draw(self, art.get_center(), 19.0, TYPE_GLYPH[d.type], glyph_ink)
+		else:
+			Sigil.draw(self, art.get_center(), 19.0, d.id, Color(fc, dim), t)
+		if d.type == "unit" or TYPE_GLYPH.has(d.type):
+			Sigil.draw(self, art.get_center() + Vector2(31, 0), 11.0, d.id, Color(fc, 0.35 * dim), t)
 	# Type line.
 	# Type line; a modded card shows its mod there instead.
 	if card.mod.is_empty():

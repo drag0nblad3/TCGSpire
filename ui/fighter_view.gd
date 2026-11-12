@@ -33,6 +33,7 @@ var boss_large := false
 var boss_accent := Color.TRANSPARENT
 var enemy_faction := ""
 var enemy_portrait: Array = []
+var elite := false
 
 var _tap := Tap.new()
 
@@ -45,6 +46,11 @@ func setup(f: Fighter, c: Combat, kind_in: String) -> FighterView:
 	if kind == "enemy":
 		if combat != null and combat.db != null:
 			enemy_faction = str(combat.db.enemies.get(fighter.def_id, {}).get("faction", ""))
+			var encounter: Dictionary = combat.db.encounters.get(combat.encounter_id, {})
+			if encounter.get("kind", "") == "elite":
+				var lineup: Array = encounter.get("enemies", [])
+				# The lead enemy and any copies are elite. Escorts and summons keep their normal portraits.
+				elite = not lineup.is_empty() and fighter.def_id == lineup[0]
 		enemy_portrait = EnemyPortraits.ROSTER.get(fighter.def_id, [])
 		boss_profile = BossPresentation.PROFILES.get(fighter.def_id, {})
 		if not boss_profile.is_empty():
@@ -144,9 +150,9 @@ func _draw() -> void:
 		if kind == "unit" and fighter.name == "Drone":
 			portrait = DRONE
 		if not enemy_portrait.is_empty() and not boss:
-			var width := w - 18.0
 			var height := art_height if fighter.def_id == "burner_tagger" else art_height * 0.94
-			EnemyPortraits.draw(self, c, Vector2(width, height), enemy_portrait, t + float(fighter.id.hash() % 29) * 0.11)
+			var bounds := Vector2(w - 18.0, height) * (1.10 if elite else 0.93)
+			EnemyPortraits.draw(self, c, bounds, enemy_portrait, t + float(fighter.id.hash() % 29) * 0.11, elite)
 		elif portrait != null:
 			var art_size := portrait.get_size()
 			art_size *= minf((w - 20.0) / art_size.x, art_height / art_size.y)

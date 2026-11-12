@@ -14,6 +14,12 @@ var _bg_mat: ShaderMaterial
 var _glass_pulse: Tween
 ## Screenshot/smoke tools turn this off so they never touch the real save.
 var persist := true
+var run_save_path := RunSave.DEFAULT_PATH
+## Where a resumed run picks up (see RunSave); "node" = the node screen restarts.
+var _resume: Dictionary = {}
+var _menu_btn: Button
+## Combat animation speed multiplier (settings "anim_speed"; lower = faster).
+const ANIM_SPEEDS := [[1.0, "Normal"], [0.6, "Fast"], [0.3, "Very fast"]]
 
 
 func _ready() -> void:
@@ -27,6 +33,11 @@ func _ready() -> void:
 	db = CardDB.shared()
 	profile = Profile.load_or_new(db)
 	apply_theme(str(profile.settings.get("theme", Themes.DEFAULT)))
+	_menu_btn = UiKit.button("Menu", _open_menu, Vector2(84, 40), 15)
+	_menu_btn.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_menu_btn.position = Vector2(get_viewport_rect().size.x - 92, 4)
+	_menu_btn.visible = false
+	add_child(_menu_btn)
 	show_hub()
 
 
@@ -60,6 +71,107 @@ func _show(node: Control) -> void:
 	_bg_mat.set_shader_parameter("boss_entrance", -1.0)
 	_bg_mat.set_shader_parameter("glass_intensity", 1.45 if node is CombatScreen else 1.0)
 	add_child(node)
+	if _menu_btn != null:
+		move_child(_menu_btn, -1)
+		_menu_btn.position = Vector2(get_viewport_rect().size.x - 92, 4)
+		_menu_btn.visible = run != null and not run.over
+
+
+## Writes the run in progress (and where to resume it) next to the profile.
+func _save_run(resume: Dictionary) -> void:
+	_resume = resume
+	if persist and run != null and not run.over:
+		RunSave.save(run, resume, run_save_path)
+
+
+func anim_speed() -> float:
+	var i := int(profile.settings.get("anim_speed", 0))
+	return float(ANIM_SPEEDS[clampi(i, 0, ANIM_SPEEDS.size() - 1)][0])
+
+
+# --- menu / settings / saved runs ---------------------------------------------------
+
+func _open_menu() -> void:
+	if _screen is CombatScreen and (_screen as CombatScreen).is_busy():
+		return
+	var note := ""
+	if _resume.get("screen", "") == "node":
+		note = "Quitting here restarts this node when you resume (a fight starts over from turn 1)."
+	get_tree().root.add_child(GameMenu.new().setup("Paused", [
+		["Resume", null],
+		["Settings", _open_settings],
+		["Save & quit to menu", func() -> void:
+			run = null
+			show_hub()],
+		["!Abandon run", func() -> void:
+			get_tree().root.add_child(GameMenu.new().setup("Abandon this run?", [
+				["!Yes, abandon it", func() -> void:
+					run.over = true
+					_end_run(true)],
+				["No, keep going", null]], "It counts as a loss. You keep the XP and rewards earned so far."))],
+	], note))
+
+
+func _open_settings() -> void:
+	var speed := int(profile.settings.get("anim_speed", 0))
+	get_tree().root.add_child(GameMenu.new().setup("Settings", [
+		["Look: %s" % Themes.ALL[Palette.theme_id]["name"], func() -> void:
+			profile.settings["theme"] = Themes.next_after(Palette.theme_id)
+			_save()
+			apply_theme(profile.settings["theme"])
+			if run == null:
+				show_hub()
+			elif _resume.get("screen", "") == "map":
+				show_map()
+			_open_settings()],
+		["Animations: %s" % ANIM_SPEEDS[clampi(speed, 0, ANIM_SPEEDS.size() - 1)][1], func() -> void:
+			profile.settings["anim_speed"] = (speed + 1) % ANIM_SPEEDS.size()
+			_save()
+			if _screen is CombatScreen:
+				(_screen as CombatScreen).step_scale = anim_speed()
+			_open_settings()],
+		["Done", _open_menu if run != null else null],
+	]))
+
+
+## "Layer 2 · Node 17 · HP 40/60" for the hub's resume button, or "" if no saved run.
+func saved_run_info() -> String:
+	if not persist:
+		return ""
+	var data := RunSave.load_run(db, run_save_path)
+	if data.is_empty():
+		return ""
+	var r: RunState = data["run"]
+	return "Layer %d · Node %d · HP %d/%d" % [r.act, r.floor_num, r.hp, r.max_hp]
+
+
+func _resume_run() -> void:
+	var data := RunSave.load_run(db, run_save_path)
+	if data.is_empty():
+		show_hub()
+		return
+	run = data["run"]
+	var res: Dictionary = data["resume"]
+	match str(res.get("screen", "map")):
+		"node":
+			_play_node(run.current_node())
+		"reward":
+			_show_reward(res.get("lines", []), res.get("tals", []), res.get("choices", []), res.get("perks", []), res.get("kind", ""))
+		"perks":
+			_show_perk_pick(res.get("choices", []))
+		_:
+			show_map()
+
+
+func _abandon_saved_run() -> void:
+	var data := RunSave.load_run(db, run_save_path)
+	if data.is_empty():
+		RunSave.clear(run_save_path)
+		show_hub()
+		return
+	run = data["run"]
+	run.over = true
+	_end_run(true)
 
 
 ## Shifts the backdrop glow toward `col` (elites, shops...). No arg = theme default.
@@ -72,12 +184,15 @@ func _tint(col: Color = Color.TRANSPARENT) -> void:
 
 func show_hub() -> void:
 	_tint()
-	var hub := HubScreen.new().setup(db, profile)
-	hub.theme_pressed.connect(func() -> void:
-		profile.settings["theme"] = Themes.next_after(Palette.theme_id)
-		_save()
-		apply_theme(profile.settings["theme"])
-		show_hub())
+	run = null
+	_resume = {}
+	var hub := HubScreen.new().setup(db, profile, saved_run_info())
+	hub.settings_pressed.connect(_open_settings)
+	hub.resume_pressed.connect(_resume_run)
+	hub.abandon_pressed.connect(func() -> void:
+		get_tree().root.add_child(GameMenu.new().setup("Abandon the saved run?", [
+			["!Yes, abandon it", _abandon_saved_run],
+			["No", null]], "It counts as a loss. You keep the XP and rewards earned so far.")))
 	hub.start_pressed.connect(_show_jobs)
 	hub.collection_pressed.connect(func() -> void:
 		var cs := CollectionScreen.new().setup(db, profile)
@@ -180,6 +295,7 @@ func _show_pack() -> void:
 
 func show_map() -> void:
 	_tint()
+	_save_run({"screen": "map"})
 	var m := MapScreen.new().setup(run)
 	m.node_chosen.connect(_enter_node)
 	_show(m)
@@ -187,6 +303,11 @@ func show_map() -> void:
 
 func _enter_node(id: int) -> void:
 	var node := run.enter(id)
+	_save_run({"screen": "node"})
+	_play_node(node)
+
+
+func _play_node(node: Dictionary) -> void:
 	match node.get("type", ""):
 		"fight", "elite", "boss":
 			_start_combat(node)
@@ -207,6 +328,7 @@ func _start_combat(node: Dictionary) -> void:
 	_combat = run.start_combat(node["encounter"])
 	_combat.start()
 	var s := CombatScreen.new().setup(_combat, run)
+	s.step_scale = anim_speed()
 	s.finished.connect(_on_combat_finished)
 	_show(s)
 	var accent := s.reveal_boss()
@@ -239,6 +361,7 @@ func _on_combat_finished(_won: bool) -> void:
 
 
 func _show_reward(lines: Array, tals: Array, choices: Array, perks: Array = [], kind: String = "") -> void:
+	_save_run({"screen": "reward", "lines": lines, "tals": tals, "choices": choices, "perks": perks, "kind": kind})
 	var next := show_map if perks.is_empty() else _show_perk_pick.bind(perks)
 	var parts := UiKit.screen(20)
 	var v: VBoxContainer = parts[1]
@@ -269,6 +392,7 @@ func _show_reward(lines: Array, tals: Array, choices: Array, perks: Array = [], 
 
 ## After black sentries and Cores: load one of a few subroutines (run perks).
 func _show_perk_pick(choices: Array) -> void:
+	_save_run({"screen": "perks", "choices": choices})
 	var parts := UiKit.screen(18)
 	var v: VBoxContainer = parts[1]
 	v.add_child(RunHeader.new().setup(run))
@@ -436,12 +560,14 @@ func _add_talisman_row(v: VBoxContainer, tals: Array) -> void:
 
 # --- end of run -------------------------------------------------------------------
 
-func _end_run() -> void:
+func _end_run(abandoned: bool = false) -> void:
 	var lines := profile.finish_run(db, run)
 	_save()
+	if persist:
+		RunSave.clear(run_save_path)
 	var parts := UiKit.screen(16)
 	var v: VBoxContainer = parts[1]
-	v.add_child(UiKit.label("Root access. You own the Stack." if run.boss_won else "Flatlined on node %d" % run.floor_num, 34, Palette.ENERGY if run.boss_won else Palette.HP))
+	v.add_child(UiKit.label("Root access. You own the Stack." if run.boss_won else ("Jacked out on node %d" if abandoned else "Flatlined on node %d") % run.floor_num, 34, Palette.ENERGY if run.boss_won else Palette.HP))
 	v.add_child(UiKit.label("Fights won %d   Black sentries %d   Deck %d programs" % [run.combats_won, run.elites_won, run.deck.size()], 16, Palette.TEXT_DIM))
 	for l in lines:
 		v.add_child(UiKit.label(str(l), 17))
