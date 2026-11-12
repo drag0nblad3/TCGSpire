@@ -2,7 +2,8 @@ class_name Talismans
 extends RefCounted
 ## Passive run items. Defined in data/talismans.json:
 ##   {"id", "name", "rarity", "triggers": [{"on": TRIGGER, "effects": [...], filters...}],
-##    "pickup": [run outcomes, e.g. {"op": "max_hp", "amount": 8}]}
+##    "pickup": [run outcomes, e.g. {"op": "max_hp", "amount": 8}],
+##    "daemon": {"hp_pct": 0.3, "hp": 5, "uptime": 1} (scales every daemon you run)}
 ## Trigger effects use the normal Effects vocabulary with the player as source.
 ## Filters: "every": N (fires on every Nth event), "turn": N (only that turn),
 ## "card_type": "attack" (card_played only).
@@ -20,8 +21,14 @@ const LABEL := {
 
 ## Fires implants, then subroutines (perks share the trigger format).
 static func fire(c: Combat, on: String, ctx: Dictionary = {}) -> void:
-	for t in c.talismans + c.perks:
+	var sources: Array = c.talismans + c.perks
+	for u in c.units:
+		if not u.rule.get("triggers", []).is_empty():
+			sources.append({"id": u.id, "triggers": u.rule["triggers"], "daemon": u})
+	for t in sources:
 		var tid: String = t.get("id", "")
+		if t.has("daemon") and not c.units.has(t["daemon"]):
+			continue
 		for i in t.get("triggers", []).size():
 			var trig: Dictionary = t["triggers"][i]
 			if trig.get("on", "") != on or c.is_over():
@@ -37,7 +44,7 @@ static func fire(c: Combat, on: String, ctx: Dictionary = {}) -> void:
 				c.talisman_counters[key] = int(c.talisman_counters.get(key, 0)) + 1
 				if c.talisman_counters[key] % int(trig["every"]) != 0:
 					continue
-			c.emit("talisman", {"id": tid})
+			c.emit("rule" if t.has("daemon") else "talisman", {"id": tid})
 			for e in trig.get("effects", []):
 				Effects.resolve(c, e, c.player, ctx.get("target"))
 
@@ -46,6 +53,13 @@ static func describe(t: Dictionary) -> String:
 	var parts: Array[String] = []
 	for o in t.get("pickup", []):
 		parts.append(RunOutcomes.describe(o))
+	var dm: Dictionary = t.get("daemon", {})
+	if dm.has("hp_pct"):
+		parts.append("Your daemons have +%d%% HP." % roundi(float(dm["hp_pct"]) * 100))
+	if dm.has("hp"):
+		parts.append("Your daemons have +%d HP." % int(dm["hp"]))
+	if dm.has("uptime"):
+		parts.append("Your daemons run %d turn%s longer." % [int(dm["uptime"]), "" if int(dm["uptime"]) == 1 else "s"])
 	for trig in t.get("triggers", []):
 		var on: String = trig.get("on", "")
 		var when: String = LABEL.get(on, "?")
@@ -78,4 +92,7 @@ static func validate(t: Dictionary) -> Array[String]:
 			errs.append_array(Effects.validate(e, where))
 	for o in t.get("pickup", []):
 		errs.append_array(RunOutcomes.validate(o, where))
+	for k in t.get("daemon", {}):
+		if k not in ["hp_pct", "hp", "uptime"]:
+			errs.append("%s: unknown daemon bonus '%s'" % [where, k])
 	return errs

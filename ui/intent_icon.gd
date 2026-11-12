@@ -6,6 +6,7 @@ extends RefCounted
 static func color(kind: String) -> Color:
 	match kind:
 		"attack": return Palette.HP
+		"purge": return Palette.ENERGY
 		"ward": return Palette.WARD
 		"buff": return Palette.UPGRADED
 		"debuff", "curse": return Palette.ENEMY
@@ -27,6 +28,10 @@ static func draw(ci: CanvasItem, c: Vector2, r: float, kind: String, col: Color 
 			ci.draw_line(hilt, tip, col, w * 1.6, true)
 			ci.draw_line(hilt + Vector2(-r * 0.3, -r * 0.3), hilt + Vector2(r * 0.3, r * 0.3), col, w * 1.3, true)
 			ci.draw_line(hilt, c + Vector2(-r * 0.7, r * 0.7), col, w * 1.3, true)
+		"purge":
+			# Crossed-out daemon node.
+			ci.draw_arc(c, r * 0.55, 0, TAU, 20, col, w, true)
+			ci.draw_line(c + Vector2(-r * 0.75, -r * 0.75), c + Vector2(r * 0.75, r * 0.75), col, w * 1.4, true)
 		"ward":
 			var pts := PackedVector2Array([c + Vector2(-r * 0.7, -r * 0.65), c + Vector2(r * 0.7, -r * 0.65),
 				c + Vector2(r * 0.6, r * 0.15), c + Vector2(0, r * 0.85), c + Vector2(-r * 0.6, r * 0.15)])
@@ -67,7 +72,7 @@ static func label(item: Dictionary) -> String:
 		"attack":
 			var hits := int(item.get("hits", 1))
 			return ("%dx%d" % [item["value"], hits] if hits > 1 else str(item["value"])) + (" all" if item.get("aoe", false) else "")
-		"ward", "heal", "buff", "debuff":
+		"ward", "heal", "buff", "debuff", "purge":
 			return str(item["value"]) if int(item["value"]) > 0 else ""
 		"curse":
 			return "+%d" % item["value"]

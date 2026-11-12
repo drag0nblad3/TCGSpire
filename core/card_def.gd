@@ -99,6 +99,10 @@ func upgrade_summary() -> String:
 		for k in eb:
 			if k in ["op", "status", "to", "name", "card", "enemy", "consume"]:
 				continue
+			if k == "rule":
+				if eb[k] != ea.get(k, {}):
+					parts.append("%s rule: %s" % [eb.get("name", "Daemon"), DaemonRules.describe(eb[k])])
+				continue
 			if k == "upgraded":
 				if bool(eb[k]) and not bool(ea.get(k, false)):
 					parts.append("The added program is upgraded.")
@@ -124,9 +128,9 @@ static func _param_name(e: Dictionary, k: String) -> String:
 	if k == "hits":
 		return "Hits"
 	if op == "summon":
-		return "%s %s" % [e.get("name", "Daemon"), "attack" if k == "atk" else "HP"]
+		return "%s %s" % [e.get("name", "Daemon"), "uptime" if k == "uptime" else "HP"]
 	if op == "grow":
-		return "Daemon " + ("attack" if k == "atk" else "HP")
+		return "Daemon HP"
 	if op == "apply" and k == "stacks":
 		return Lexicon.status(str(e.get("status", "")))
 	if op in ["damage_per_status", "damage_per_ward"]:
@@ -137,7 +141,7 @@ static func _param_name(e: Dictionary, k: String) -> String:
 		"heal": return "Repair"
 		"draw": return "Draw"
 		"energy": return Lexicon.term("energy")
-		"rally": return "Daemon attack"
+		"rally": return "Daemon uptime"
 		"lose_hp": return "HP loss"
 		"add_card": return "Copies"
 	return k.capitalize()

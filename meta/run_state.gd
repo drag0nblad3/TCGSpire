@@ -169,6 +169,8 @@ func combat_opts() -> Dictionary:
 		"extra_energy": int(perk_mod("max_energy")),
 		"extra_hand": int(perk_mod("hand_size")),
 		"extra_slots": int(perk_mod("board_slots")),
+		"daemon_hp_pct": perk_mod("daemon_hp_pct"),
+		"daemon_uptime": int(perk_mod("daemon_uptime")),
 		"start_ward": int(perk_mod("start_ward")),
 		"enemy_hp_mult": maxf(heat_mult("enemy_hp_pct") * (1.0 + perk_mod("enemy_hp_pct")), 0.5),
 		"enemy_might": int(heat_mod("enemy_might", 0)),

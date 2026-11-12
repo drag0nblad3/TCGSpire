@@ -17,7 +17,7 @@ var fw_scale: Array = [1.0]
 ## Numbers firmware scales, per op. Draw/RAM/copies stay as they are.
 const FW_KEYS := {
 	"damage": ["amount"], "ward": ["amount"], "heal": ["amount"], "apply": ["stacks"],
-	"summon": ["atk", "hp"], "grow": ["atk", "hp"], "rally": ["amount"],
+	"summon": ["hp"], "grow": ["hp"],
 	"damage_per_ward": ["mult"], "damage_per_status": ["base", "mult"],
 }
 

@@ -97,7 +97,7 @@ static func _effect_value(c: Combat, card: CardInstance, e: Dictionary, target: 
 		"ward":
 			var gain := n * (0.75 if c.player.status("frail") > 0 else 1.0)
 			var need := maxf(c.incoming_damage() - c.player.ward, 0.0)
-			var keeps := c.player.status("fortify") > 0
+			var keeps := c.player.status("fortify") > 0 or c.rule_sum("keep_ward") > 0
 			return minf(gain, need) * 1.15 + maxf(gain - need, 0.0) * (0.45 if keeps else 0.08)
 		"apply":
 			var st := str(e.get("status", ""))
@@ -115,13 +115,14 @@ static func _effect_value(c: Combat, card: CardInstance, e: Dictionary, target: 
 		"energy":
 			return n * 4.5
 		"summon":
-			if c.units.size() >= c.board_slots:
-				return 0.0
-			return float(e.get("atk", 0)) * 3.0 + float(e.get("hp", 0)) * 0.6
+			return _summon_value(c, e)
 		"rally":
-			return n * c.units.size() * 2.5
+			var rv := 0.0
+			for u in c.units:
+				rv += DaemonRules.value({"hp": 0, "uptime": 1, "rule": u.rule}) * n
+			return rv
 		"grow":
-			return c.units.size() * (float(e.get("atk", 0)) * 2.5 + float(e.get("hp", 0)) * 0.6)
+			return c.units.size() * float(e.get("hp", 0)) * 0.25
 		"heal":
 			return minf(n, c.player.max_hp - c.player.hp) * 0.9
 		"lose_hp":
@@ -133,11 +134,41 @@ static func _effect_value(c: Combat, card: CardInstance, e: Dictionary, target: 
 	return 0.0
 
 
+## A daemon is worth its rule for the turns it adds; one that is already up only refreshes.
+static func _summon_value(c: Combat, e: Dictionary) -> float:
+	var up := int(e.get("uptime", 2)) + c.daemon_uptime
+	var rule: Dictionary = e.get("rule", {})
+	var flags: Dictionary = rule.get("flags", {})
+	var gain := float(up)
+	for u in c.units:
+		if u.name == str(e.get("name", "")):
+			gain = maxf(float(up - u.uptime), 0.0)
+			if gain <= 0.0 and u.hp >= u.max_hp:
+				return 0.0
+			return DaemonRules.value(e, c.daemon_uptime) * gain / maxf(float(up), 1.0) + (u.max_hp - u.hp) * 0.3
+	if c.units.size() >= c.board_slots:
+		return 0.0
+	var v := DaemonRules.value(e, c.daemon_uptime)
+	# State-aware tweaks for rules that only matter in some fights.
+	if flags.has("taunt"):
+		v = minf(float(e.get("hp", 1)), float(c.incoming_damage())) * 1.1 + 1.0
+	if flags.has("burn_no_decay"):
+		var burn := 0
+		for f in c.living(c.enemies):
+			burn += f.status("burn")
+		v = minf(float(burn), 8.0) * 0.9 * up + 1.0
+	if flags.has("keep_ward") and c.player.status("fortify") > 0:
+		v *= 0.2
+	if flags.has("thorns"):
+		v += float(flags["thorns"]) * c.living(c.enemies).size()
+	return v
+
+
 ## Worth of hitting f for `amount` (before modifiers) `hits` times.
 static func _hit_value(c: Combat, f: Fighter, amount: int, hits: int) -> float:
 	if f == null or f.is_dead():
 		return 0.0
-	var per := Statuses.modify_attack(amount, c.player, f)
+	var per := Statuses.modify_attack(amount + c.rule_sum("attack_bonus"), c.player, f)
 	var hp := f.hp
 	var ward := f.ward
 	var v := 0.0
@@ -165,7 +196,7 @@ static func _enemy_status_value(c: Combat, f: Fighter, st: String, stacks: float
 			return minf(stacks * (stacks + 1.0) / 2.0 + f.status("burn") * 0.5, float(f.hp)) * 0.7
 		"brittle":
 			var attacks := c.hand.filter(func(k: CardInstance) -> bool: return k.def.type == "attack").size()
-			return stacks * (1.0 + attacks * 1.5 + c.units.size()) if f.status("brittle") == 0 else stacks * 1.2
+			return stacks * (1.0 + attacks * 1.5) if f.status("brittle") == 0 else stacks * 1.2
 		"weaken":
 			return c.intent_damage(f) * 0.25 * minf(stacks, 2.0) + stacks * 0.8
 		"frail":

@@ -85,7 +85,7 @@ static func describe(m: Dictionary) -> String:
 		var bits: Array[String] = []
 		for k in bump:
 			if k != "op":
-				var what: String = {"atk": "attack", "hp": "HP"}.get(k, Lexicon.term(str(bump["op"])).replace("_", " "))
+				var what: String = {"uptime": "turn uptime", "hp": "HP"}.get(k, Lexicon.term(str(bump["op"])).replace("_", " "))
 				bits.append("+%d %s" % [int(bump[k]), what])
 		parts.append("%s%s." % ["Its daemon gets " if str(bump["op"]) == "summon" else "", ", ".join(bits)])
 	for e in m.get("effects_add", []):

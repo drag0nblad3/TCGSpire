@@ -81,22 +81,95 @@ func test_damage_per_ward() -> void:
 
 
 func test_summon_and_board_limit() -> void:
-	for i in 3:
-		check(c.play_card(give(c, "sparring_dummy")), "summon %d" % i)
+	for id in ["sparring_dummy", "ember_whelp", "scrap_golem"]:
+		check(c.play_card(give(c, id)), "summon " + id)
 	eq(c.units.size(), 3)
-	check(not c.can_play(give(c, "sparring_dummy")), "4th summon blocked")
+	check(not c.can_play(give(c, "drone_swarm")), "4th daemon blocked")
+	c.hand.clear()
+	c.units[0].hp = 1
+	c.units[0].uptime = 1
+	check(c.play_card(give(c, "sparring_dummy")), "re-running a daemon refreshes it")
+	eq(c.units.size(), 3)
+	eq(c.units[0].hp, c.units[0].max_hp, "refreshed HP")
+	eq(c.units[0].uptime, 2, "refreshed uptime")
 
 
-func test_units_attack_on_end_turn() -> void:
+func test_daemons_do_not_attack_and_time_out() -> void:
 	c.play_card(give(c, "ember_whelp"))
+	eq(c.units[0].uptime, 2)
+	c.end_turn()
+	eq(c.enemies[0].hp, 30, "no auto-attack")
+	eq(c.units.size(), 1, "still up on turn 2")
+	eq(c.units[0].uptime, 1)
+	c.end_turn()
+	eq(c.units.size(), 0, "closed after 2 rounds")
+
+
+func test_turret_rule_fires_at_turn_end() -> void:
+	c.play_card(give(c, "drone_swarm"))
 	c.end_turn()
 	eq(c.enemies[0].hp, 27)
 
 
-func test_rally_buffs_units() -> void:
+func test_rule_burn_does_not_decay() -> void:
+	c.enemies[0].add_status("burn", 3)
+	c.enemies[1].add_status("burn", 3)
+	c.play_card(give(c, "ember_whelp"))
+	c.end_turn()
+	eq(c.enemies[0].status("burn"), 3, "kept while Burnworm runs")
+	c.units.clear()
+	c.end_turn()
+	eq(c.enemies[0].status("burn"), 2, "decays again once it is gone")
+
+
+func test_rule_bonuses() -> void:
+	c.summon("A", 5, 3, {"flags": {"attack_bonus": 2, "ward_bonus": 2, "burn_bonus": 1, "debuff_bonus": 1, "regen_bonus": 2}})
+	c.play_card(give(c, "jab"), 0)
+	eq(c.enemies[0].hp, 22, "6 + 2")
+	c.play_card(give(c, "brace"))
+	eq(c.player.ward, 7, "5 + 2")
+	Effects.resolve(c, {"op": "apply", "status": "burn", "stacks": 2}, c.player, c.enemies[1])
+	eq(c.enemies[1].status("burn"), 4, "2 + burn bonus + debuff bonus")
+	Effects.resolve(c, {"op": "apply", "status": "regen", "stacks": 1, "to": "self"}, c.player, null)
+	eq(c.player.status("regen"), 3)
+
+
+func test_rule_keep_ward_and_taunt() -> void:
+	var g := make_combat([], "golem")
+	g.summon("Gate", 10, 3, {"flags": {"keep_ward": 1}})
+	g.summon("Decoy", 40, 3, {"flags": {"taunt": 1}})
+	g.player.ward = 9
+	eq(g.incoming_damage(), 0, "decoy soaks the hit")
+	g.end_turn()  # Slam 15 goes to the decoy
+	eq(g.units[1].hp, 25)
+	eq(g.player.hp, g.player.max_hp)
+	eq(g.player.ward, 9, "Firewall kept")
+
+
+func test_purge_hits_front_daemon_only() -> void:
+	var g := make_combat([], "golem")
+	var hp := g.player.hp
+	Effects.resolve(g, {"op": "damage", "amount": 5, "to": "daemon"}, g.enemies[0], g.player)
+	eq(g.player.hp, hp, "no daemon: purge does nothing")
+	g.summon("A", 6, 3)
+	Effects.resolve(g, {"op": "damage", "amount": 5, "to": "daemon"}, g.enemies[0], g.player)
+	eq(g.units[0].hp, 1)
+	Effects.resolve(g, {"op": "damage", "amount": 5, "to": "daemon"}, g.enemies[0], g.player)
+	eq(g.units.size(), 0, "crashed daemon leaves the board")
+	eq(g.rule_sum("taunt"), 0)
+
+
+func test_rally_extends_uptime_and_scaling() -> void:
 	c.play_card(give(c, "ember_whelp"))
 	c.play_card(give(c, "rally_cry"))
-	eq(c.units[0].atk, 5)
+	eq(c.units[0].uptime, 3)
+	var g := make_combat([], "golem")
+	g.daemon_hp_pct = 0.5
+	g.daemon_hp = 2
+	g.daemon_uptime = 1
+	g.summon("A", 10, 2)
+	eq(g.units[0].max_hp, 17)
+	eq(g.units[0].uptime, 3)
 
 
 func test_heal_capped() -> void:
@@ -108,7 +181,7 @@ func test_heal_capped() -> void:
 
 func test_enemy_front_hits_unit_first() -> void:
 	var g := make_combat([], "golem")
-	g.summon("Wall", 0, 50)
+	g.summon("Wall", 50, 3)
 	g.enemies[0].move_idx = 2  # Crush, to: front
 	g.end_turn()
 	eq(g.units[0].hp, 38)

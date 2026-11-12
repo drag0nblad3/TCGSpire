@@ -16,9 +16,9 @@ const OPS := {
 	"apply": ["status", "stacks", "to"],
 	"draw": ["amount"],
 	"energy": ["amount"],
-	"summon": ["name", "atk", "hp"],
+	"summon": ["name", "hp", "uptime", "rule"],
 	"rally": ["amount"],
-	"grow": ["atk", "hp"],
+	"grow": ["hp"],
 	"cleanse": ["to"],
 	"add_card": ["card", "amount", "upgraded"],
 	"spawn": ["enemy"],
@@ -26,7 +26,8 @@ const OPS := {
 	"damage_per_status": ["status", "mult", "base", "consume", "to"],
 }
 
-const TARGETS := ["target", "self", "all_enemies", "all_allies", "front"]
+## "daemon" (enemy moves, Purge): your front daemon only; nothing if none is running.
+const TARGETS := ["target", "self", "all_enemies", "all_allies", "front", "daemon"]
 
 
 static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> void:
@@ -34,15 +35,19 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 	var n := int(e.get("amount", 0))
 	match op:
 		"damage":
+			if src == c.player:
+				n += c.rule_sum("attack_bonus")
 			for i in int(e.get("hits", 1)):
 				for t in targets(c, e, src, target, "target"):
-					c.attack(src, t, n)
+					c.attack(src, _aim(c, e, src, t), n)
 		"damage_per_ward":
 			var amt := int(src.ward * float(e.get("mult", 1.0)))
 			for t in targets(c, e, src, target, "target"):
-				c.attack(src, t, amt)
+				c.attack(src, _aim(c, e, src, t), amt)
 		"ward":
 			for t in targets(c, e, src, target, "self"):
+				if t == c.player and src == c.player:
+					n += c.rule_sum("ward_bonus")
 				var w := int(n * 0.75) if t.status("frail") > 0 else n
 				t.ward += w
 				c.emit("ward", {"target": t.id, "amount": w, "ward": t.ward})
@@ -55,27 +60,26 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 			var s := str(e.get("status", ""))
 			var stacks := int(e.get("stacks", 1))
 			for t in targets(c, e, src, target, "target"):
-				t.add_status(s, stacks)
-				c.emit("status", {"target": t.id, "status": s, "stacks": stacks, "total": t.status(s)})
+				var k := stacks + _apply_bonus(c, s, src, t)
+				t.add_status(s, k)
+				c.emit("status", {"target": t.id, "status": s, "stacks": k, "total": t.status(s)})
 		"draw":
 			c.draw(n)
 		"energy":
 			c.energy += n
 			c.emit("energy", {"amount": n})
 		"summon":
-			c.summon(str(e.get("name", "Unit")), int(e.get("atk", 0)), int(e.get("hp", 1)))
+			c.summon(str(e.get("name", "Unit")), int(e.get("hp", 1)), int(e.get("uptime", 2)), e.get("rule", {}))
 		"rally":
 			for u in c.units:
-				u.atk += n
+				u.uptime += n
 			c.emit("rally", {"amount": n})
 		"grow":
-			var ga := int(e.get("atk", 0))
 			var gh := int(e.get("hp", 0))
 			for u in c.units:
-				u.atk += ga
 				u.max_hp += gh
 				u.hp += gh
-			c.emit("grow", {"atk": ga, "hp": gh})
+			c.emit("grow", {"hp": gh})
 		"cleanse":
 			for t in targets(c, e, src, target, "self"):
 				for s in Statuses.debuffs(t):
@@ -95,7 +99,7 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 			var st := str(e.get("status", ""))
 			var amt2 := int(e.get("base", 0)) + int(src.status(st) * float(e.get("mult", 1.0)))
 			for t in targets(c, e, src, target, "target"):
-				c.attack(src, t, amt2)
+				c.attack(src, _aim(c, e, src, t), amt2)
 			if e.get("consume", false):
 				src.statuses.erase(st)
 		"lose_hp":
@@ -103,6 +107,28 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 				_lose_hp(c, t, n, src)
 		_:
 			push_error("Unknown effect op: %s" % op)
+
+
+## Enemy attacks aimed at the player (the default target) are pulled onto a Taunt daemon.
+static func _aim(c: Combat, e: Dictionary, src: Fighter, t: Fighter) -> Fighter:
+	if c.is_friendly(src) or str(e.get("to", "target")) != "target":
+		return t
+	return c.aim(t)
+
+
+## Extra stacks from daemon rules when the player applies a status.
+static func _apply_bonus(c: Combat, status: String, src: Fighter, t: Fighter) -> int:
+	if src != c.player or c.units.is_empty():
+		return 0
+	var bonus := 0
+	if c.enemies.has(t):
+		if status == "burn":
+			bonus += c.rule_sum("burn_bonus")
+		if Statuses.DEFS.get(status, {}).get("debuff", false):
+			bonus += c.rule_sum("debuff_bonus")
+	elif t == c.player and status == "regen":
+		bonus += c.rule_sum("regen_bonus")
+	return bonus
 
 
 ## HP loss ignores Ward.
@@ -133,6 +159,8 @@ static func targets(c: Combat, e: Dictionary, src: Fighter, target: Fighter, def
 			if friendly:
 				return foes.slice(0, 1)
 			return c.units.slice(0, 1) if not c.units.is_empty() else [c.player]
+		"daemon":
+			return [] if friendly else c.units.slice(0, 1)
 	return []
 
 
@@ -148,6 +176,8 @@ static func describe(e: Dictionary) -> String:
 			where = " to you and your daemons"
 		"front":
 			where = " to the front enemy"
+		"daemon":
+			where = " to your front daemon"
 	match op:
 		"damage":
 			var hits := int(e.get("hits", 1))
@@ -171,11 +201,12 @@ static func describe(e: Dictionary) -> String:
 		"energy":
 			return "Gain %d RAM." % n
 		"summon":
-			return "Run %s (%d/%d)." % [e.get("name", "Unit"), int(e.get("atk", 0)), int(e.get("hp", 1))]
+			var up := int(e.get("uptime", 2))
+			return "Run %s for %d turn%s (%d HP): %s" % [e.get("name", "Unit"), up, "" if up == 1 else "s", int(e.get("hp", 1)), DaemonRules.describe(e.get("rule", {}))]
 		"rally":
-			return "Your daemons gain +%d attack." % n
+			return "Your daemons run %d turn%s longer." % [n, "" if n == 1 else "s"]
 		"grow":
-			return "Your daemons gain +%d/+%d." % [int(e.get("atk", 0)), int(e.get("hp", 0))]
+			return "Your daemons gain +%d HP." % int(e.get("hp", 0))
 		"cleanse":
 			return "Purge your harmful statuses."
 		"add_card":
@@ -208,6 +239,8 @@ static func validate(e: Dictionary, where: String) -> Array[String]:
 		errs.append("%s: bad 'to' value '%s'" % [where, e["to"]])
 	if op == "damage_per_status" and not Statuses.is_known(str(e.get("status", ""))):
 		errs.append("%s: unknown status '%s'" % [where, e.get("status", "")])
+	if op == "summon":
+		errs.append_array(DaemonRules.validate(e.get("rule", {}), where))
 	if op == "apply" and not Statuses.is_known(str(e.get("status", ""))):
 		errs.append("%s: unknown status '%s'" % [where, e.get("status", "")])
 	return errs

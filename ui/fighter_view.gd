@@ -31,7 +31,7 @@ func setup(f: Fighter, c: Combat, kind_in: String) -> FighterView:
 	fighter = f
 	combat = c
 	kind = kind_in
-	custom_minimum_size = Vector2(200, 274) if kind == "enemy" else (Vector2(120, 130) if kind == "unit" else Vector2(340, 70))
+	custom_minimum_size = Vector2(200, 274) if kind == "enemy" else (Vector2(176, 172) if kind == "unit" else Vector2(340, 70))
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	return self
 
@@ -129,7 +129,15 @@ func _draw() -> void:
 	# Status chips.
 	var chips: Array = []
 	if kind == "unit":
-		chips.append(["ATK %d" % fighter.atk, Palette.ENERGY])
+		# Uptime pips (turns left), then the rule this daemon enforces while it runs.
+		var n := mini(fighter.uptime, 8)
+		for i in n:
+			var pc := Vector2(w / 2 + (i - (n - 1) / 2.0) * 13.0, y + 5)
+			draw_circle(pc, 4.5, Palette.ENERGY)
+			draw_arc(pc, 4.5, 0, TAU, 12, Color(Palette.TEXT, 0.5), 1.0, true)
+		y += 14
+		draw_multiline_string(font, Vector2(4, y + 10), DaemonRules.describe(fighter.rule), HORIZONTAL_ALIGNMENT_CENTER, w - 8, 10, 4, Palette.TEXT_DIM)
+		y += 48
 	for k in fighter.statuses:
 		var debuff: bool = Statuses.DEFS.get(k, {}).get("debuff", false)
 		chips.append(["%s %d" % [Lexicon.status(str(k)), fighter.statuses[k]], Palette.ENEMY if debuff else Palette.UPGRADED])
@@ -193,7 +201,8 @@ func describe() -> String:
 	if kind == "enemy" and not fighter.is_dead():
 		lines.append("Next: " + Intents.explain(fighter))
 	if kind == "unit":
-		lines.append("Daemon: hits the front enemy for %d at the end of your turn. Area attacks, and attacks aimed at the front, can hit it." % fighter.atk)
+		lines.append("Daemon, %d turn%s left: %s" % [fighter.uptime, "" if fighter.uptime == 1 else "s", DaemonRules.describe(fighter.rule)])
+		lines.append("Its rule ends when it times out or is crashed. Purge moves and area attacks can hit it.")
 	if fighter.ward > 0:
 		lines.append("Firewall %d: absorbs damage first." % fighter.ward)
 	for k in fighter.statuses:

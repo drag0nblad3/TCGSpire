@@ -338,6 +338,23 @@ func _play_events(played: CardView) -> int:
 				var debuff: bool = Statuses.DEFS.get(e["status"], {}).get("debuff", false)
 				_float_text(v, "%s %s%d" % [Lexicon.status(str(e["status"])), "+" if e["stacks"] >= 0 else "", e["stacks"]], Palette.ENEMY if debuff else Palette.UPGRADED)
 				await _wait(0.1)
+			"expire":
+				var xv: FighterView = _views.get(str(e["target"]))
+				if xv != null and is_instance_valid(xv):
+					_float_text(xv, "Closed", Palette.TEXT_DIM)
+					xv.create_tween().tween_property(xv, "modulate:a", 0.0, 0.3)
+				await _wait(0.15)
+			"rule":
+				var rv: FighterView = _views.get(str(e["id"]))
+				if rv != null and is_instance_valid(rv):
+					rv.flash = 0.6
+					rv.create_tween().tween_property(rv, "flash", 0.0, 0.3)
+				await _wait(0.1)
+			"refresh":
+				var fv: FighterView = _views.get(str(e["target"]))
+				if fv != null and is_instance_valid(fv):
+					_float_text(fv, "Refreshed", Palette.ENERGY)
+				await _wait(0.12)
 			"death":
 				if v != null:
 					var tw := v.create_tween()
@@ -360,7 +377,7 @@ func _play_events(played: CardView) -> int:
 					tw.tween_property(src, "offset", Vector2.ZERO, 0.2 * step_scale)
 				await _wait(0.2)
 			"turn_start":
-				if combat.player.status("fortify") <= 0:
+				if combat.player.status("fortify") <= 0 and combat.rule_sum("keep_ward") <= 0:
 					_player_view.shown_ward = 0
 				if int(e["turn"]) > 1:
 					await _banner("Your turn", Palette.ENERGY)
@@ -387,7 +404,7 @@ func _play_events(played: CardView) -> int:
 				draws += 1
 			"rally", "grow":
 				for uv in _units_row.get_children():
-					_float_text(uv, "+%d ATK" % int(e.get("amount", e.get("atk", 0))), Palette.ENERGY)
+					_float_text(uv, ("+%d turn" % int(e["amount"])) if e["t"] == "rally" else ("+%d HP" % int(e.get("hp", 0))), Palette.ENERGY)
 				await _wait(0.12)
 			"combat_end":
 				await _banner("Victory" if e["won"] else "Defeated", Palette.ENERGY if e["won"] else Palette.HP)
