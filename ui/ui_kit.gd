@@ -89,6 +89,31 @@ static func panel(child: Control, col: Color = Palette.PANEL_BG) -> PanelContain
 
 
 ## Shows a short message that fades out, on top of `host`.
+## Screen edges the OS keeps for itself (notch, rounded corners, status/nav bars), in
+## viewport units: {left, top, right, bottom}. All zero on desktop windows.
+static func safe_insets(node: CanvasItem) -> Dictionary:
+	var out := {"left": 0.0, "top": 0.0, "right": 0.0, "bottom": 0.0}
+	var win := Vector2(DisplayServer.window_get_size())
+	if win.x <= 0 or DisplayServer.get_name() == "headless":
+		return out
+	var pos := Vector2(DisplayServer.window_get_position())
+	var safe := Rect2(DisplayServer.get_display_safe_area())
+	if safe.size.x <= 0:
+		return out
+	var k := node.get_viewport_rect().size.x / win.x
+	out["left"] = maxf(0.0, safe.position.x - pos.x) * k
+	out["top"] = maxf(0.0, safe.position.y - pos.y) * k
+	out["right"] = maxf(0.0, (pos.x + win.x) - safe.end.x) * k
+	out["bottom"] = maxf(0.0, (pos.y + win.y) - safe.end.y) * k
+	return out
+
+
+## Top-right corner for a corner button of width `w`: inside the safe area plus a thumb margin.
+static func corner_pos(node: CanvasItem, w: float, margin: float = 16.0) -> Vector2:
+	var ins := safe_insets(node)
+	return Vector2(node.get_viewport_rect().size.x - w - margin - float(ins["right"]), margin + float(ins["top"]))
+
+
 static func toast(host: Node, text: String, seconds: float = 2.2) -> void:
 	# Only one toast at a time: a new one replaces the old.
 	for n in host.get_children():

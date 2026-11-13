@@ -22,6 +22,8 @@ var badge := "":
 	set(v):
 		badge = v
 		queue_redraw()
+## Selected cards rise out of the hand; grids turn this off so a raised card never covers the row above.
+var lift_selected := true
 var selected := false:
 	set(v):
 		selected = v
@@ -128,7 +130,7 @@ func _draw() -> void:
 	var fc := Palette.faction(d.faction)
 	var font := Palette.font()
 	var title_font := Palette.display()
-	var lift := Vector2(0, -22) if selected else Vector2.ZERO
+	var lift := Vector2(0, -22) if selected and lift_selected else Vector2.ZERO
 	var rect := Rect2(lift, SIZE)
 	var dim := 1.0 if playable else 0.45
 	var ink := Color(Palette.CARD_TEXT, dim)
