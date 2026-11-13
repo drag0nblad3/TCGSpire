@@ -1,0 +1,682 @@
+{
+  "symbiote_link": {
+    "name": "Symbiote Link",
+    "source": "5da46302-ab90-4218-a0c9-e2b0d7c92abc",
+    "crop": [
+      6,
+      5,
+      883,
+      217
+    ]
+  },
+  "leech_line": {
+    "name": "Leech Line",
+    "source": "5da46302-ab90-4218-a0c9-e2b0d7c92abc",
+    "crop": [
+      892,
+      5,
+      1769,
+      217
+    ]
+  },
+  "bone_saw": {
+    "name": "Bone Saw",
+    "source": "5da46302-ab90-4218-a0c9-e2b0d7c92abc",
+    "crop": [
+      6,
+      226,
+      883,
+      439
+    ]
+  },
+  "recycle_tissue": {
+    "name": "Recycle Tissue",
+    "source": "5da46302-ab90-4218-a0c9-e2b0d7c92abc",
+    "crop": [
+      892,
+      226,
+      1769,
+      439
+    ]
+  },
+  "myco_mesh": {
+    "name": "Myco Mesh",
+    "source": "5da46302-ab90-4218-a0c9-e2b0d7c92abc",
+    "crop": [
+      6,
+      447,
+      883,
+      660
+    ]
+  },
+  "graft_harvest": {
+    "name": "Graft Harvest",
+    "source": "5da46302-ab90-4218-a0c9-e2b0d7c92abc",
+    "crop": [
+      892,
+      447,
+      1769,
+      660
+    ]
+  },
+  "hemolysis": {
+    "name": "Hemolysis",
+    "source": "5da46302-ab90-4218-a0c9-e2b0d7c92abc",
+    "crop": [
+      6,
+      668,
+      883,
+      881
+    ]
+  },
+  "apex_organism": {
+    "name": "Apex Organism",
+    "source": "5da46302-ab90-4218-a0c9-e2b0d7c92abc",
+    "crop": [
+      892,
+      668,
+      1769,
+      881
+    ]
+  },
+  "spare_parts": {
+    "name": "Spare Parts",
+    "source": "ac451ab8-8c31-4f88-ba2e-4b001d359a41",
+    "crop": [
+      5,
+      5,
+      884,
+      219
+    ]
+  },
+  "gun_turret": {
+    "name": "Gun Turret",
+    "source": "ac451ab8-8c31-4f88-ba2e-4b001d359a41",
+    "crop": [
+      891,
+      5,
+      1769,
+      219
+    ]
+  },
+  "autocannon": {
+    "name": "Autocannon",
+    "source": "ac451ab8-8c31-4f88-ba2e-4b001d359a41",
+    "crop": [
+      5,
+      225,
+      884,
+      440
+    ]
+  },
+  "armor_swap": {
+    "name": "Armor Swap",
+    "source": "ac451ab8-8c31-4f88-ba2e-4b001d359a41",
+    "crop": [
+      891,
+      225,
+      1769,
+      440
+    ]
+  },
+  "repair_bay": {
+    "name": "Repair Bay",
+    "source": "ac451ab8-8c31-4f88-ba2e-4b001d359a41",
+    "crop": [
+      5,
+      446,
+      884,
+      660
+    ]
+  },
+  "kamikaze_protocol": {
+    "name": "Kamikaze Protocol",
+    "source": "ac451ab8-8c31-4f88-ba2e-4b001d359a41",
+    "crop": [
+      891,
+      446,
+      1769,
+      660
+    ]
+  },
+  "siege_walker": {
+    "name": "Siege Walker",
+    "source": "ac451ab8-8c31-4f88-ba2e-4b001d359a41",
+    "crop": [
+      5,
+      667,
+      884,
+      882
+    ]
+  },
+  "hive_overseer": {
+    "name": "Hive Overseer",
+    "source": "ac451ab8-8c31-4f88-ba2e-4b001d359a41",
+    "crop": [
+      891,
+      667,
+      1769,
+      882
+    ]
+  },
+  "firebreak": {
+    "name": "Firebreak",
+    "source": "d2f3ec45-5f4e-44d8-9ed0-e09e128bce9f",
+    "crop": [
+      8,
+      8,
+      1020,
+      252
+    ]
+  },
+  "backdraft": {
+    "name": "Backdraft",
+    "source": "d2f3ec45-5f4e-44d8-9ed0-e09e128bce9f",
+    "crop": [
+      1029,
+      8,
+      2040,
+      252
+    ]
+  },
+  "accelerant": {
+    "name": "Accelerant",
+    "source": "d2f3ec45-5f4e-44d8-9ed0-e09e128bce9f",
+    "crop": [
+      8,
+      262,
+      1020,
+      506
+    ]
+  },
+  "heat_spiral": {
+    "name": "Heat Spiral",
+    "source": "d2f3ec45-5f4e-44d8-9ed0-e09e128bce9f",
+    "crop": [
+      1029,
+      262,
+      2040,
+      506
+    ]
+  },
+  "chain_reaction": {
+    "name": "Chain Reaction",
+    "source": "d2f3ec45-5f4e-44d8-9ed0-e09e128bce9f",
+    "crop": [
+      8,
+      515,
+      1020,
+      759
+    ]
+  },
+  "inferno_kernel": {
+    "name": "Inferno Kernel",
+    "source": "d2f3ec45-5f4e-44d8-9ed0-e09e128bce9f",
+    "crop": [
+      1029,
+      515,
+      2040,
+      759
+    ]
+  },
+  "hard_reset": {
+    "name": "Hard Reset",
+    "source": "10d1a716-0559-41cf-9131-f8b658fd310f",
+    "crop": [
+      7,
+      6,
+      540,
+      288
+    ]
+  },
+  "street_smarts": {
+    "name": "Street Smarts",
+    "source": "10d1a716-0559-41cf-9131-f8b658fd310f",
+    "crop": [
+      547,
+      6,
+      1080,
+      288
+    ]
+  },
+  "packet_loss": {
+    "name": "Packet Loss",
+    "source": "10d1a716-0559-41cf-9131-f8b658fd310f",
+    "crop": [
+      7,
+      296,
+      540,
+      552
+    ]
+  },
+  "black_ice": {
+    "name": "Black ICE",
+    "source": "10d1a716-0559-41cf-9131-f8b658fd310f",
+    "crop": [
+      547,
+      296,
+      1080,
+      552
+    ]
+  },
+  "botnet_lease": {
+    "name": "Botnet Lease",
+    "source": "10d1a716-0559-41cf-9131-f8b658fd310f",
+    "crop": [
+      7,
+      560,
+      540,
+      848
+    ]
+  },
+  "root_access": {
+    "name": "Root Access",
+    "source": "10d1a716-0559-41cf-9131-f8b658fd310f",
+    "crop": [
+      547,
+      560,
+      1080,
+      848
+    ]
+  },
+  "ghost_protocol": {
+    "name": "Ghost Protocol",
+    "source": "10d1a716-0559-41cf-9131-f8b658fd310f",
+    "crop": [
+      7,
+      856,
+      540,
+      1118
+    ]
+  },
+  "skeleton_key": {
+    "name": "Skeleton Key",
+    "source": "10d1a716-0559-41cf-9131-f8b658fd310f",
+    "crop": [
+      547,
+      856,
+      1080,
+      1118
+    ]
+  },
+  "phantom_rig": {
+    "name": "Phantom Rig",
+    "source": "10d1a716-0559-41cf-9131-f8b658fd310f",
+    "crop": [
+      7,
+      1126,
+      540,
+      1441
+    ]
+  },
+  "crosstalk": {
+    "name": "Crosstalk",
+    "source": "c1fcb45c-0e4f-4788-87f2-f771fbc826f3",
+    "crop": [
+      9,
+      7,
+      788,
+      242
+    ]
+  },
+  "mute": {
+    "name": "Mute",
+    "source": "c1fcb45c-0e4f-4788-87f2-f771fbc826f3",
+    "crop": [
+      801,
+      7,
+      1578,
+      242
+    ]
+  },
+  "ratings_spike": {
+    "name": "Ratings Spike",
+    "source": "c1fcb45c-0e4f-4788-87f2-f771fbc826f3",
+    "crop": [
+      9,
+      255,
+      788,
+      489
+    ]
+  },
+  "spoof_caller": {
+    "name": "Spoof Caller",
+    "source": "c1fcb45c-0e4f-4788-87f2-f771fbc826f3",
+    "crop": [
+      801,
+      255,
+      1578,
+      489
+    ]
+  },
+  "dead_drop": {
+    "name": "Dead Drop",
+    "source": "c1fcb45c-0e4f-4788-87f2-f771fbc826f3",
+    "crop": [
+      9,
+      502,
+      788,
+      736
+    ]
+  },
+  "viral_clip": {
+    "name": "Viral Clip",
+    "source": "c1fcb45c-0e4f-4788-87f2-f771fbc826f3",
+    "crop": [
+      801,
+      502,
+      1578,
+      736
+    ]
+  },
+  "talk_radio": {
+    "name": "Talk Radio",
+    "source": "c1fcb45c-0e4f-4788-87f2-f771fbc826f3",
+    "crop": [
+      9,
+      749,
+      788,
+      985
+    ]
+  },
+  "prime_time": {
+    "name": "Prime Time",
+    "source": "c1fcb45c-0e4f-4788-87f2-f771fbc826f3",
+    "crop": [
+      801,
+      749,
+      1578,
+      985
+    ]
+  },
+  "cold_storage": {
+    "name": "Cold Storage",
+    "source": "501795d0-d9fe-4a9a-bd75-da2f71233589",
+    "crop": [
+      7,
+      7,
+      539,
+      357
+    ]
+  },
+  "rebound": {
+    "name": "Rebound",
+    "source": "501795d0-d9fe-4a9a-bd75-da2f71233589",
+    "crop": [
+      547,
+      7,
+      1079,
+      357
+    ]
+  },
+  "rate_limiter": {
+    "name": "Rate Limiter",
+    "source": "501795d0-d9fe-4a9a-bd75-da2f71233589",
+    "crop": [
+      7,
+      367,
+      539,
+      719
+    ]
+  },
+  "latency_spike": {
+    "name": "Latency Spike",
+    "source": "501795d0-d9fe-4a9a-bd75-da2f71233589",
+    "crop": [
+      547,
+      367,
+      1079,
+      719
+    ]
+  },
+  "escrow_node": {
+    "name": "Escrow Node",
+    "source": "501795d0-d9fe-4a9a-bd75-da2f71233589",
+    "crop": [
+      7,
+      728,
+      539,
+      1080
+    ]
+  },
+  "dead_letter_queue": {
+    "name": "Dead Letter Queue",
+    "source": "501795d0-d9fe-4a9a-bd75-da2f71233589",
+    "crop": [
+      547,
+      728,
+      1079,
+      1080
+    ]
+  },
+  "dark_pool": {
+    "name": "Dark Pool",
+    "source": "501795d0-d9fe-4a9a-bd75-da2f71233589",
+    "crop": [
+      7,
+      1090,
+      539,
+      1441
+    ]
+  },
+  "zero_fill": {
+    "name": "Zero Fill",
+    "source": "9b1b9fa8-e612-48b6-ad4a-a3a5d2702561",
+    "crop": [
+      5,
+      5,
+      789,
+      206
+    ]
+  },
+  "null_pointer": {
+    "name": "Null Pointer",
+    "source": "9b1b9fa8-e612-48b6-ad4a-a3a5d2702561",
+    "crop": [
+      797,
+      5,
+      1581,
+      206
+    ]
+  },
+  "bit_rot": {
+    "name": "Bit Rot",
+    "source": "9b1b9fa8-e612-48b6-ad4a-a3a5d2702561",
+    "crop": [
+      5,
+      215,
+      789,
+      406
+    ]
+  },
+  "page_fault": {
+    "name": "Page Fault",
+    "source": "9b1b9fa8-e612-48b6-ad4a-a3a5d2702561",
+    "crop": [
+      797,
+      215,
+      1581,
+      406
+    ]
+  },
+  "void_siphon": {
+    "name": "Void Siphon",
+    "source": "9b1b9fa8-e612-48b6-ad4a-a3a5d2702561",
+    "crop": [
+      5,
+      414,
+      789,
+      604
+    ]
+  },
+  "null_field": {
+    "name": "Null Field",
+    "source": "9b1b9fa8-e612-48b6-ad4a-a3a5d2702561",
+    "crop": [
+      797,
+      414,
+      1581,
+      604
+    ]
+  },
+  "ghost_shard": {
+    "name": "Ghost Shard",
+    "source": "9b1b9fa8-e612-48b6-ad4a-a3a5d2702561",
+    "crop": [
+      5,
+      612,
+      789,
+      787
+    ]
+  },
+  "erasure": {
+    "name": "Erasure",
+    "source": "9b1b9fa8-e612-48b6-ad4a-a3a5d2702561",
+    "crop": [
+      797,
+      612,
+      1581,
+      787
+    ]
+  },
+  "recursion": {
+    "name": "Recursion",
+    "source": "9b1b9fa8-e612-48b6-ad4a-a3a5d2702561",
+    "crop": [
+      5,
+      796,
+      789,
+      986
+    ]
+  },
+  "ghost_thread": {
+    "name": "Ghost Thread",
+    "source": "9b1b9fa8-e612-48b6-ad4a-a3a5d2702561",
+    "crop": [
+      797,
+      796,
+      1581,
+      986
+    ]
+  },
+  "fever_graft": {
+    "name": "Fever Graft",
+    "source": "49f0bf17-8ec8-4a44-93a8-fd42ce0a99ec",
+    "crop": [
+      7,
+      7,
+      539,
+      253
+    ]
+  },
+  "flame_war": {
+    "name": "Flame War",
+    "source": "49f0bf17-8ec8-4a44-93a8-fd42ce0a99ec",
+    "crop": [
+      548,
+      7,
+      1080,
+      253
+    ]
+  },
+  "coral_lattice": {
+    "name": "Coral Lattice",
+    "source": "49f0bf17-8ec8-4a44-93a8-fd42ce0a99ec",
+    "crop": [
+      7,
+      261,
+      539,
+      495
+    ]
+  },
+  "convoy_shield": {
+    "name": "Convoy Shield",
+    "source": "49f0bf17-8ec8-4a44-93a8-fd42ce0a99ec",
+    "crop": [
+      548,
+      261,
+      1080,
+      495
+    ]
+  },
+  "medic_drone": {
+    "name": "Medic Drone",
+    "source": "49f0bf17-8ec8-4a44-93a8-fd42ce0a99ec",
+    "crop": [
+      7,
+      503,
+      539,
+      719
+    ]
+  },
+  "nerve_static": {
+    "name": "Nerve Static",
+    "source": "49f0bf17-8ec8-4a44-93a8-fd42ce0a99ec",
+    "crop": [
+      548,
+      503,
+      1080,
+      719
+    ]
+  },
+  "arc_flash": {
+    "name": "Arc Flash",
+    "source": "49f0bf17-8ec8-4a44-93a8-fd42ce0a99ec",
+    "crop": [
+      7,
+      727,
+      539,
+      941
+    ]
+  },
+  "surge_protector": {
+    "name": "Surge Protector",
+    "source": "49f0bf17-8ec8-4a44-93a8-fd42ce0a99ec",
+    "crop": [
+      548,
+      727,
+      1080,
+      941
+    ]
+  },
+  "napalm_drone": {
+    "name": "Napalm Drone",
+    "source": "49f0bf17-8ec8-4a44-93a8-fd42ce0a99ec",
+    "crop": [
+      7,
+      949,
+      539,
+      1186
+    ]
+  },
+  "tesla_drone": {
+    "name": "Tesla Drone",
+    "source": "49f0bf17-8ec8-4a44-93a8-fd42ce0a99ec",
+    "crop": [
+      548,
+      949,
+      1080,
+      1186
+    ]
+  },
+  "leaked_ledger": {
+    "name": "Leaked Ledger",
+    "source": "49f0bf17-8ec8-4a44-93a8-fd42ce0a99ec",
+    "crop": [
+      7,
+      1194,
+      539,
+      1440
+    ]
+  },
+  "dead_channel": {
+    "name": "Dead Channel",
+    "source": "49f0bf17-8ec8-4a44-93a8-fd42ce0a99ec",
+    "crop": [
+      548,
+      1194,
+      1080,
+      1440
+    ]
+  }
+}
