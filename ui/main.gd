@@ -74,7 +74,7 @@ func _show(node: Control) -> void:
 	if _menu_btn != null:
 		move_child(_menu_btn, -1)
 		_menu_btn.position = Vector2(get_viewport_rect().size.x - 92, 4)
-		_menu_btn.visible = run != null and not run.over
+		_menu_btn.visible = (run != null and not run.over) or _is_profile_cheat_screen(node)
 
 
 ## Writes the run in progress (and where to resume it) next to the profile.
@@ -91,25 +91,138 @@ func anim_speed() -> float:
 
 # --- menu / settings / saved runs ---------------------------------------------------
 
+func _is_profile_cheat_screen(node: Control) -> bool:
+	return bool(profile.settings.get("cheats", false)) and (
+		node is RigScreen or (node is CollectionScreen and not (node as CollectionScreen).pick_mode))
+
+
 func _open_menu() -> void:
-	if _screen is CombatScreen and (_screen as CombatScreen).is_busy():
+	if _screen is CombatScreen and ((_screen as CombatScreen).is_busy() or _combat.is_over()):
 		return
+	var active_run := run != null and not run.over
+	var entries: Array = [["Resume" if active_run else "Close", null], ["Settings", _open_settings]]
+	var cheats := _cheat_entries()
+	if not cheats.is_empty():
+		entries.append(["Cheats", _open_cheats.bind(cheats)])
 	var note := ""
-	if _resume.get("screen", "") == "node":
-		note = "Quitting here restarts this node when you resume (a fight starts over from turn 1)."
-	get_tree().root.add_child(GameMenu.new().setup("Paused", [
-		["Resume", null],
-		["Settings", _open_settings],
-		["Save & quit to menu", func() -> void:
+	if active_run:
+		if _resume.get("screen", "") == "node":
+			note = "Quitting here restarts this node when you resume (a fight starts over from turn 1)."
+		entries.append(["Save & quit to menu", func() -> void:
 			run = null
-			show_hub()],
-		["!Abandon run", func() -> void:
+			show_hub()])
+		entries.append(["!Abandon run", func() -> void:
 			get_tree().root.add_child(GameMenu.new().setup("Abandon this run?", [
 				["!Yes, abandon it", func() -> void:
 					run.over = true
 					_end_run(true)],
-				["No, keep going", null]], "It counts as a loss. You keep the XP and rewards earned so far."))],
-	], note))
+				["No, keep going", null]], "It counts as a loss. You keep the XP and rewards earned so far."))])
+	get_tree().root.add_child(GameMenu.new().setup("Paused" if active_run else "Menu", entries, note))
+
+
+func _cheat_entries() -> Array:
+	if not bool(profile.settings.get("cheats", false)):
+		return []
+	if _screen is CombatScreen:
+		var fight := _screen as CombatScreen
+		return [
+			["Full heal", func() -> void:
+				fight.cheat_full_heal()
+				_save_run(_resume)],
+			["Win fight", fight.cheat_win],
+		]
+	if _screen is HubScreen:
+		return [
+			["Collection cheats", _open_cheats.bind(_collection_cheats())],
+			["Faction cheats", _open_cheats.bind(_faction_cheats())],
+			["Add 10 packs", func() -> void:
+				profile.packs_unopened += 10
+				_profile_cheat_done("Added 10 packs.")],
+		]
+	if _screen is CollectionScreen and not (_screen as CollectionScreen).pick_mode:
+		return _collection_cheats()
+	if _screen is RigScreen:
+		return _faction_cheats()
+	if _screen is MapScreen and run != null and not run.over:
+		return [
+			["Full heal", func() -> void:
+				run.hp = run.max_hp
+				show_map()],
+			["Add 500 creds", func() -> void:
+				run.gold += 500
+				show_map()],
+		]
+	return []
+
+
+func _open_cheats(entries: Array) -> void:
+	get_tree().root.add_child(GameMenu.new().setup("Cheats", entries + [["Back to menu", _open_menu]],
+		"Testing actions affect your current save."))
+
+
+func _collection_cheats() -> Array:
+	return [
+		["Gain all cards", func() -> void:
+			for id in db.ids_where(func(c: CardDef) -> bool: return c.rarity not in ["starter", "curse"]):
+				var missing := Profile.deck_limit(db) - profile.collection.count(id)
+				if missing > 0:
+					profile.collection.add(id, missing)
+			_profile_cheat_done("All collectible cards are owned.")],
+		["Max all owned cards", func() -> void:
+			for id in profile.collection.owned_ids():
+				var c := db.card(id)
+				if c != null and c.rarity not in ["starter", "curse"]:
+					profile.firmware[id] = Profile.firmware_max(db)
+			_profile_cheat_done("Owned cards have maximum firmware.")],
+		["Add 1,000 dust", func() -> void:
+			profile.collection.dust += 1000
+			_profile_cheat_done("Added 1,000 dust.")],
+		["!Empty collection", _confirm_cheat.bind("Empty your collection?",
+			"Removes owned cards, foils, firmware and saved loadouts. Base deck cards remain available.",
+			func() -> void:
+				profile.collection.counts.clear()
+				profile.collection.foils.clear()
+				profile.firmware.clear()
+				profile.firmware_mods.clear()
+				profile.unseen.clear()
+				profile.last_picks.clear()
+				profile.loadouts.clear()
+				_profile_cheat_done("Collection emptied."))],
+	]
+
+
+func _faction_cheats() -> Array:
+	return [
+		["Add 500 rep per faction", func() -> void:
+			for faction in db.factions:
+				profile.rep[faction] = profile.rep_of(faction) + 500
+			_profile_cheat_done("Added 500 rep per faction.")],
+		["Max all faction bonuses", func() -> void:
+			for id in Perks.ids(db, "rig"):
+				profile.rig[id] = int(db.perks[id]["max_rank"])
+			_profile_cheat_done("All rig bonuses and capstones maxed for future runs.")],
+		["!Reset reputation", _confirm_cheat.bind("Reset reputation?",
+			"Sets every faction’s spendable reputation to zero. Purchased rig bonuses stay active.",
+			func() -> void:
+				profile.rep.clear()
+				_profile_cheat_done("Reputation reset."))],
+	]
+
+
+func _confirm_cheat(title: String, note: String, action: Callable) -> void:
+	get_tree().root.add_child(GameMenu.new().setup(title, [
+		["!Confirm", action], ["Cancel", _open_menu]], note))
+
+
+func _profile_cheat_done(message: String) -> void:
+	_save()
+	if _screen is CollectionScreen:
+		(_screen as CollectionScreen)._refresh()
+	elif _screen is RigScreen:
+		(_screen as RigScreen)._refresh()
+	elif _screen is HubScreen:
+		show_hub()
+	UiKit.toast(self, message)
 
 
 func _open_settings() -> void:
@@ -130,7 +243,13 @@ func _open_settings() -> void:
 			if _screen is CombatScreen:
 				(_screen as CombatScreen).step_scale = anim_speed()
 			_open_settings()],
-		["Done", _open_menu if run != null else null],
+		["Testing cheats: %s" % ("On" if profile.settings.get("cheats", false) else "Off"), func() -> void:
+			profile.settings["cheats"] = not bool(profile.settings.get("cheats", false))
+			_save()
+			if run == null:
+				_menu_btn.visible = _is_profile_cheat_screen(_screen)
+			_open_settings()],
+		["Done", _open_menu],
 	]))
 
 
@@ -187,7 +306,7 @@ func show_hub() -> void:
 	run = null
 	_resume = {}
 	var hub := HubScreen.new().setup(db, profile, saved_run_info())
-	hub.settings_pressed.connect(_open_settings)
+	hub.menu_pressed.connect(_open_menu)
 	hub.resume_pressed.connect(_resume_run)
 	hub.abandon_pressed.connect(func() -> void:
 		get_tree().root.add_child(GameMenu.new().setup("Abandon the saved run?", [

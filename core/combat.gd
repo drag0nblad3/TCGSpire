@@ -289,6 +289,16 @@ func _check_end() -> void:
 		emit("combat_end", {"won": true, "turn": turn})
 
 
+## Testing shortcut. Skip enemy death triggers but finish through the normal victory path.
+func cheat_win() -> void:
+	if is_over() or player.is_dead():
+		return
+	for enemy in living(enemies):
+		enemy.hp = 0
+		emit("death", {"target": enemy.id})
+	_check_end()
+
+
 # --- primitives used by Effects / Statuses ------------------------------------
 
 func emit(t: String, data: Dictionary = {}) -> void:
