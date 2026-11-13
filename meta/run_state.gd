@@ -414,6 +414,15 @@ func roll_mod(rarity: String, r: GameRng) -> String:
 		rarity = str(r.weighted(db.balance.get("mod_weights", {"common": 1})))
 	var pool := db.mods.keys().filter(func(id: String) -> bool: return db.mods[id].get("rarity", "") == rarity)
 	pool.sort()
+	# Prefer mods some card in the deck can take, so a random mod is never wasted.
+	var fits := func(id: String) -> bool: return not mod_targets(id).is_empty()
+	var fitting := pool.filter(fits)
+	if fitting.is_empty():
+		# Nothing of that rarity fits: fall back to any mod that does.
+		fitting = db.mods.keys().filter(fits)
+		fitting.sort()
+	if not fitting.is_empty():
+		pool = fitting
 	return str(r.pick(pool)) if not pool.is_empty() else ""
 
 

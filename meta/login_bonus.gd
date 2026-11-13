@@ -1,7 +1,7 @@
 class_name LoginBonus
 extends RefCounted
 ## Daily login bonus: one claim per calendar day (device date). Days 1-6 pay
-## balance.login.scrap[day - 1] scrap, day 7 pays balance.login.packs packs, then the
+## balance.login.scrap[day - 1] scrap, day 4 adds a data cache, day 7 pays a Zero-day cache, then the
 ## cycle starts again at day 1. A missed day never resets progress: the next claim
 ## is simply the next day of the cycle.
 ##
@@ -19,23 +19,26 @@ static func next_day(p: Profile) -> int:
 	return int(p.login.get("day", 0)) % CYCLE + 1
 
 
-## What a cycle day pays: {"scrap": n, "packs": n}.
+## What a cycle day pays: {"scrap": n, "packs": [pack kinds]}. Days 1-6 pay
+## balance.login.scrap[day - 1]; balance.login.packs maps a day ("4", "7") to a pack kind.
 static func reward(db: CardDB, day: int) -> Dictionary:
 	var cfg: Dictionary = db.balance.get("login", {})
-	if day >= CYCLE:
-		return {"scrap": 0, "packs": int(cfg.get("packs", 1))}
 	var scrap: Array = cfg.get("scrap", [])
-	return {"scrap": int(scrap[mini(day - 1, scrap.size() - 1)]) if not scrap.is_empty() else 0, "packs": 0}
+	var out := {"scrap": int(scrap[day - 1]) if day - 1 < scrap.size() else 0, "packs": []}
+	var kind := str(cfg.get("packs", {}).get(str(day), ""))
+	if kind != "":
+		out["packs"].append(kind)
+	return out
 
 
-## "+20 scrap", "+1 data cache".
+## "+25 scrap, +1 data cache", "+1 Zero-day cache".
 static func reward_text(db: CardDB, day: int) -> String:
 	var r := reward(db, day)
 	var bits: Array[String] = []
 	if int(r["scrap"]) > 0:
 		bits.append("+%d %s" % [r["scrap"], Palette.w("dust").to_lower()])
-	if int(r["packs"]) > 0:
-		bits.append("+%d %s" % [r["packs"], Palette.w("pack").to_lower() if int(r["packs"]) == 1 else Palette.w("packs").to_lower()])
+	for k in r["packs"]:
+		bits.append("+1 %s" % (PackArt.title(db, k).to_lower() if k == Packs.NORMAL else PackArt.title(db, k)))
 	return ", ".join(bits)
 
 
@@ -46,7 +49,8 @@ static func claim(db: CardDB, p: Profile, date: String) -> Dictionary:
 	var day := next_day(p)
 	var r := reward(db, day)
 	p.collection.dust += int(r["scrap"])
-	p.add_packs(Packs.NORMAL, int(r["packs"]))
+	for k in r["packs"]:
+		p.add_packs(k, 1)
 	p.login["last"] = date
 	p.login["day"] = day
 	p.login["claims"] = int(p.login.get("claims", 0)) + 1

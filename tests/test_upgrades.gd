@@ -24,7 +24,7 @@ func _modded(id: String, mod_id: String, up: bool = false) -> CardInstance:
 # --- card mods -----------------------------------------------------------------
 
 func test_mod_changes_cost_keywords_and_numbers() -> void:
-	eq(_modded("kindle", "overclocked").cost(), 0, "overclocked cost")
+	eq(_modded("flare_volley", "overclocked").cost(), 1, "overclocked cost")
 	check(_modded("jab", "cached").has_keyword("retain"), "cached retain")
 	eq(_modded("jab", "hardened_payload").effects()[0]["amount"], 8, "bump damage")
 	eq(_modded("jab", "hardened_payload", true).effects()[0]["amount"], 11, "bump on upgraded")
@@ -36,7 +36,7 @@ func test_mod_changes_cost_keywords_and_numbers() -> void:
 
 
 func test_mod_restrictions() -> void:
-	check(not CardMods.can_apply(db.mod("overclocked"), db.instance("focus")), "overclock needs cost 1+")
+	check(not CardMods.can_apply(db.mod("overclocked"), db.instance("kindle")), "overclocked needs cost 2+")
 	check(not CardMods.can_apply(db.mod("hardened_payload"), db.instance("brace")), "payload needs an attack")
 	check(not CardMods.can_apply(db.mod("infected"), db.instance("brace")), "infected needs a target")
 	check(not CardMods.can_apply(db.mod("persistent"), db.instance("jab")), "persistent needs exhaust")
@@ -48,9 +48,9 @@ func test_mod_restrictions() -> void:
 func test_modded_card_plays_in_combat() -> void:
 	var c := make_combat([])
 	c.start()
-	c.hand.append(_modded("kindle", "overclocked"))
-	c.energy = 0
-	check(c.play_card(c.hand.size() - 1, 0), "0-cost after overclock")
+	c.hand.append(_modded("flare_volley", "overclocked"))
+	c.energy = 1
+	check(c.play_card(c.hand.size() - 1, 0), "1-cost after overclocked")
 	var hp_before: int = c.enemies[0].hp
 	c.hand.append(_modded("jab", "infected"))
 	c.energy = 1

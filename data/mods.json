@@ -1,5 +1,5 @@
 [
-{"id":"overclocked","name":"Overclocked","rarity":"rare","cost":-1,"min_cost":1},
+{"id":"overclocked","name":"Overclocked","rarity":"rare","cost":-1,"min_cost":2},
 {"id":"cached","name":"Cached","rarity":"common","keywords_add":["retain"]},
 {"id":"preloaded","name":"Preloaded","rarity":"common","keywords_add":["innate"]},
 {"id":"persistent","name":"Persistent","rarity":"uncommon","keywords_remove":["exhaust","ethereal"],"needs_keyword":["exhaust","ethereal"]},

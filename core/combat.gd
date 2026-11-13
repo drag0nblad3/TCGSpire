@@ -32,6 +32,8 @@ var encounter_id := ""
 var talismans: Array = []
 ## Per-talisman counters for "every N" triggers.
 var talisman_counters: Dictionary = {}
+## The daemon whose rule trigger is resolving right now (effect target "this"), else null.
+var rule_daemon: Fighter
 ## Subroutine (run perk) defs with triggers; they fire like talismans.
 var perks: Array = []
 ## Firewall gained when combat starts (perks).
@@ -221,7 +223,12 @@ func play_card(hand_idx: int, target_idx: int = -1) -> bool:
 	CardPrograms.after_play(self, card, held)
 	if card.has_loop():
 		card.loops += 1 + rule_sum("loop_bonus")
-		emit("loop", {"card": card.key(), "loops": card.loops})
+		var step := 0
+		for le in card.def.get_effects(card.upgraded):
+			if le.has("loop"):
+				step = int(le["loop"])
+				break
+		emit("loop", {"card": card.key(), "loops": card.loops, "grown": step * card.loops})
 		if not is_over():
 			Talismans.fire(self, "loop", {"card": card, "target": target})
 	if card.def.type == "power" or card.has_keyword("exhaust"):

@@ -33,6 +33,9 @@ var _hand_row: HBoxContainer
 var _end_btn: Button
 var _fx: Control
 var _views := {}  # fighter id -> FighterView
+## Multi-hit playback: "source>target" of the last damage event and how many hits in a row it has taken.
+var _combo_key := ""
+var _combo_n := 0
 
 
 func setup(c: Combat, r: RunState) -> CombatScreen:
@@ -174,6 +177,10 @@ func _rebuild() -> void:
 		var old: FighterView = _views[id]
 		if is_instance_valid(old):
 			lingering[id] = [old.flash, old.firewall_flash, old.virus_flash]
+	# Where each hand card sits now, so the rebuilt hand can glide from there (see _settle_hand).
+	var hand_was := {}
+	for old_cv: CardView in _hand_row.get_children():
+		hand_was[old_cv.card] = [old_cv.global_position + old_cv.size * 0.5, old_cv.zoom]
 	for n in _enemies_row.get_children() + _units_row.get_children() + _hand_row.get_children():
 		n.get_parent().remove_child(n)
 		n.queue_free()
@@ -206,6 +213,8 @@ func _rebuild() -> void:
 	var avail := _layout_width() - 20
 	var sep := 6 if n <= 1 else mini(6, int((avail - n * CardView.SIZE.x * zoom) / (n - 1)))
 	_hand_row.add_theme_constant_override("separation", sep)
+	if step_scale > 0.0 and not hand_was.is_empty():
+		_hand_row.sort_children.connect(_settle_hand.bind(hand_was), CONNECT_ONE_SHOT)
 	_energy.queue_redraw()
 	_floor_label.text = ("Layer %d · Node %d   ·   %d creds   ·   Turn %d" % [run.act, run.floor_num, run.gold, combat.turn]) if run else "Practice fight   ·   Turn %d" % combat.turn
 	if run and run.act_start_eased():
@@ -454,6 +463,8 @@ func _play_events(played: CardView) -> int:
 		var v: FighterView = _views.get(str(e.get("target", "")))
 		if v != null and not is_instance_valid(v):
 			v = null
+		if e["t"] not in ["damage", "death"]:
+			_combo_key = ""
 		match e["t"]:
 			"play":
 				if step_scale > 0.0 and played != null:
@@ -465,6 +476,13 @@ func _play_events(played: CardView) -> int:
 			"damage":
 				var damage := int(e["amount"])
 				var blocked := int(e.get("blocked", 0))
+				# Multi-hit attacks: each hit lands on its own beat, its number stacked above the last.
+				var combo_key := "%s>%s" % [e.get("source", ""), e.get("target", "")]
+				_combo_n = _combo_n + 1 if combo_key == _combo_key and e.get("kind", "") == "attack" else 0
+				_combo_key = combo_key
+				var next: Dictionary = combat.events[_event_cursor] if _event_cursor < combat.events.size() else {}
+				var more_hits: bool = next.get("t", "") == "damage" and "%s>%s" % [next.get("source", ""), next.get("target", "")] == combo_key
+				var lift := -26.0 * (_combo_n % 4)
 				if v != null:
 					# The event amount can include overkill. Report the HP actually lost.
 					var remaining := int(e.get("hp", v.fighter.hp))
@@ -476,12 +494,12 @@ func _play_events(played: CardView) -> int:
 					v.firewall_flash = 1.0 if blocked > 0 else 0.0
 					_recoil(v, damage)
 				if blocked > 0:
-					_float_text(v, "%d Firewall absorbed" % blocked, Palette.WARD, -24 if damage > 0 else 0, true)
+					_float_text(v, "%d Firewall absorbed" % blocked, Palette.WARD, (-24 if damage > 0 else 0) + lift, true)
 				if damage > 0:
-					_float_text(v, "−%d HP" % damage, Palette.HP, 10 if blocked > 0 else 0, true)
+					_float_text(v, "−%d HP" % damage, Palette.HP, (10 if blocked > 0 else 0) + lift, true)
 				if v == _player_view and damage > 0:
 					_shake(6.0)
-				await _wait(0.16)
+				await _wait(0.3 if more_hits or _combo_n > 0 else 0.16)
 			"ward":
 				if v != null:
 					v.firewall_flash = 1.0
@@ -578,7 +596,7 @@ func _play_events(played: CardView) -> int:
 				_float_text(_player_view, str(combat.db.talismans.get(e["id"], combat.db.perks.get(e["id"], {})).get("name", "")), Palette.RARITY["rare"], -30)
 				await _wait(0.18)
 			"loop":
-				_float_text(_player_view, "Loop +%d" % int(e["loops"]), Palette.faction("void"), -30)
+				_float_text(_player_view, "Loop: +%d now" % int(e.get("grown", e["loops"])), Palette.faction("void"), -30)
 			"reshuffle":
 				_float_text(_player_view, "Discard shuffled into draw pile", Palette.TEXT_DIM, -60)
 			"draw":
@@ -631,6 +649,24 @@ func _pop_in(v: Control) -> void:
 	var tw := v.create_tween().set_parallel()
 	tw.tween_property(v, "modulate:a", 1.0, 0.2 * step_scale)
 	tw.tween_property(v, "scale", Vector2.ONE, 0.25 * step_scale).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+## After a rebuild the hand's cards have new spots and maybe a new size. Start each one where
+## (and as big as) it was and ease it into place, so the hand closes up instead of snapping.
+func _settle_hand(was: Dictionary) -> void:
+	for cv: CardView in _hand_row.get_children():
+		if not was.has(cv.card):
+			continue
+		var home := cv.position
+		var shift: Vector2 = was[cv.card][0] - (cv.global_position + cv.size * 0.5)
+		var ratio: float = float(was[cv.card][1]) / maxf(cv.zoom, 0.01)
+		if shift.length() < 1.0 and absf(ratio - 1.0) < 0.01:
+			continue
+		cv.position = home + shift
+		cv.scale = Vector2(ratio, ratio)
+		var tw := cv.create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.tween_property(cv, "position", home, 0.22 * step_scale)
+		tw.tween_property(cv, "scale", Vector2.ONE, 0.22 * step_scale)
 
 
 ## Newly drawn cards (the last `n` in hand) fade and grow in, one after another.

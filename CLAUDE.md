@@ -11,7 +11,7 @@ Original design only: don't copy cards, names, characters or look from existing 
   top killers; `acts=1` adds per-act death share and turns per normal/elite/boss fight. `profile=experienced`/`veteran` = save after 10/39 bot runs with likely spending, `max` = everything owned/bought (`meta/profile_bot.gd`). Default heat per profile: new 0, experienced 1, veteran 3, max 6.
 - `scripts/sim_matrix.sh` — the standard balance check Tyler wants: 150 runs per cell, new heat 0-1, experienced 1-3, veteran 2-5, max 4-6.
 - `scripts/shot.sh screen=<name|all> out=/tmp/x.png [plays=2] [end_turn=1] [theme=archive]` — real render to PNG (xvfb).
-  Screens: hub map combat reward rest shop event collection picker pack pack_open pack_shelf pack_premium pack_crew weekly weekly_map login end inspect rules jobs rig perk tinker crew firmware recompile menu settings resume tutorial coach foil. Uses a throwaway profile.
+  Screens: hub map combat reward rest shop event collection picker pack pack_open pack_shelf pack_premium pack_crew weekly weekly_map login signal_result end inspect rules jobs rig perk tinker crew firmware recompile menu settings resume tutorial coach foil. Uses a throwaway profile.
 - Godot binary: `godot` on PATH, or set `GODOT=/path/to/godot`. Cloud sessions: download
   `Godot_v4.4.1-stable_linux.x86_64.zip` from the godotengine GitHub releases.
 
@@ -56,7 +56,7 @@ Original design only: don't copy cards, names, characters or look from existing 
   `flags` (`DaemonRules.FLAGS`) + implant-style `triggers`. HP is the countdown: -1 at the start of each of your
   turns, -1 per hit taken, Purge moves (enemy damage `"to": "daemon"`) take their full number. Re-running a daemon
   that is up tops its HP back up. Scaling: `daemon_hp` (rig/subroutine mod, implant `"daemon": {"hp": n}`),
-  `rally` (+HP to all daemons), Patch on a daemon (cards with `"target": "ally"`).
+  `rally` (+HP to all daemons), Patch on a daemon (cards with `"target": "ally"`). In a daemon rule trigger, `"to": "this"` targets that daemon (Leech Line repairs itself).
 - Card pool: every crew (Street included) has 8 common / 8 uncommon / 5 rare / 2 mythic (`test_data` enforces it).
   Joint ops (`data/cards/joint.json`, `"faction2"`): one per non-rival crew pair, on top of the spread. They count as
   both crews for job picks (`CardDef.is_of`), are banned if either crew is a target (`banned_by`), stay out of binders,
@@ -68,8 +68,8 @@ Original design only: don't copy cards, names, characters or look from existing 
   clauses (`data/contracts.json`, rolled per job offer, pay rep), exploit log (`data/exploits.json`, lifetime stats),
   binders (own every card of a crew rarity page: dust, full set = card back + title), daily breach (fixed seed/job per
   date, one try, scored), weekly challenge (`meta/weekly.gd`: Monday-keyed job at balance.weekly.heat, rule modifiers
-  from `data/weekly.json` (perk-shaped: mods/heat/triggers/pickup + text), own cards but no rig/firmware, first clear pays a pack,
-  never unlocks heat), daily login bonus (`meta/login_bonus.gd`, balance.login: 6 scrap days then a pack, missed days never reset), glitch foils (`pack.foil_chance`, `shaders/glitch_foil.gdshader`), 3 saved loadouts per crew.
+  from `data/weekly.json` (perk-shaped: mods/heat/triggers/pickup + text), own cards but no rig/firmware, first clear pays a premium pack,
+  never unlocks heat), daily login bonus (`meta/login_bonus.gd`, balance.login: 6 scrap days, a normal pack on day 4, a premium pack on day 7, missed days never reset), quick scrap in pack opening (`Profile.quick_scrap`: only copies beyond the deck limit), glitch foils (`pack.foil_chance`, `shaders/glitch_foil.gdshader`), 3 saved loadouts per crew.
 - Combat animation: `CombatScreen._play_events` replays `combat.events` step by step (input blocked);
   damage/ward/heal events carry `hp`/`ward` after the change for the bars. `step_scale = 0` in tests.
 - `data/` all content as JSON: `cards/<faction>.json` (one card per line), `enemies/`,
@@ -95,6 +95,7 @@ Original design only: don't copy cards, names, characters or look from existing 
   `meta/run_bot.gd` uses static `card_value` for picks/upgrades/shop and scores event outcomes. Keep both cheap.
 - Save format change: bump `Profile.SAVE_VERSION` and add a step in `_migrate()`.
 - Packs are earned by play only. Rarity should add complexity, not raw power.
+- Implant rarity is complexity too: common = flat always-on bonus, uncommon = a condition or counter, rare = changes a rule, boss = a trade-off. Keep power close across rarities and avoid two implants that differ only in size.
 - GDScript gotcha: `var x := untyped_value` fails to parse; write `var x: Type = ...`.
 
 ## Android builds (only when Tyler asks for one)

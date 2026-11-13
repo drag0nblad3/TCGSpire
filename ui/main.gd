@@ -537,7 +537,7 @@ func _show_weekly() -> void:
 	v.add_child(rules)
 	var packs := int(db.balance.get("weekly", {}).get("packs", 0))
 	var reward := "Cleared this week. Best score %d. Replays count for score only." % int(st["best"]) if st["cleared"] \
-		else "First clear this week: %s. Normal job pay (rep, XP, caches per Core) on every try." % HubScreen.count(packs, "pack", "packs")
+		else "First clear this week: +%d %s. Normal job pay (rep, XP, caches per Core) on every try." % [packs, PackArt.title(db, str(db.balance.get("weekly", {}).get("pack_kind", Packs.PREMIUM)))]
 	v.add_child(UiKit.label(reward, 15, Palette.ENERGY, true))
 	if int(st["tries"]) > 0:
 		v.add_child(UiKit.label("Tries this week: %d · best score %d" % [int(st["tries"]), int(st["best"])], 14, Palette.TEXT_DIM))
@@ -612,6 +612,7 @@ func _show_pack(kind: String = "") -> void:
 	var views: Array = []
 	var summary := UiKit.label("", 16, Palette.UPGRADED, true)
 	var revealed := [0]
+	var scrap_btns: Array = []
 	var on_reveal := func(view: CardView, p: Dictionary) -> void:
 		view.badge = _pack_badge(p)
 		view.pips = profile.copy_pips(db, p["id"])
@@ -619,6 +620,10 @@ func _show_pack(kind: String = "") -> void:
 		revealed[0] += 1
 		if revealed[0] >= pulled.size():
 			summary.text = _pack_summary(pulled)
+		# Quick scrap: a copy beyond the two a deck can hold.
+		var sb: Button = scrap_btns[views.find(view)]
+		sb.visible = Profile.can_quick_scrap(db, profile, p["id"])
+		sb.text = "Scrap +%d" % _quick_scrap_value(p)
 	for p in pulled:
 		var inst := db.instance(p["id"])
 		inst.foil = p["foil"]
@@ -631,7 +636,31 @@ func _show_pack(kind: String = "") -> void:
 				view.flip_reveal()
 				on_reveal.call(view, p))
 		views.append(cv)
-		grid.add_child(cv)
+		var cell := UiKit.vbox(6, BoxContainer.ALIGNMENT_BEGIN)
+		cell.custom_minimum_size.y = CardView.SIZE.y + 46
+		cell.add_child(cv)
+		var sb := UiKit.button("", func() -> void: pass, Vector2(CardView.SIZE.x, 40), 14)
+		sb.visible = false
+		sb.tooltip_text = "Turn this copy into %s. You keep %d." % [Palette.w("dust").to_lower(), Profile.deck_limit(db)]
+		sb.pressed.connect(func() -> void:
+			var got := profile.quick_scrap(db, p["id"], p["foil"])
+			if got <= 0:
+				sb.visible = false
+				return
+			_save()
+			p["scrapped"] = true
+			sb.text = "Scrapped +%d" % got
+			sb.disabled = true
+			cv.pips = profile.copy_pips(db, p["id"])
+			cv.badge = _pack_badge(p)
+			cv.modulate.a = 0.45
+			# Other copies of the same program in this pack may have dropped to the limit.
+			for k in pulled.size():
+				if not scrap_btns[k].disabled and not views[k].face_down:
+					scrap_btns[k].visible = Profile.can_quick_scrap(db, profile, pulled[k]["id"]))
+		scrap_btns.append(sb)
+		cell.add_child(sb)
+		grid.add_child(cell)
 	v.add_child(grid)
 	v.add_child(summary)
 	v.add_child(UiKit.label(PackArt.odds_line(db, profile, kind), 14, Palette.TEXT_DIM, true))
@@ -688,6 +717,14 @@ func _pack_badge(p: Dictionary) -> String:
 	return profile.copy_badge(db, p["id"])
 
 
+## Scrap a pulled copy pays: its foil value if it was a foil.
+func _quick_scrap_value(p: Dictionary) -> int:
+	if p["foil"] and int(profile.collection.foils.get(p["id"], 0)) > 0:
+		return Collection.foil_value(p["id"], db)
+	var c := db.card(p["id"])
+	return int(db.balance.get("dust", {}).get("disenchant", {}).get(c.rarity, 0)) if c != null else 0
+
+
 ## One line under a fully revealed pack: what it did for the collection.
 func _pack_summary(pulled: Array) -> String:
 	var bits: Array[String] = []
@@ -739,7 +776,7 @@ func _play_node(node: Dictionary) -> void:
 		"treasure":
 			var tid := run.roll_talisman("", run.rng.fork("treasure:%d" % run.floor_num))
 			run.add_talisman(tid)
-			_show_message(Palette.w("treasure"), ["You pull %s from the cache." % db.talismans[tid]["name"] if tid != "" else "The cache is empty."], [tid] if tid != "" else [])
+			_show_message(Palette.w("treasure"), ["You pull %s from the cache." % db.talismans[tid]["name"] if tid != "" else "The cache is empty."], {"tals": [tid] if tid != "" else []})
 
 
 func _start_combat(node: Dictionary) -> void:
@@ -832,9 +869,12 @@ func _show_perk_pick(choices: Array) -> void:
 	for pid in choices:
 		var p: Dictionary = db.perks[pid]
 		v.add_child(UiKit.button("%s\n%s" % [p["name"], Perks.describe(p)], func() -> void:
+			var before := _run_snapshot()
 			var lines := run.add_perk(pid)
-			if lines.size() > 1:
-				_show_message(p["name"], lines)
+			var gains := _run_gains(before)
+			gains["perks"] = []
+			if lines.size() > 1 or not gains["cards"].is_empty() or not gains["tals"].is_empty():
+				_show_message(p["name"], lines, gains)
 			else:
 				show_map(), Vector2(560, 80), 17))
 	v.add_child(UiKit.button("Skip", show_map, Vector2(200, 56)))
@@ -877,7 +917,7 @@ func _show_rest() -> void:
 func _mod_button(mid: String, suffix: String, on_press: Callable) -> Button:
 	var m := db.mod(mid)
 	var fit := CardMods.restriction_text(m)
-	var b := UiKit.button("%s%s\n%s%s" % [m["name"], suffix, CardMods.describe(m), (" " + fit) if fit != "" else ""], on_press, Vector2(520, 70), 16)
+	var b := UiKit.button("%s%s\n%s%s" % [m["name"], suffix, CardMods.describe(m), (" " + fit) if fit != "" else ""], on_press, Vector2(560, 74), 18)
 	b.add_theme_color_override("font_color", Palette.rarity(str(m["rarity"])))
 	return b
 
@@ -895,44 +935,42 @@ func _show_shop(shop: Dictionary) -> void:
 	var v: VBoxContainer = parts[1]
 	v.add_child(RunHeader.new().setup(run))
 	v.add_child(UiKit.label(Palette.w("shop"), 30))
-	v.add_child(UiKit.label("The shop. Spend creds on programs, implants (passive bonuses) and mods. Tap an implant to read it.", 15, Palette.TEXT_DIM, true))
+	v.add_child(UiKit.label("The shop. Spend creds on programs, implants (passive bonuses) and mods.", 15, Palette.TEXT_DIM, true))
 	var cards := UiKit.flow(10)
 	for item in shop["cards"]:
+		var sold_card: bool = item.get("sold", false)
 		var cv := CardView.new().setup(db.instance(item["id"]))
-		cv.badge = "sold" if item.get("sold", false) else "%dc" % item["price"]
-		cv.playable = not item.get("sold", false) and run.gold >= int(item["price"])
+		cv.playable = not sold_card and run.gold >= int(item["price"])
 		cv.pressed.connect(func(_v: CardView) -> void:
 			if run.buy(item, false):
 				GameAudio.play("purchase")
 				_show_shop(shop))
-		cards.add_child(cv)
+		var cell := UiKit.vbox(4)
+		cell.add_child(cv)
+		cell.add_child(UiKit.label("sold" if sold_card else "%d creds" % item["price"], 18, Palette.TEXT_DIM if sold_card else (Palette.ENERGY if cv.playable else Palette.HP)))
+		cards.add_child(cell)
 	v.add_child(cards)
-	var trow := UiKit.hbox(20)
 	for item in shop["talismans"]:
-		var box := UiKit.vbox(4)
-		var tv := TalismanView.new().setup(item["id"], db, true)
-		tv.pressed.connect(func(id: String) -> void: UiKit.toast(self, TalismanView.text(db, id)))
-		box.add_child(tv)
+		var trow := UiKit.hbox(10)
+		trow.add_child(_implant_panel(item["id"], 440.0))
 		var sold: bool = item.get("sold", false)
-		var b := UiKit.button("sold" if sold else "Buy %dc" % item["price"], func() -> void:
+		var b := UiKit.button("sold" if sold else "Buy\n%d creds" % item["price"], func() -> void:
 			if run.buy(item, true):
 				GameAudio.play("purchase")
-				_show_shop(shop), Vector2(120, 44), 15)
+				_show_shop(shop), Vector2(128, 64), 18)
 		b.disabled = sold or run.gold < int(item["price"])
-		box.add_child(b)
-		trow.add_child(box)
-	v.add_child(trow)
+		trow.add_child(b)
+		v.add_child(trow)
 	for item in shop.get("mods", []):
 		var sold: bool = item.get("sold", false)
-		var mb := _mod_button(item["id"], "  ·  sold" if sold else "  ·  %dc" % item["price"], func() -> void:
+		var mb := _mod_button(item["id"], "  ·  sold" if sold else "  ·  %d creds" % item["price"], func() -> void:
 			_pick_mod_target(item["id"], func(i: int) -> void:
 				if run.buy_mod(item, i):
 					GameAudio.play("purchase")
 					_show_shop(shop)))
-		mb.custom_minimum_size = Vector2(520, 60)
 		mb.disabled = sold or run.gold < int(item["price"])
 		v.add_child(mb)
-	var rm := UiKit.button("Remove a card from your deck (%dc)" % run.remove_price(), func() -> void:
+	var rm := UiKit.button("Remove a card from your deck (%d creds)" % run.remove_price(), func() -> void:
 		add_child(DeckOverlay.new().setup("Choose a program to remove", run.deck, "Cancel", func(i: int) -> void:
 			if i >= 0 and run.remove_card(i):
 				GameAudio.play("delete")
@@ -963,10 +1001,9 @@ func _show_event(ev: Dictionary) -> void:
 			desc.append(RunOutcomes.describe(o))
 		var label: String = ch["label"] + ("\n" + " ".join(desc) if not desc.is_empty() else "")
 		var b := UiKit.button(label, func() -> void:
-			var before := run.talismans.duplicate()
+			var before := _run_snapshot()
 			var lines := run.choose(ch)
-			var gained := run.talismans.filter(func(t: String) -> bool: return t not in before)
-			_show_message(ev["title"], lines if not lines.is_empty() else ["Nothing happens."], gained), Vector2(520, 72), 16)
+			_show_message(ev["title"], lines if not lines.is_empty() else ["Nothing happens."], _run_gains(before)), Vector2(520, 72), 16)
 		b.disabled = not run.can_choose(ch)
 		v.add_child(b)
 	if run.event_rerolls_left > 0 and db.events.size() > 1:
@@ -977,24 +1014,80 @@ func _show_event(ev: Dictionary) -> void:
 	_show(parts[0])
 
 
-func _show_message(title: String, lines: Array, tals: Array = []) -> void:
+## Result screen for a Signal, cache or subroutine. `gains` (see _run_gains) is shown, not just
+## listed: new or changed programs as cards, implants and subroutines with their rules text.
+func _show_message(title: String, lines: Array, gains: Dictionary = {}) -> void:
 	var parts := UiKit.screen(20)
 	var v: VBoxContainer = parts[1]
 	v.add_child(RunHeader.new().setup(run))
 	v.add_child(UiKit.label(title, 30))
 	for l in lines:
 		v.add_child(UiKit.label(str(l), 18, Palette.TEXT, true))
-	_add_talisman_row(v, tals)
+	var cards: Array = gains.get("cards", [])
+	if not cards.is_empty():
+		var row := UiKit.flow(12)
+		for c: CardInstance in cards:
+			var cv := CardView.new().setup(c)
+			row.add_child(cv)
+			cv.reveal_reward.call_deferred(float(row.get_child_count() - 1) * 0.1)
+		v.add_child(row)
+	_add_talisman_row(v, gains.get("tals", []))
+	for pid in gains.get("perks", []):
+		var p: Dictionary = db.perks[pid]
+		v.add_child(_info_panel("Subroutine: " + str(p["name"]), Perks.describe(p), Palette.ENERGY))
 	v.add_child(UiKit.button("Continue", show_map))
 	_show(parts[0])
 
 
+## What the run holds now, to diff after a random outcome (see _run_gains).
+func _run_snapshot() -> Dictionary:
+	var cards := {}
+	for c: CardInstance in run.deck:
+		cards[c] = [c.upgraded, c.fw, c.mod_id()]
+	return {"cards": cards, "tals": run.talismans.duplicate(), "perks": run.perks.duplicate()}
+
+
+## {"cards": programs added, upgraded or modded since `before`, "tals": new implants, "perks": new subroutines}.
+func _run_gains(before: Dictionary) -> Dictionary:
+	var known: Dictionary = before["cards"]
+	var cards: Array = []
+	for c: CardInstance in run.deck:
+		if not known.has(c) or known[c] != [c.upgraded, c.fw, c.mod_id()]:
+			cards.append(c)
+	return {"cards": cards,
+		"tals": run.talismans.filter(func(t: String) -> bool: return t not in before["tals"]),
+		"perks": run.perks.filter(func(p: String) -> bool: return p not in before["perks"])}
+
+
 func _add_talisman_row(v: VBoxContainer, tals: Array) -> void:
 	for tid in tals:
-		var tv := TalismanView.new().setup(tid, db, true)
-		tv.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		v.add_child(tv)
-		v.add_child(UiKit.label(Talismans.describe(db.talismans[tid]), 15, Palette.TEXT_DIM, true))
+		v.add_child(_implant_panel(tid))
+
+
+## An implant shown with its name and what it does (rewards, the Fixer, Signals).
+func _implant_panel(tid: String, width: float = 520.0) -> Control:
+	var t: Dictionary = db.talismans[tid]
+	var rarity := str(t.get("rarity", "common"))
+	var col: Color = Palette.ENEMY if rarity == "boss" else Palette.rarity(rarity)
+	return _info_panel(str(t.get("name", tid)), Talismans.describe(t), col, TalismanView.new().setup(tid, db, true), width)
+
+
+## Panel with an optional icon, a coloured title and wrapped body text.
+func _info_panel(title: String, body: String, col: Color, icon: Control = null, width: float = 520.0) -> Control:
+	var row := UiKit.hbox(12)
+	if icon != null:
+		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(icon)
+	var text := UiKit.vbox(2)
+	for pair in [[title, 18, col], [body, 15, Palette.TEXT]]:
+		var l := UiKit.label(pair[0], pair[1], pair[2], true)
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		l.custom_minimum_size.x = width - (96 if icon != null else 12)
+		text.add_child(l)
+	row.add_child(text)
+	var p := UiKit.panel(row)
+	p.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	return p
 
 
 # --- end of run -------------------------------------------------------------------

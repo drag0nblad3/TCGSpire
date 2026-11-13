@@ -9,6 +9,8 @@ signal pressed(view: FighterView)
 signal inspected(view: FighterView)
 
 const DRONE := preload("res://assets/combat/drone.svg")
+## Status chip ("Virus 3") text size.
+const CHIP_FONT := 15
 
 var fighter: Fighter
 var combat: Combat
@@ -46,7 +48,7 @@ func setup(f: Fighter, c: Combat, kind_in: String) -> FighterView:
 	fighter = f
 	combat = c
 	kind = kind_in
-	custom_minimum_size = Vector2(200, 274) if kind == "enemy" else (Vector2(176, 158) if kind == "unit" else Vector2(340, 70))
+	custom_minimum_size = Vector2(200, 290) if kind == "enemy" else (Vector2(176, 172) if kind == "unit" else Vector2(340, 84))
 	if kind == "enemy":
 		if combat != null and combat.db != null:
 			enemy_faction = str(combat.db.enemies.get(fighter.def_id, {}).get("faction", ""))
@@ -70,7 +72,7 @@ func setup(f: Fighter, c: Combat, kind_in: String) -> FighterView:
 
 func set_enemy_width(width: float) -> void:
 	boss_large = not boss_profile.is_empty() and width >= 300.0
-	custom_minimum_size = Vector2(width, 415.0 if boss_large else 274.0)
+	custom_minimum_size = Vector2(width, 432.0 if boss_large else 290.0)
 
 
 func hp() -> int:
@@ -146,7 +148,7 @@ func _draw() -> void:
 	if kind == "enemy":
 		y = _draw_intents(font, w, y, intent_items, charging)
 	if kind != "player":
-		var art_height := 252.0 if boss_large else (108.0 if kind == "enemy" else 47.0)
+		var art_height := 252.0 if boss_large else (104.0 if kind == "enemy" else 47.0)
 		var r := minf(art_height * 0.45, w * 0.34)
 		var bob := sin(t * 1.7 + fighter.id.hash() % 7) * 3.0
 		var c := Vector2(w / 2, y + art_height * 0.5 + bob)
@@ -202,10 +204,10 @@ func _draw() -> void:
 			y += name_size + 7
 	else:
 		draw_string(Palette.display(), Vector2(12, 22), Palette.w("hero"), HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Palette.TEXT)
-		y = 30.0
+		y = 36.0
 
-	# HP bar (+ Ward shield badge on its left).
-	var bar := Rect2(26, y, w - 38, 17)
+	# HP bar (+ Ward shield badge on its left). Sized to read at arm's length on a phone.
+	var bar := Rect2(34, y, w - 46, 24)
 	draw_rect(bar, Color(Palette.CARD_BG, 0.85))
 	# A daemon's HP is its countdown, so it gets the RAM colour instead of the HP red.
 	draw_rect(Rect2(bar.position, Vector2(bar.size.x * clampf(float(hp()) / fighter.max_hp, 0, 1), bar.size.y)), Palette.ENERGY if kind == "unit" else Palette.HP)
@@ -213,11 +215,11 @@ func _draw() -> void:
 		draw_rect(bar.grow(3), Color(Palette.HP, flash * 0.6), false, 3)
 	draw_rect(bar, Color(Palette.TEXT, 0.4), false, 1)
 	var hp_text := "%d/%d HP" % [hp(), fighter.max_hp]
-	_draw_fitted(font, hp_text, bar.position + Vector2(0, 13), bar.size.x, 14, Palette.TEXT)
+	_draw_fitted(font, hp_text, bar.position + Vector2(0, 18), bar.size.x, 18, Palette.TEXT)
 	if ward() > 0:
-		IntentIcon.draw(self, bar.position + Vector2(-12, 8), 13, "ward")
-		draw_string(font, bar.position + Vector2(-26, 13), str(ward()), HORIZONTAL_ALIGNMENT_CENTER, 28, 12, Palette.TEXT)
-	y += 22
+		IntentIcon.draw(self, bar.position + Vector2(-16, 12), 17, "ward")
+		draw_string(font, bar.position + Vector2(-32, 18), str(ward()), HORIZONTAL_ALIGNMENT_CENTER, 32, 15, Palette.TEXT)
+	y += 29
 
 	# Status chips.
 	var chips: Array = []
@@ -235,20 +237,20 @@ func _draw() -> void:
 	var cy := y if kind != "player" else bar.end.y + 4
 	if kind == "player":
 		x = 80.0
-		cy = 8.0
+		cy = 6.0
 	for chip in chips:
-		var cw := font.get_string_size(chip[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x + 10
+		var cw := font.get_string_size(chip[0], HORIZONTAL_ALIGNMENT_LEFT, -1, CHIP_FONT).x + 12
 		if x + cw > w - 4:
 			x = 6.0
-			cy += 18
+			cy += 25
 		var sb := StyleBoxFlat.new()
 		sb.bg_color = Color(chip[1], 0.22)
 		sb.border_color = chip[1]
 		sb.set_border_width_all(1)
 		sb.set_corner_radius_all(7)
-		draw_style_box(sb, Rect2(x, cy, cw, 16))
-		draw_string(font, Vector2(x + 5, cy + 12), chip[0], HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Palette.TEXT)
-		x += cw + 4
+		draw_style_box(sb, Rect2(x, cy, cw, 22))
+		draw_string(font, Vector2(x + 6, cy + 16), chip[0], HORIZONTAL_ALIGNMENT_LEFT, -1, CHIP_FONT, Palette.TEXT)
+		x += cw + 5
 	_draw_impact()
 	draw_set_transform(Vector2.ZERO)
 

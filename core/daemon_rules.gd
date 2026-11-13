@@ -13,7 +13,7 @@ const FLAGS := {
 	"regen_no_decay": "Your Patch doesn't decay.",
 	"keep_ward": "Your Firewall isn't cleared at the start of your turn.",
 	"guard": "Enemy attacks deal %d less damage to you per hit.",
-	"attack_bonus": "Your attacks deal +%d damage.",
+	"attack_bonus": "You have Boost %d.",
 	"ward_bonus": "Whenever you gain Firewall, gain %d more.",
 	"thorns": "Enemies that attack you take %d damage.",
 	"burn_bonus": "Whenever you apply Virus to an enemy, apply %d more.",

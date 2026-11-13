@@ -433,6 +433,22 @@ func disenchant_foil(db: CardDB, id: String) -> bool:
 	return collection.disenchant_foil(id, db)
 
 
+## Pack opening's quick scrap: only while you own more than a full deck's worth (deck_limit).
+static func can_quick_scrap(db: CardDB, p: Profile, id: String) -> bool:
+	var c := db.card(id)
+	return c != null and c.rarity != "starter" and p.collection.count(id) > deck_limit(db)
+
+
+## Scraps one pulled copy (its foil value if it was a foil). Returns the scrap gained, 0 if not allowed.
+func quick_scrap(db: CardDB, id: String, foil: bool = false) -> int:
+	if not can_quick_scrap(db, self, id):
+		return 0
+	var before := collection.dust
+	if not (foil and collection.disenchant_foil(id, db)):
+		collection.disenchant(id, db)
+	return collection.dust - before
+
+
 ## Non-starter cards whose next firmware level is ready to flash right now.
 func ready_to_flash(db: CardDB) -> Array:
 	return collection.owned_ids().filter(func(id: String) -> bool:
