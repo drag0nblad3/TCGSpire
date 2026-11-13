@@ -99,7 +99,7 @@ static func rep_reward(db: CardDB, run: RunState) -> int:
 ## What a job pays, worked out with the same formulas as the end of a run.
 ## "packs"/"xp"/"rep": a full clear (every Core breached) with no black sentries;
 ## "elite_rep"/"elite_xp": about what each black sentry crashed adds; "per_core": packs per Core.
-## "pack_list": the pack kinds of a full clear (crew packs assume generic Cores: the target crew's).
+## "pack_list": the pack kinds of a full clear (crew packs are the client's).
 ## "full_run": premium packs for finishing the job.
 ## `extra` = target crews beyond the client's rival (Jobs.extra_targets at this heat).
 static func payout_preview(db: CardDB, profile: Profile, job: String, heat: int, extra: int = -1) -> Dictionary:

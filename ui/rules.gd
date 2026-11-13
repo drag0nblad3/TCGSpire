@@ -152,7 +152,7 @@ static func sections(db: CardDB) -> Array:
 	var limit := Profile.deck_limit(db)
 	out.append(["Collecting", "Between runs", [
 		["Library", "Your deck is built from programs you own. Before each run you load extra programs from your library, up to %d copies of each." % limit],
-		[Palette.w("packs"), "Earned by play only. Each Core breached pays a crew cache of that Core's crew (a generic Core pays the target crew's). Finishing the whole job pays a %s. Levels, the daily breach and shards from black sentries (%d make one) pay a %s." % [PackArt.title(db, Packs.PREMIUM), Profile.shards_per_pack(db), Palette.w("pack").to_lower()]],
+		[Palette.w("packs"), "Earned by play only. Each Core breached pays a crew cache of the crew hiring you (Street when freelance). Finishing the whole job pays a %s. Levels, the daily breach and shards from black sentries (%d make one) pay a %s." % [PackArt.title(db, Packs.PREMIUM), Profile.shards_per_pack(db), Palette.w("pack").to_lower()]],
 		["Hot slot", "The last card of every %s is the hot slot: uncommon or better (rare or better in a %s)." % [Palette.w("pack").to_lower(), PackArt.title(db, Packs.PREMIUM)]],
 		["Mercy", "Each kind of %s keeps its own timer (every crew separately): a %s or crew cache guarantees a rare at least every %d and a mythic every %d of that same kind; a %s guarantees a mythic every %d." % [Palette.w("pack").to_lower(),
 			Palette.w("pack").to_lower(), int(Packs.config(db).get("pity", {}).get("rare", 0)), int(Packs.config(db).get("pity", {}).get("mythic", 0)),

@@ -159,15 +159,14 @@ static func run_packs(db: CardDB, run: RunState) -> int:
 	return run_pack_list(db, run).size()
 
 
-## The pack kinds a run pays when it ends: a crew pack per Core breached (that Core's crew,
-## RunState.boss_crew), a premium pack for finishing the whole job, and normal packs from
+## The pack kinds a run pays when it ends: a crew pack of the client crew hiring you per Core
+## breached (RunState.client_crew), a premium pack for finishing the whole job, and normal packs from
 ## implants/subroutines ("bonus_packs").
 static func run_pack_list(db: CardDB, run: RunState) -> Array:
 	var cfg: Dictionary = db.balance.get("run_rewards", {})
 	var out: Array = []
-	for i in run.acts_cleared:
-		for k in int(cfg.get("packs_per_boss", 1)):
-			out.append(Packs.crew_kind(run.boss_crew(i)))
+	for i in run.acts_cleared * int(cfg.get("packs_per_boss", 1)):
+		out.append(Packs.crew_kind(run.client_crew()))
 	if run.boss_won:
 		for k in int(cfg.get("packs_full_run", 0)):
 			out.append(Packs.PREMIUM)

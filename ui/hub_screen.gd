@@ -186,12 +186,12 @@ static func count(n: int, one: String, many: String) -> String:
 
 
 ## "+3 crew caches, +1 Zero-day cache" for a full clear.
-static func cache_text(db_in: CardDB, pay: Dictionary) -> String:
+static func cache_text(db_in: CardDB, pay: Dictionary, name_crew: bool = true) -> String:
 	var kinds: Array = pay.get("pack_list", [])
 	var crew := kinds.filter(func(k: String) -> bool: return Packs.crew_of(k) != "").size()
 	var bits: Array[String] = []
 	if crew > 0:
-		bits.append("+%d crew cache%s" % [crew, "" if crew == 1 else "s"])
+		bits.append("+%d %s%s" % [crew, PackArt.title(db_in, kinds[0]) if name_crew else "client crew cache", "" if crew == 1 else "s"])
 	var prem := kinds.count(Packs.PREMIUM)
 	if prem > 0:
 		bits.append("+%d %s" % [prem, PackArt.title(db_in, Packs.PREMIUM)])
@@ -216,8 +216,8 @@ static func payout_lines(db: CardDB, p: Profile, job: String, heat: int, extra: 
 func _rewards_text() -> String:
 	var pay := Jobs.payout_preview(db, profile, Jobs.board(db)[0], heat)
 	var lines: Array[String] = [
-		"Clear all %d layers at Heat %d: %s, +%d rep for your client crew, +%d XP." % [int(db.balance.get("acts", 3)), heat, cache_text(db, pay), pay["rep"], pay["xp"]],
-		"Each Core (boss) you breach: +%d crew cache of that Core's crew (a generic Core pays the target crew's), kept even if you lose later. Rep and XP pay for every floor you clear." % int(pay["per_core"])]
+		"Clear all %d layers at Heat %d: %s, +%d rep for your client crew, +%d XP." % [int(db.balance.get("acts", 3)), heat, cache_text(db, pay, false), pay["rep"], pay["xp"]],
+		"Each Core (boss) you breach: +%d crew cache of your client crew, kept even if you lose later. Rep and XP pay for every floor you clear." % int(pay["per_core"])]
 	if int(pay.get("full_run", 0)) > 0:
 		lines.append("Finish the whole job: +%d %s, the premium cache (rare or better every time)." % [int(pay["full_run"]), PackArt.title(db, Packs.PREMIUM)])
 	if int(pay["shards_per_elite"]) > 0:

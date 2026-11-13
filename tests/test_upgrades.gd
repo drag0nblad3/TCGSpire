@@ -300,37 +300,21 @@ func test_full_run_pays_an_extra_pack() -> void:
 	check(profile.packs_unopened - before >= 3 + int(db.balance["run_rewards"]["packs_full_run"]), "boss packs + full run pack")
 
 
-func test_bosses_pay_crew_packs_and_a_full_run_pays_premium() -> void:
+func test_bosses_pay_client_crew_packs_and_a_full_run_pays_premium() -> void:
 	var r := RunState.start(db, profile, [], 1, 0, "ember", ["tide"])
-	r.boss_crews = ["void"]
 	r.acts_cleared = 2
-	var kinds := Profile.run_pack_list(db, r)
-	eq(kinds, [Packs.crew_kind("void"), Packs.crew_kind("tide")], "boss crew, then the target crew for an unknown Core")
+	eq(Profile.run_pack_list(db, r), [Packs.crew_kind("ember"), Packs.crew_kind("ember")], "each Core pays the client's crew pack")
 	r.acts_cleared = 3
 	r.boss_won = true
-	kinds = Profile.run_pack_list(db, r)
+	var kinds := Profile.run_pack_list(db, r)
 	eq(kinds.count(Packs.PREMIUM), int(db.balance["run_rewards"]["packs_full_run"]), "finished job pays premium")
 	eq(kinds.count(Packs.NORMAL), 0, "no normal packs from bosses")
 	var before := profile.pack_count(Packs.PREMIUM)
 	profile.finish_run(db, r)
 	eq(profile.pack_count(Packs.PREMIUM) - before, int(db.balance["run_rewards"]["packs_full_run"]))
-
-
-func test_crew_boss_kill_records_its_crew() -> void:
-	var enc := ""
-	for id in db.encounters:
-		if db.encounters[id].get("kind", "") == "boss" and db.encounters[id].get("faction", "") == "bloom":
-			enc = id
-			break
-	check(enc != "", "a Wetware Core exists")
-	var r := RunState.start(db, profile, [], 1, 0, "ember", ["tide"])
-	var c := r.start_combat(enc)
-	for e in c.enemies:
-		e.hp = 0
-	c.phase = Combat.Phase.WON
-	r.finish_combat(c)
-	eq(r.boss_crews, ["bloom"])
-	eq(RunState.from_dict(db, r.to_dict()).boss_crews, ["bloom"], "saved with the run")
+	var free := RunState.start(db, profile, [], 1)
+	free.acts_cleared = 1
+	eq(Profile.run_pack_list(db, free), [Packs.crew_kind("neutral")], "freelance pays Street")
 
 
 func test_payout_preview_matches_what_a_full_clear_pays() -> void:

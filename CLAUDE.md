@@ -24,7 +24,7 @@ Original design only: don't copy cards, names, characters or look from existing 
 - `meta/` between-run state: `profile.gd` (versioned save, `_migrate`), `collection.gd`
   (counts, dust, craft/disenchant), `packs.gd` (pack kinds: "normal", "premium" (Zero-day cache), "crew:<faction>" for all 7 crews;
   `balance.pack_types` overrides `balance.pack` per type; `Profile.packs` counts by kind, `Profile.pack_pity` keeps mercy timers per kind;
-  each Core breached pays a crew pack of that Core's crew (`RunState.boss_crews`, generic Cores = first target), a finished job pays premium, everything else is normal; `ui/pack_art.gd` draws each kind), `run_state.gd` (deck/HP/gold/talismans/heat,
+  each Core breached pays a crew pack of the client crew (`RunState.client_crew`, Street when freelance), a finished job pays premium, everything else is normal; `ui/pack_art.gd` draws each kind), `run_state.gd` (deck/HP/gold/talismans/heat,
   rest, shop, events; `to_dict`/`from_dict`), `run_save.gd` (run in progress, saved at every run screen change by
   `main._save_run`, resumed from the hub; a fight restarts from turn 1), `run_map.gd` (seeded branching map; short `walls` = segments in map space that cut every link they cross,
   a stranded node gets an unwalled diagonal; walls are centred on the 1-2 links they cut; nodes sealed off become "vault" (elite guard, then rare implant + creds); jumps are an earned
