@@ -10,7 +10,7 @@ extends SceneTree
 
 
 ## Default heat per save profile when heat= is not given.
-const DEFAULT_HEAT := {"new": 0, "experienced": 1, "veteran": 3, "max": 5}
+const DEFAULT_HEAT := {"new": 0, "experienced": 1, "veteran": 3, "max": 6}
 
 
 func _initialize() -> void:
