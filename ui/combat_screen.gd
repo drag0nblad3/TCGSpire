@@ -59,6 +59,8 @@ func _ready() -> void:
 	_floor_label = UiKit.label("", 14, Palette.TEXT_DIM)
 	col.add_child(_floor_label)
 	var piles := UiKit.hbox(8)
+	# Left-aligned so the corner Menu button keeps the top-right free.
+	piles.alignment = BoxContainer.ALIGNMENT_BEGIN
 	for p in ["draw", "discard", "exhaust", "deck"]:
 		var b := UiKit.button("", _show_pile.bind(p), Vector2(118, 46), 15)
 		_pile_btns[p] = b

@@ -40,8 +40,6 @@ func _ready() -> void:
 	music.configure(profile.settings)
 	apply_theme(str(profile.settings.get("theme", Themes.DEFAULT)))
 	_menu_btn = UiKit.button("Menu", _open_menu, Vector2(84, 40), 15)
-	_menu_btn.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	_menu_btn.position = Vector2(get_viewport_rect().size.x - 92, 4)
 	_menu_btn.visible = false
 	add_child(_menu_btn)
 	show_hub()
@@ -80,7 +78,7 @@ func _show(node: Control) -> void:
 	add_child(node)
 	if _menu_btn != null:
 		move_child(_menu_btn, -1)
-		_menu_btn.position = Vector2(get_viewport_rect().size.x - 92, 4)
+		_menu_btn.position = UiKit.corner_pos(self, _menu_btn.custom_minimum_size.x)
 		_menu_btn.visible = (run != null and not run.over) or _is_profile_cheat_screen(node)
 
 
