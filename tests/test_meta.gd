@@ -27,7 +27,7 @@ func test_craft_spends_dust() -> void:
 func test_pack_is_deterministic_and_skips_starters() -> void:
 	var a := Packs.open(db, GameRng.new(11))
 	eq(a, Packs.open(db, GameRng.new(11)))
-	eq(a.size(), 5)
+	eq(a.size(), int(db.balance["pack"]["size"]))
 	for c in a:
 		check(db.card(c["id"]).rarity != "starter", "starter in pack")
 
@@ -71,7 +71,8 @@ func test_complete_ladders_are_rerolled() -> void:
 	var commons := db.ids_where(func(c: CardDef) -> bool: return c.rarity == "common")
 	commons.sort()
 	for i in commons.size() / 2:
-		p.collection.add(commons[i], int(Profile.copy_ladder(db, commons[i]).back()))
+		p.collection.add(commons[i], Profile.deck_limit(db))
+		p.firmware[commons[i]] = Profile.firmware_max(db)
 	check(p.copies_complete(db, "jab") == false, "starters have no ladder")
 	var hits := 0
 	for i in 200:
@@ -84,6 +85,13 @@ func test_complete_ladders_are_rerolled() -> void:
 			if p.copies_complete(db, c["id"]):
 				plain += 1
 	check(hits < plain * 0.75, "rerolls cut complete pulls (%d vs %d)" % [hits, plain])
+
+
+func test_daily_pack_paid_on_attempt_once() -> void:
+	var p := Profile.new()
+	eq(Records.begin_daily(db, p, "2026-11-13"), int(db.balance["daily"]["packs"]))
+	eq(p.packs_unopened, int(db.balance["daily"]["packs"]))
+	eq(Records.begin_daily(db, p, "2026-11-13"), 0, "one attempt a day")
 
 
 func test_elite_shards_fuse_into_packs() -> void:
@@ -99,7 +107,7 @@ func test_elite_shards_fuse_into_packs() -> void:
 func test_ready_to_flash_lists_cards_with_copies_and_rep() -> void:
 	var p := Profile.new()
 	var need := int(Profile.copy_ladder(db, "kindle")[0])
-	p.collection.add("kindle", need)
+	p.collection.add("kindle", Profile.deck_limit(db) + need)
 	check("kindle" not in p.ready_to_flash(db), "needs rep too")
 	p.rep["ember"] = 999
 	check("kindle" in p.ready_to_flash(db), "ready")

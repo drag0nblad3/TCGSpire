@@ -43,7 +43,7 @@
   "shriek": 2
  },
  "pack": {
-  "size": 5,
+  "size": 4,
   "weights": {
    "common": 70,
    "uncommon": 24,
@@ -52,9 +52,9 @@
   },
   "foil_chance": 0.05,
   "hot_slot": {
-   "uncommon": 74,
+   "uncommon": 73,
    "rare": 23,
-   "mythic": 3
+   "mythic": 4
   },
   "pity": {
    "rare": 5,
@@ -202,7 +202,8 @@
   "packs_per_boss": 1,
   "xp_mult": 0.75,
   "shards_per_elite": 1,
-  "shards_per_pack": 3
+  "shards_per_pack": 3,
+  "packs_full_run": 1
  },
  "levels": {
   "packs": 1,
@@ -293,20 +294,20 @@
   ],
   "copies": {
    "common": [
-    3,
-    6
+    2,
+    2
    ],
    "uncommon": [
-    3,
-    5
+    1,
+    2
    ],
    "rare": [
-    2,
-    4
+    1,
+    1
    ],
    "mythic": [
-    2,
-    3
+    1,
+    1
    ]
   }
  },
@@ -346,5 +347,6 @@
  "daily": {
   "heat": 1,
   "packs": 1
- }
+ },
+ "deck_copy_limit": 2
 }

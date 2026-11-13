@@ -108,7 +108,7 @@ static func best_picks(db: CardDB, profile: Profile, job: String, targets: Array
 		var c := db.card(id)
 		if c == null or c.rarity in ["starter", "curse"] or c.faction in ban:
 			continue
-		for k in mini(profile.collection.count(id), 2):
+		for k in profile.deck_copies(db, id):
 			pool.append(id)
 	var scale := db.firmware_scale()
 	var val := func(id: String) -> float: return card_value(db.card(id)) * float(scale[mini(profile.firmware_level(id), scale.size() - 1)])

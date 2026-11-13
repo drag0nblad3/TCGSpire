@@ -126,6 +126,17 @@ static func daily(db: CardDB, date: String) -> Dictionary:
 
 
 ## Daily score: nodes, sentries, layers, the final Core, and a little for clean fights.
+## Starts today's attempt: marks it used and pays the daily pack up front, win or lose.
+## Returns the packs granted (0 if today's attempt was already used).
+static func begin_daily(db: CardDB, p: Profile, date: String) -> int:
+	if str(p.daily.get("last", "")) == date:
+		return 0
+	p.daily["last"] = date
+	var packs := int(db.balance.get("daily", {}).get("packs", 0))
+	p.packs_unopened += packs
+	return packs
+
+
 static func score(run: RunState) -> int:
 	return run.floor_num * 10 + run.elites_won * 25 + run.acts_cleared * 100 + (250 if run.boss_won else 0) \
 		+ int(run.tally.get("clean_fights", 0)) * 5
@@ -257,10 +268,6 @@ static func finish_run(db: CardDB, p: Profile, run: RunState) -> Array:
 		p.daily["scores"] = best
 		p.daily["best"] = maxi(int(p.daily.get("best", 0)), s)
 		lines.append("Daily breach score: %d (best ever %d)" % [s, int(p.daily["best"])])
-		var packs := int(db.balance.get("daily", {}).get("packs", 0))
-		if packs > 0:
-			p.packs_unopened += packs
-			lines.append("Daily breach pay: +%d pack%s" % [packs, "" if packs == 1 else "s"])
 	return lines
 
 

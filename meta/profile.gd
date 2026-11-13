@@ -6,7 +6,7 @@ extends RefCounted
 ## Long-term progression:
 ##   xp/level  -> each level grants packs and unlocks (balance.levels)
 ##   mastery   -> playing a card N times grants dust, then a foil copy
-##   copies    -> collecting copies (packs, crafting) unlocks firmware levels
+##   copies    -> extra copies (beyond the 2 a deck may hold) are used up to flash firmware levels
 ##   max_heat  -> beating the boss at heat N unlocks heat N+1
 ##   rep       -> each run is a faction job (Jobs) that pays that faction's rep
 ##   rig       -> rep buys ranks of that faction's rig upgrades (permanent perks)
@@ -118,6 +118,8 @@ func finish_run(db: CardDB, run: RunState) -> Array:
 		gained_xp += int(cfg.get("xp_boss", 60))
 	gained_xp = int(gained_xp * (1.0 + 0.1 * run.heat) * float(cfg.get("xp_mult", 1.0)))
 	var packs := run.acts_cleared * int(cfg.get("packs_per_boss", 1))
+	if run.boss_won:
+		packs += int(cfg.get("packs_full_run", 0))
 	packs_unopened += packs
 	lines.append("+%d XP, +%d pack%s" % [gained_xp, packs, "" if packs == 1 else "s"])
 	lines.append_array(add_shards(db, run.elites_won * int(cfg.get("shards_per_elite", 0))))
@@ -286,7 +288,8 @@ static func firmware_max(db: CardDB) -> int:
 	return db.balance.get("firmware", {}).get("scale", [1.25, 1.5]).size()
 
 
-## Copies you must own for each firmware level ([] for base/starter cards, which only cost dust).
+## Extra copies each firmware level uses up ([] for base/starter cards, which only cost dust).
+## Extras are copies beyond the deck limit: the copies you can load into a deck never count.
 static func copy_ladder(db: CardDB, id: String) -> Array:
 	var c := db.card(id)
 	if c == null or c.rarity in ["starter", "curse"]:
@@ -294,32 +297,46 @@ static func copy_ladder(db: CardDB, id: String) -> Array:
 	return db.balance.get("firmware", {}).get("copies", {}).get(c.rarity, [])
 
 
-## Copies needed for the next firmware level of id (0 once maxed or for starters).
+## Copies of one pack card a starting deck may hold (balance.deck_copy_limit).
+static func deck_limit(db: CardDB) -> int:
+	return int(db.balance.get("deck_copy_limit", 2))
+
+
+## Copies of id you may load into a starting deck.
+func deck_copies(db: CardDB, id: String) -> int:
+	return mini(collection.count(id), deck_limit(db))
+
+
+## Copies beyond the deck limit: what firmware levels use up.
+func spare_copies(db: CardDB, id: String) -> int:
+	return maxi(0, collection.count(id) - deck_limit(db))
+
+
+## Extra copies the next firmware level of id uses up (0 once maxed or for starters).
 func firmware_copies_needed(db: CardDB, id: String) -> int:
 	var ladder := copy_ladder(db, id)
 	var lvl := firmware_level(id)
 	return int(ladder[lvl]) if lvl < ladder.size() else 0
 
 
-## Copies that are "spare": beyond the top of the firmware ladder (only dust is left for them).
+## Has the next firmware level's extra copies (rep/dust may still be short).
+func copies_ready(db: CardDB, id: String) -> bool:
+	var need := firmware_copies_needed(db, id)
+	return need > 0 and spare_copies(db, id) >= need
+
+
+## Nothing left to collect: firmware maxed and a full deck's worth owned (packs reroll these).
 func copies_complete(db: CardDB, id: String) -> bool:
 	var ladder := copy_ladder(db, id)
-	return not ladder.is_empty() and collection.count(id) >= int(ladder[-1])
-
-
-## Copies you can't disenchant: the last one, and the ones your firmware level stands on.
-func keep_copies(db: CardDB, id: String) -> int:
-	var ladder := copy_ladder(db, id)
-	var lvl := mini(firmware_level(id), ladder.size())
-	return maxi(1, int(ladder[lvl - 1]) if lvl > 0 else 1)
+	return not ladder.is_empty() and firmware_level(id) >= ladder.size() and collection.count(id) >= deck_limit(db)
 
 
 func disenchant(db: CardDB, id: String) -> bool:
-	return collection.disenchant(id, db, keep_copies(db, id))
+	return collection.disenchant(id, db)
 
 
 func disenchant_foil(db: CardDB, id: String) -> bool:
-	return collection.disenchant_foil(id, db, keep_copies(db, id))
+	return collection.disenchant_foil(id, db)
 
 
 ## Non-starter cards whose next firmware level is ready to flash right now.
@@ -328,7 +345,7 @@ func ready_to_flash(db: CardDB) -> Array:
 		return db.card(id) != null and db.card(id).rarity != "starter" and firmware_block(db, id) == "")
 
 
-## Short collection status for a card: "x2/3 v1", "v1 ready", "v2 max" ...
+## Short collection status for a card: "x2", "x3 +1/2 v1", "x4 v1 ready", "x2 v2 max".
 func copy_badge(db: CardDB, id: String) -> String:
 	var n := collection.count(id)
 	var lvl := firmware_level(id)
@@ -337,9 +354,9 @@ func copy_badge(db: CardDB, id: String) -> String:
 		return "x0"
 	if need <= 0:
 		return "x%d v%d max" % [n, lvl] if lvl > 0 else "x%d" % n
-	if n >= need:
-		return "x%d v%d ready" % [n, lvl + 1] if firmware_block(db, id) == "" else "x%d/%d v%d" % [n, need, lvl + 1]
-	return "x%d/%d v%d" % [n, need, lvl + 1]
+	if firmware_block(db, id) == "":
+		return "x%d v%d ready" % [n, lvl + 1]
+	return "x%d +%d/%d v%d" % [n, spare_copies(db, id), need, lvl + 1]
 
 
 ## "" if it can be flashed, else the reason why not.
@@ -352,8 +369,8 @@ func firmware_block(db: CardDB, id: String) -> String:
 	if not collection.owns(id) and c.rarity != "starter":
 		return "Own a copy first."
 	var need := firmware_copies_needed(db, id)
-	if c.rarity != "starter" and collection.count(id) < need:
-		return "Collect %d copies first (%d owned)." % [need, collection.count(id)]
+	if c.rarity != "starter" and spare_copies(db, id) < need:
+		return "Collect %d extra cop%s first (%d so far; your %d deck copies don't count)." % [need, "y" if need == 1 else "ies", spare_copies(db, id), deck_limit(db)]
 	var price := firmware_price(db, id)
 	var have := collection.dust if price["faction"] == "" else rep_of(price["faction"])
 	if have < int(price["amount"]):
@@ -369,6 +386,11 @@ func flash_firmware(db: CardDB, id: String) -> bool:
 		collection.dust -= int(price["amount"])
 	else:
 		rep[price["faction"]] = rep_of(price["faction"]) - int(price["amount"])
+	# The extra copies are used up (plain copies before foils).
+	var used := firmware_copies_needed(db, id)
+	collection.counts[id] = collection.count(id) - used
+	if int(collection.foils.get(id, 0)) > collection.count(id):
+		collection.foils[id] = collection.count(id)
 	firmware[id] = firmware_level(id) + 1
 	return true
 
@@ -422,11 +444,11 @@ func open_pack(db: CardDB, rng: GameRng) -> Array:
 	var cards := Packs.open(db, rng, self)
 	for c in cards:
 		c["new"] = not collection.owns(c["id"])
-		var before := firmware_copies_needed(db, c["id"]) > 0 and collection.count(c["id"]) >= firmware_copies_needed(db, c["id"])
+		var before := copies_ready(db, c["id"])
 		collection.add(c["id"], 1, c["foil"])
 		c["count"] = collection.count(c["id"])
-		# Copies just reached the next firmware level (rep/dust may still be needed).
-		c["unlocked"] = not before and firmware_copies_needed(db, c["id"]) > 0 and collection.count(c["id"]) >= firmware_copies_needed(db, c["id"])
+		# Extra copies just reached the next firmware level (rep/dust may still be needed).
+		c["unlocked"] = not before and copies_ready(db, c["id"])
 	return cards
 
 
@@ -454,7 +476,7 @@ func usable_loadout(db: CardDB, job: String, slot: int, banned: Array) -> Array:
 	var out: Array = []
 	for id in loadout(job, slot):
 		var c := db.card(str(id))
-		if c != null and c.faction not in banned and out.count(id) < collection.count(id) and out.size() < starter_picks(db):
+		if c != null and c.faction not in banned and out.count(id) < deck_copies(db, id) and out.size() < starter_picks(db):
 			out.append(id)
 	return out
 

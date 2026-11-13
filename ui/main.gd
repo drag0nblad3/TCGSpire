@@ -281,8 +281,10 @@ func _start_daily() -> void:
 	if str(profile.daily.get("last", "")) == d["date"]:
 		show_hub()
 		return
-	profile.daily["last"] = d["date"]
+	var packs := Records.begin_daily(db, profile, d["date"])
 	_save()
+	if packs > 0:
+		UiKit.toast(self, "Daily breach: +%d %s for jacking in" % [packs, Palette.w("pack").to_lower() if packs == 1 else Palette.w("packs").to_lower()], 3.0)
 	run = RunState.start(db, profile, RunState.default_picks(db, profile, d["job"], d["targets"]), int(d["seed"]), int(d["heat"]), d["job"], d["targets"])
 	run.daily = d["date"]
 	run.clauses = Records.roll_clauses(db, GameRng.new(int(d["seed"])).fork("clauses"))

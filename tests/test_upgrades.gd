@@ -246,15 +246,18 @@ func test_rig_start_mods_and_perks() -> void:
 
 # --- firmware --------------------------------------------------------------------
 
-func test_firmware_needs_copies_and_rep() -> void:
+func test_firmware_uses_up_extra_copies_and_rep() -> void:
 	var ladder := Profile.copy_ladder(db, "kindle")
-	profile.collection.counts["kindle"] = int(ladder[0]) - 1
-	check(profile.firmware_block(db, "kindle").begins_with("Collect %d copies" % int(ladder[0])), "copies gate")
+	var lim := Profile.deck_limit(db)
+	profile.collection.counts["kindle"] = lim + int(ladder[0]) - 1
+	check(profile.firmware_block(db, "kindle").begins_with("Collect %d extra" % int(ladder[0])), "deck copies don't count")
 	profile.collection.add("kindle")
+	check(profile.copies_ready(db, "kindle"), "extras ready")
 	check(profile.firmware_block(db, "kindle") != "", "rep gate")
 	profile.rep["ember"] = int(profile.firmware_price(db, "kindle")["amount"])
 	check(profile.flash_firmware(db, "kindle"), "flash")
 	eq(profile.rep_of("ember"), 0)
+	eq(profile.collection.count("kindle"), lim, "extras used up, deck copies stay")
 	profile.collection.dust = int(profile.firmware_price(db, "jab")["amount"])
 	check(profile.flash_firmware(db, "jab"), "starters cost dust, no copies")
 	eq(profile.collection.dust, 0)
@@ -265,21 +268,36 @@ func test_firmware_needs_copies_and_rep() -> void:
 	var jab: CardInstance = r.deck.filter(func(c: CardInstance) -> bool: return c.def.id == "jab")[0]
 	eq(int(jab.effects()[0]["amount"]), roundi(6 * 1.25), "v1 scales damage")
 	check(not jab.upgraded, "recompile still available in the run")
-	# Level 2: more copies, twice the price.
+	# Level 2: more extras, twice the price.
 	var base := int(db.balance["firmware"]["rep_cost"][db.card("kindle").rarity])
 	eq(int(profile.firmware_price(db, "kindle")["amount"]), base * 2, "v2 costs double")
 	profile.rep["ember"] = base * 2
-	check(profile.firmware_block(db, "kindle").begins_with("Collect %d" % int(ladder[1])), "v2 needs more copies")
-	check(not profile.disenchant(db, "kindle"), "v1 copies are locked in")
-	profile.collection.counts["kindle"] = int(ladder[1])
+	check(profile.firmware_block(db, "kindle").begins_with("Collect %d" % int(ladder[1])), "v2 needs more extras")
+	profile.collection.add("kindle", int(ladder[1]))
 	check(profile.flash_firmware(db, "kindle"), "flash v2")
 	eq(profile.firmware_level(db.card("kindle").id), 2)
+	eq(profile.collection.count("kindle"), lim)
 	check(profile.firmware_block(db, "kindle") == "Firmware maxed.", "max two levels")
-	check(profile.disenchant(db, "kindle") == false and profile.copies_complete(db, "kindle"), "v2 copies locked, ladder complete")
-	profile.collection.add("kindle")
-	check(profile.disenchant(db, "kindle"), "copies past the ladder are spare")
+	check(profile.copies_complete(db, "kindle"), "nothing left to collect")
 	var k := db.instance("kindle", false, 2)
 	eq(int(k.effects()[0]["amount"]), roundi(float(db.card("kindle").effects[0]["amount"]) * 1.5), "v2 scales by 1.5")
+
+
+func test_deck_holds_at_most_the_copy_limit() -> void:
+	profile.collection.counts["kindle"] = 5
+	eq(profile.deck_copies(db, "kindle"), Profile.deck_limit(db))
+	var picks := ["kindle", "kindle", "kindle"]
+	var r := RunState.start(db, profile, picks, 1)
+	eq(r.deck.filter(func(c: CardInstance) -> bool: return c.def.id == "kindle").size(), Profile.deck_limit(db), "third copy refused")
+
+
+func test_full_run_pays_an_extra_pack() -> void:
+	var r := RunState.start(db, profile, [], 1)
+	r.acts_cleared = 3
+	r.boss_won = true
+	var before := profile.packs_unopened
+	profile.finish_run(db, r)
+	check(profile.packs_unopened - before >= 3 + int(db.balance["run_rewards"]["packs_full_run"]), "boss packs + full run pack")
 
 
 func test_save_roundtrip_and_migration() -> void:

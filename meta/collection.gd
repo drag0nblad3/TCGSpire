@@ -28,8 +28,7 @@ func owned_ids() -> Array:
 	return ids
 
 
-## Turns one spare copy into dust. The last copy (or the last `keep`, which firmware
-## levels stand on: Profile.keep_copies) can't be disenchanted.
+## Turns one spare copy into dust. The last copy (or the last `keep`) can't be disenchanted.
 func disenchant(id: String, db: CardDB, keep: int = 1) -> bool:
 	var c := db.card(id)
 	if c == null or count(id) <= maxi(1, keep) or c.rarity == "starter":

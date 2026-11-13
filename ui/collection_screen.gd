@@ -32,7 +32,7 @@ func setup(db_in: CardDB, p: Profile, pick: bool = false, job_in: String = "", t
 	if pick:
 		var ban := targets
 		for id in p.last_picks:
-			if picks.count(id) < p.collection.count(id) and picks.size() < p.starter_picks(db) and db.card(id) != null and db.card(id).faction not in ban:
+			if picks.count(id) < p.deck_copies(db_in, id) and picks.size() < p.starter_picks(db) and db.card(id) != null and db.card(id).faction not in ban:
 				picks.append(id)
 		if Jobs.check(db, job, picks, p.starter_picks(db), targets) != "":
 			picks = RunState.default_picks(db, p, job, targets)
@@ -148,8 +148,7 @@ func _ids() -> Array:
 
 ## Owns enough copies for the next firmware level (rep/dust may still be short).
 func _copies_ready(id: String) -> bool:
-	var need := profile.firmware_copies_needed(db, id)
-	return need > 0 and profile.collection.count(id) >= need
+	return profile.copies_ready(db, id)
 
 
 ## [owned, total] collectible programs (no base programs or malware).
@@ -185,7 +184,7 @@ func _refresh() -> void:
 		var stars := "*".repeat(profile.mastery_tier(db, id))
 		if pick_mode:
 			var chosen := picks.count(id)
-			cv.badge = "%d/%d" % [chosen, n]
+			cv.badge = "%d/%d" % [chosen, profile.deck_copies(db, id)]
 			cv.selected = chosen > 0
 		else:
 			cv.badge = profile.copy_badge(db, id) + (" " + stars if stars != "" else "")
@@ -197,7 +196,7 @@ func _refresh() -> void:
 func _on_card(id: String) -> void:
 	if pick_mode:
 		var chosen := picks.count(id)
-		if chosen < profile.collection.count(id) and picks.size() < profile.starter_picks(db):
+		if chosen < profile.deck_copies(db, id) and picks.size() < profile.starter_picks(db):
 			picks.append(id)
 		else:
 			while id in picks:
@@ -292,12 +291,12 @@ func _show_detail(id: String) -> void:
 		v.add_child(UiKit.label(next_t, 14, Palette.ENERGY))
 	var need := profile.firmware_copies_needed(db, id)
 	if need > 0:
-		var short := need - col.count(id)
-		var copies := UiKit.label(("Copies %d / %d for firmware v%d" % [col.count(id), need, profile.firmware_level(id) + 1]) + \
-			(": compile %d more to unlock it" % short if short > 0 else ": unlocked, flash it below"), 16, Palette.UPGRADED if short <= 0 else Palette.ENERGY, true)
-		v.add_child(copies)
+		var spare := profile.spare_copies(db, id)
+		var short := need - spare
+		v.add_child(UiKit.label(("Extra copies %d / %d for firmware v%d (your first %d are deck copies; flashing uses the extras up)" % [spare, need, profile.firmware_level(id) + 1, Profile.deck_limit(db)]) + \
+			(": compile %d more" % short if short > 0 else ": ready to flash below"), 16, Palette.UPGRADED if short <= 0 else Palette.ENERGY, true))
 	elif profile.copies_complete(db, id):
-		v.add_child(UiKit.label("Every copy firmware can use is collected. Spare copies are %s." % Palette.w("dust").to_lower(), 14, Palette.TEXT_DIM, true))
+		v.add_child(UiKit.label("Firmware maxed and a full deck's worth owned. Spare copies are %s." % Palette.w("dust").to_lower(), 14, Palette.TEXT_DIM, true))
 	var row := UiKit.hbox(14)
 	var craft_cost := col.craft_cost(id, db)
 	var craft := UiKit.button("Craft (%d dust)" % craft_cost, func() -> void:
@@ -315,7 +314,7 @@ func _show_detail(id: String) -> void:
 			overlay.queue_free()
 			_refresh()
 			_show_detail(id), Vector2(220, 60))
-	dis.disabled = col.count(id) <= profile.keep_copies(db, id)
+	dis.disabled = col.count(id) <= 1
 	row.add_child(dis)
 	if int(col.foils.get(id, 0)) > 0:
 		var fdis := UiKit.button("Disenchant foil (+%d)" % Collection.foil_value(id, db), func() -> void:
@@ -324,9 +323,9 @@ func _show_detail(id: String) -> void:
 				overlay.queue_free()
 				_refresh()
 				_show_detail(id), Vector2(240, 60))
-		fdis.disabled = col.count(id) <= profile.keep_copies(db, id)
+		fdis.disabled = col.count(id) <= 1
 		row.add_child(fdis)
 	v.add_child(row)
-	v.add_child(UiKit.label("Your last copy, and the copies your firmware level stands on, can't be disenchanted.", 12, Palette.TEXT_DIM, true))
+	v.add_child(UiKit.label("Your last copy can't be disenchanted.", 12, Palette.TEXT_DIM, true))
 	v.add_child(_firmware_row(id, overlay))
 	v.add_child(UiKit.button("Close", func() -> void: overlay.queue_free()))
