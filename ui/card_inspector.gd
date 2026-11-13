@@ -26,6 +26,9 @@ static func glossary(card: CardInstance) -> Array[String]:
 	var seen := {}
 	for e in card.effects():
 		var op := str(e.get("op", ""))
+		if CardPrograms.DESCRIPTIONS.has(op) and not seen.has(op):
+			seen[op] = true
+			out.append("%s: %s" % [op.capitalize(), CardPrograms.DESCRIPTIONS[op]])
 		var st := str(e.get("status", ""))
 		if st != "" and not seen.has(st) and Statuses.DEFS.has(st):
 			seen[st] = true

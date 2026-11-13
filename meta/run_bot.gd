@@ -144,6 +144,16 @@ static func card_value(c: CardDef, upgraded: bool = false) -> float:
 		if e.has("loop"):
 			v += float(e["loop"]) * 2.0 * aoe
 		match str(e.get("op", "")):
+			"cooldown":
+				v += n + float(e.get("step", 0)) * 0.5
+			"relay_cashout":
+				v += 2.0 * float(e.get("mult", 2))
+			"compile":
+				v += n * 2.0
+			"plant", "relay":
+				v += n * 0.8
+			"handshake", "sequence":
+				v += 3.0
 			"damage":
 				v += n * float(e.get("hits", 1)) * aoe
 			"damage_per_ward", "damage_per_status":
