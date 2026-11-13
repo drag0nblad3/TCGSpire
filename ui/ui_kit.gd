@@ -24,6 +24,7 @@ static func button(text: String, on_press: Callable, min_size: Vector2 = Vector2
 	b.custom_minimum_size = min_size
 	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	b.add_theme_font_size_override("font_size", font_size)
+	b.pressed.connect(func() -> void: GameAudio.play("tap"))
 	b.pressed.connect(on_press)
 	return b
 
