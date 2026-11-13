@@ -326,6 +326,7 @@ func _on_card_pressed(_view: CardView, idx: int) -> void:
 		_rebuild()
 		return
 	if not combat.can_play(idx):
+		GameAudio.play("error")
 		var c: CardInstance = combat.hand[idx]
 		if c.has_keyword("unplayable"):
 			UiKit.toast(self, "%s can't be played." % c.display_name())
@@ -336,6 +337,7 @@ func _on_card_pressed(_view: CardView, idx: int) -> void:
 		return
 	var card: CardInstance = combat.hand[idx]
 	if (combat.needs_target(card) and combat.living(combat.enemies).size() > 1) or (combat.needs_ally(card) and not combat.units.is_empty()):
+		GameAudio.play("select")
 		_selected = idx
 		_rebuild()
 		return
