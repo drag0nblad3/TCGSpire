@@ -96,6 +96,33 @@ static func rep_reward(db: CardDB, run: RunState) -> int:
 	return int(n * (1.0 + 0.1 * run.heat) * (1.0 + float(cfg.get("rep_per_extra_target", 0.25)) * extra) * (1.0 + run.perk_mod("rep_pct")) * float(cfg.get("rep_mult", 1.0)))
 
 
+## What a job pays, worked out with the same formulas as the end of a run.
+## "packs"/"xp"/"rep": a full clear (every Core breached) with no black sentries;
+## "elite_rep"/"elite_xp": about what each black sentry crashed adds; "per_core": packs per Core.
+## `extra` = target crews beyond the client's rival (Jobs.extra_targets at this heat).
+static func payout_preview(db: CardDB, profile: Profile, job: String, heat: int, extra: int = -1) -> Dictionary:
+	var r := RunState.new()
+	r.db = db
+	r.job = job
+	r.heat = heat
+	r.rig = profile.rig.duplicate()
+	r.banned = banned(db, job).duplicate()
+	for i in (extra_targets(db, heat) if extra < 0 else extra):
+		r.banned.append("extra_target_%d" % i)
+	var acts := int(db.balance.get("acts", 3))
+	r.acts_cleared = acts
+	r.boss_won = true
+	r.floor_num = acts * (int(db.balance.get("map", {}).get("rows", 12)) + 1)
+	var out := {"packs": Profile.run_packs(db, r), "xp": Profile.run_xp(db, r), "rep": rep_reward(db, r),
+		"per_core": int(db.balance.get("run_rewards", {}).get("packs_per_boss", 1)),
+		"shards_per_elite": int(db.balance.get("run_rewards", {}).get("shards_per_elite", 0)),
+		"shards_per_pack": Profile.shards_per_pack(db)}
+	r.elites_won = 3
+	out["elite_rep"] = roundi((rep_reward(db, r) - int(out["rep"])) / 3.0)
+	out["elite_xp"] = roundi((Profile.run_xp(db, r) - int(out["xp"])) / 3.0)
+	return out
+
+
 static func validate(db: CardDB) -> Array[String]:
 	var errs: Array[String] = []
 	var card_factions := {}

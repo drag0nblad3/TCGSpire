@@ -52,7 +52,7 @@ func _show_deck() -> void:
 static func clause_text(r: RunState) -> String:
 	var lines: Array[String] = []
 	for id in r.clauses:
-		lines.append(("[met] " if Records.clause_met(r.db, r, id) else "") + Records.clause_text(r.db, id, r.heat))
+		lines.append(("[met] " if Records.clause_met(r.db, r, id) else "") + Records.clause_text(r.db, id, r.heat, r.job))
 	return "\n".join(lines)
 
 
