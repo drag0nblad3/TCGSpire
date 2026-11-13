@@ -77,7 +77,7 @@ func setup(c: CardInstance, zoom_in: float = 1.0) -> CardView:
 		_holo.size = (SIZE - Vector2(12, 12)) * zoom
 		var mat := ShaderMaterial.new()
 		mat.shader = GLITCH if c.foil else HOLO
-		mat.set_shader_parameter("strength", 0.6 if c.foil else 0.28)
+		mat.set_shader_parameter("strength", 1.0 if c.foil else 0.28)
 		if c.foil:
 			mat.set_shader_parameter("seed", float(c.def.id.hash() % 997))
 		_holo.material = mat

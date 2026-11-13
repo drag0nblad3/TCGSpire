@@ -21,7 +21,7 @@ func test_packable_rarities_exist() -> void:
 
 
 func test_every_crew_has_the_same_rarity_spread() -> void:
-	var want := {"common": 8, "uncommon": 6, "rare": 4, "mythic": 2}
+	var want := {"common": 8, "uncommon": 8, "rare": 5, "mythic": 2}
 	for f in Lexicon.FACTION:
 		for r in want:
 			var n := db.ids_where(func(c: CardDef) -> bool: return c.faction == f and c.faction2 == "" and c.rarity == r).size()

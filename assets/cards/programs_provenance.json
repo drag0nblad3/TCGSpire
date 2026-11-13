@@ -1,0 +1,48 @@
+{
+  "source": "exec-5146dd9e-2af8-424e-847b-147dc28573c4.png",
+  "generation": "Built-in image generation; original Field Service hardware illustrations, 2x4 atlas. Ivory ink housings on charcoal; Street monochrome, Static magenta, Burner orange, Chrome ivory, Wetware lime, Null violet, Flux cyan.",
+  "crops": {
+    "uplink": [
+      5,
+      5,
+      719,
+      267
+    ],
+    "downlink": [
+      729,
+      5,
+      1443,
+      267
+    ],
+    "capacitor_lance": [
+      5,
+      277,
+      719,
+      538
+    ],
+    "pocket_compiler": [
+      729,
+      277,
+      1443,
+      538
+    ],
+    "seed_packet": [
+      5,
+      548,
+      719,
+      809
+    ],
+    "breach_sequence": [
+      729,
+      548,
+      1443,
+      809
+    ],
+    "signal_baton": [
+      5,
+      819,
+      719,
+      1081
+    ]
+  }
+}

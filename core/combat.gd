@@ -18,6 +18,8 @@ var hand: Array = []
 var discard_pile: Array = []
 var exhaust_pile: Array = []
 var _played_once_per_turn: Array[CardInstance] = []
+var played_ids: Array = []
+var played_types: Array = []
 var energy := 0
 var max_energy := 3
 var hand_size := 5
@@ -88,9 +90,9 @@ static func create(db_in: CardDB, deck: Array, encounter_id: String, rng_in: Gam
 	c.enemy_hp_mult = float(opts.get("enemy_hp_mult", 1.0)) * float(act_hp_mult.get(str(int(enc.get("act", 1))), 1.0))
 	for eid in enc.get("enemies", []):
 		c.enemies.append(c._make_enemy(str(eid)))
-	c.draw_pile = deck.duplicate()
+	c.draw_pile = deck.map(func(card: CardInstance) -> CardInstance: return card.copy())
 	for card in c.draw_pile:
-		card.loops = 0
+		card.reset_combat()
 	return c
 
 
@@ -134,6 +136,8 @@ func _start_player_turn() -> void:
 	turn += 1
 	phase = Phase.PLAYER
 	_played_once_per_turn.clear()
+	played_ids.clear()
+	played_types.clear()
 	if player.status("fortify") <= 0 and rule_sum("keep_ward") <= 0:
 		player.ward = ceili(player.ward * ward_retention)
 	energy = maxi(max_energy - player.status("overcharge"), 0)
@@ -203,16 +207,18 @@ func play_card(hand_idx: int, target_idx: int = -1) -> bool:
 			return false
 		target = allies[maxi(target_idx, 0)]
 	hand.remove_at(hand_idx)
+	var held := hand.duplicate()
 	energy -= card.cost()
 	if card.has_keyword("once_per_turn"):
 		_played_once_per_turn.append(card)
 	emit("play", {"card": card.key(), "target": target.id if target != null else ""})
-	for e in card.effects():
+	for e in CardPrograms.effects(self, card):
 		if is_over():
 			break
 		if target != null and target.is_dead():
 			target = _first_living(enemies) if needs_target(card) else target
 		Effects.resolve(self, e, player, target)
+	CardPrograms.after_play(self, card, held)
 	if card.has_loop():
 		card.loops += 1 + rule_sum("loop_bonus")
 		emit("loop", {"card": card.key(), "loops": card.loops})
@@ -244,6 +250,7 @@ func end_turn() -> void:
 		elif card.has_keyword("ethereal"):
 			exhaust_pile.append(card)
 		else:
+			CardPrograms.on_discard(card)
 			discard_pile.append(card)
 	hand = kept
 	phase = Phase.ENEMY
@@ -380,6 +387,10 @@ func draw(n: int) -> void:
 		var card: CardInstance = draw_pile.pop_back()
 		hand.append(card)
 		emit("draw", {"card": card.key()})
+		if card.payload > 0:
+			var payload := card.payload
+			card.payload = 0
+			Effects.resolve(self, {"op": "ward", "amount": payload}, player, null)
 	for i in reshuffles:
 		if not is_over():
 			Talismans.fire(self, "reshuffle")

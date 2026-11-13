@@ -88,6 +88,10 @@ static func sections(db: CardDB) -> Array:
 	for k in CardDef.KEYWORD_DESC:
 		kw.append([Lexicon.keyword(k), CardDef.KEYWORD_DESC[k]])
 	out.append(["Keywords", "In a fight", kw])
+	var programs: Array = []
+	for op in CardPrograms.DESCRIPTIONS:
+		programs.append([op.capitalize(), CardPrograms.DESCRIPTIONS[op]])
+	out.append(["Program combos", "In a fight", programs])
 	var good: Array = []
 	var bad: Array = []
 	for k in Statuses.DEFS:

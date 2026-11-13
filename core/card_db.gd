@@ -152,7 +152,7 @@ func validate() -> Array[String]:
 	for id in cards:
 		for up in [false, true]:
 			for e in cards[id].get_effects(up):
-				if e.get("op", "") == "add_card" and not cards.has(str(e.get("card", ""))):
+				if e.get("op", "") in ["add_card", "handshake"] and not cards.has(str(e.get("card", ""))):
 					errs.append("card '%s': add_card of unknown card '%s'" % [id, e.get("card", "")])
 	for id in enemies:
 		for mv in enemies[id].get("moves", []):
