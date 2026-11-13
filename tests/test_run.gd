@@ -396,3 +396,37 @@ func test_crew_implants_stay_out_of_jobs_against_that_crew() -> void:
 	for s in 40:
 		var id := r.roll_talisman("rare", GameRng.new(s))
 		check(str(db.talismans[id].get("faction", "")) != "void", "no %s on a job against Null" % id)
+
+
+## First two floors of each act: enemies -20% HP and -10% damage, stacked on heat and perks.
+func test_act_start_floors_are_eased() -> void:
+	var ease: Dictionary = db.balance["act_start_ease"]
+	eq(int(ease["floors"]), 2, "two eased floors")
+	for heat in [0, 3]:
+		var r := _run(1, heat)
+		var base: Dictionary = r.combat_opts()  # no node yet: not eased
+		for row in r.map.rows.size():
+			r.node_id = int(r.map.rows[row][0])
+			var o := r.combat_opts()
+			var eased: bool = row < 2
+			eq(r.act_start_eased(), eased, "heat %d row %d eased" % [heat, row])
+			check(is_equal_approx(o["enemy_hp_mult"], base["enemy_hp_mult"] * (0.8 if eased else 1.0)), "heat %d row %d hp mult" % [heat, row])
+			check(is_equal_approx(o["enemy_dmg_mult"], base["enemy_dmg_mult"] * (0.9 if eased else 1.0)), "heat %d row %d dmg mult" % [heat, row])
+
+
+func test_act_start_ease_reaches_enemies_and_stacks_with_act_mult() -> void:
+	var r := _run()
+	r.node_id = int(r.map.rows[0][0])
+	var enc := ""
+	for id in db.encounters:
+		if int(db.encounters[id].get("act", 1)) == 1 and db.encounters[id]["kind"] == "normal":
+			enc = id
+			break
+	var c := r.start_combat(enc)
+	var act1: float = float(db.balance["enemy_hp_mult_by_act"]["1"])
+	check(is_equal_approx(c.enemy_hp_mult, 0.8 * act1), "ease x act 1 hp mult")
+	check(is_equal_approx(c.enemy_dmg_mult, 0.9), "ease dmg mult")
+	r.node_id = int(r.map.rows[2][0])
+	var c2 := r.start_combat(enc)
+	for i in c.enemies.size():
+		check(c.enemies[i].max_hp < c2.enemies[i].max_hp, "eased enemy %d has less hp" % i)

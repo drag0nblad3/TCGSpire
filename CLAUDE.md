@@ -87,7 +87,7 @@ Original design only: don't copy cards, names, characters or look from existing 
   (jump, vault -> run outcomes) and a `faction` (never rolls when that crew is a target). Event outcomes use `RunOutcomes.OPS`.
 - Balance check after content changes: `scripts/sim.sh mode=run n=400 job=all` (~20 s). Bot baseline at heat 0
   on jobs (new profile, 3 acts): ~30% clear act 1, ~5% win; experienced (10 runs) ~37% win at heat 1, ~5% at heat 2; veteran (25 runs, now 39) ~47% at heat 2,
-  ~15% at heat 3; max ~89% at heat 3, ~33% at heat 6 (Tyler is fine with lower rates since Act 3). Heat `enemy_hp_pct`/`enemy_dmg_pct` compound per level (`RunState.heat_mult`), the main lever.
+  ~15% at heat 3; max ~89% at heat 3, ~33% at heat 6 (Tyler is fine with lower rates since Act 3). Heat `enemy_hp_pct`/`enemy_dmg_pct` compound per level (`RunState.heat_mult`), the main lever. The first 2 floors of each act are eased (`balance.act_start_ease`: -20% enemy HP, -10% damage, multiplied on top of act/heat/perk mults; `RunState.act_start_mult`).
   Runs pay `packs_per_boss`. Humans should do much
   better. Watch the killers list. `core/bot.gd` values (card, target) pairs from live state (no search/copies);
   `meta/run_bot.gd` uses static `card_value` for picks/upgrades/shop and scores event outcomes. Keep both cheap.
@@ -98,7 +98,8 @@ Original design only: don't copy cards, names, characters or look from existing 
 ## Android builds (only when Tyler asks for one)
 - `scripts/build_apk.sh` -> `build/tcgspire.apk` (debug, arm64). Needs Godot 4.4.1 export templates
   in `~/.local/share/godot/export_templates/4.4.1.stable/`, a JDK and an Android SDK with build-tools.
-- GitHub: Actions tab -> "android-apk" -> Run workflow (manual only, never on push). APK is the artifact.
+- GitHub: Actions tab -> "android-apk" -> Run workflow (manual only, never on push; optional `ref` input picks the commit). It publishes the APK
+  as a prerelease (tag `build-<run>-<sha>`) with a direct download link, and also keeps it as the run artifact.
 - Signing: `signing/debug.keystore` (pass "android") is committed on purpose so every APK has the same signature
   and installs over the last one. Never regenerate it, or phones must uninstall (losing the save).
 - `export_presets.cfg` includes `data/**/*.json` (data files aren't resources); keep that filter.

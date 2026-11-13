@@ -1,7 +1,15 @@
 name: android-apk
-# Builds a debug APK. Manual only: run it from the Actions tab ("Run workflow").
+# Builds a debug APK and publishes it as a prerelease on the Releases page (one-tap download).
+# Manual only: run it from the Actions tab ("Run workflow"). Never runs on push or PR.
 on:
   workflow_dispatch:
+    inputs:
+      ref:
+        description: "Commit, branch or tag to build (empty = the branch the workflow runs from)"
+        required: false
+        default: ""
+permissions:
+  contents: write
 jobs:
   apk:
     runs-on: ubuntu-latest
@@ -9,6 +17,8 @@ jobs:
       GODOT_VERSION: 4.4.1
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -40,3 +50,14 @@ jobs:
         with:
           name: tcgspire-debug-apk
           path: build/tcgspire.apk
+      - name: Publish prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=$(git rev-parse HEAD)
+          short=$(git rev-parse --short=7 HEAD)
+          tag=build-${{ github.run_number }}-$short
+          cp build/tcgspire.apk tcgspire-$short-debug.apk
+          gh release create "$tag" tcgspire-$short-debug.apk --repo "$GITHUB_REPOSITORY" --target "$sha" --prerelease \
+            --title "Debug build $short" \
+            --notes "Debug APK built from commit $sha. Signed with the repo's fixed debug key, so it installs over earlier builds made with that key."
