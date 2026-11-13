@@ -47,6 +47,10 @@ var firmware_mods: Dictionary = {}
 var binders: Dictionary = {}
 var exploits: Dictionary = {}
 var daily: Dictionary = {}
+## Weekly challenge record (see Weekly) and daily login bonus (see LoginBonus).
+## Optional fields: old saves load them empty, no migration needed.
+var weekly: Dictionary = {}
+var login: Dictionary = {}
 ## Saved starter-pick loadouts: client crew id -> [picks or [], ...] (Loadouts.SLOTS slots).
 var loadouts: Dictionary = {}
 
@@ -111,7 +115,8 @@ func finish_run(db: CardDB, run: RunState) -> Array:
 	stats["best_floor"] = maxi(int(stats.get("best_floor", 0)), run.floor_num)
 	if run.boss_won:
 		stats["wins"] = int(stats.get("wins", 0)) + 1
-		if run.heat >= max_heat:
+		# The weekly challenge runs at a fixed heat, so it never unlocks the next one.
+		if run.heat >= max_heat and run.weekly == "":
 			max_heat = run.heat + 1
 			lines.append("Heat %d unlocked" % max_heat)
 	var cfg: Dictionary = db.balance.get("run_rewards", {})
@@ -131,6 +136,7 @@ func finish_run(db: CardDB, run: RunState) -> Array:
 	lines.append_array(add_xp(db, gained_xp))
 	lines.append_array(add_mastery(db, run.card_plays))
 	lines.append_array(Records.finish_run(db, self, run))
+	lines.append_array(Weekly.finish_run(db, self, run))
 	lines.append_array(Records.check_exploits(db, self))
 	return lines
 
@@ -545,6 +551,8 @@ func to_dict() -> Dictionary:
 		"binders": binders,
 		"exploits": exploits,
 		"daily": daily,
+		"weekly": weekly,
+		"login": login,
 		"loadouts": loadouts,
 	}
 
@@ -580,6 +588,8 @@ static func from_dict(d: Dictionary, db: CardDB = null) -> Profile:
 	p.binders = d.get("binders", {}).duplicate()
 	p.exploits = d.get("exploits", {}).duplicate()
 	p.daily = d.get("daily", {}).duplicate(true)
+	p.weekly = d.get("weekly", {}).duplicate(true)
+	p.login = d.get("login", {}).duplicate(true)
 	for f in d.get("loadouts", {}):
 		p.loadouts[str(f)] = d["loadouts"][f].duplicate(true)
 	return p

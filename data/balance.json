@@ -351,5 +351,7 @@
   "heat": 1,
   "packs": 1
  },
+ "weekly": {"heat": 2, "mods": 3, "packs": 1},
+ "login": {"scrap": [10, 15, 20, 25, 30, 40], "packs": 1},
  "deck_copy_limit": 2
 }

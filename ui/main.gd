@@ -346,6 +346,8 @@ func show_hub() -> void:
 			["No", null]], "It counts as a loss. You keep the XP and rewards earned so far.")))
 	hub.start_pressed.connect(_show_jobs)
 	hub.daily_pressed.connect(_start_daily)
+	hub.weekly_pressed.connect(_show_weekly)
+	hub.login_pressed.connect(_claim_login)
 	hub.tutorial_pressed.connect(start_tutorial)
 	hub.records_pressed.connect(func() -> void:
 		var rs := RecordsScreen.new().setup(db, profile)
@@ -496,6 +498,64 @@ func _start_daily() -> void:
 	run.daily = d["date"]
 	run.clauses = Records.roll_clauses(db, GameRng.new(int(d["seed"])).fork("clauses"))
 	show_map()
+
+
+## Daily login bonus: pays today's day of the 7-day track, then redraws the hub.
+func _claim_login() -> void:
+	var got := LoginBonus.claim(db, profile, Records.today())
+	if got.is_empty():
+		return
+	_save()
+	show_hub()
+	UiKit.toast(self, "Day %d login bonus: %s" % [got["day"], LoginBonus.reward_text(db, got["day"])], 3.0)
+
+
+## Weekly challenge briefing: this week's job, rule changes, what's off, and the reward.
+func _show_weekly() -> void:
+	var w := Weekly.challenge(db, Weekly.this_week())
+	var st := Weekly.state(profile, w["week"])
+	var parts := UiKit.screen(14)
+	var v: VBoxContainer = parts[1]
+	v.add_child(UiKit.label("Weekly challenge", 32, Palette.ENERGY))
+	v.add_child(UiKit.label("Week of %s · new challenge in %d day%s" % [w["week"], Weekly.days_left(Records.today()), "" if Weekly.days_left(Records.today()) == 1 else "s"], 14, Palette.TEXT_DIM))
+	var against: Array = w["targets"].map(func(x: String) -> String: return Lexicon.faction(x))
+	var job_row := UiKit.hbox(12)
+	job_row.add_child(Symbols.badge(w["job"], 48))
+	job_row.add_child(UiKit.label("%s job at Heat %d\nAgainst: %s (banned)" % [Lexicon.faction(w["job"]), w["heat"], " + ".join(against)], 17, Palette.faction(w["job"])))
+	v.add_child(job_row)
+	v.add_child(UiKit.label("This week's rule changes", 19, Palette.TEXT))
+	for id in w["mods"]:
+		var m: Dictionary = db.weekly[id]
+		var box := UiKit.vbox(4)
+		box.add_child(UiKit.label(str(m["name"]), 18, Palette.UPGRADED))
+		var t := UiKit.label(str(m["text"]), 15, Palette.TEXT, true)
+		t.custom_minimum_size.x = 560
+		box.add_child(t)
+		v.add_child(UiKit.panel(box))
+	var rules := UiKit.label("Load programs from your own library. Firmware and rig upgrades are off: every program plays at base level and no rig rank applies. Safehouse upgrades and subroutines inside the run still work. Same challenge for everyone this week; try as often as you like.", 14, Palette.TEXT_DIM, true)
+	rules.custom_minimum_size.x = 600
+	v.add_child(rules)
+	var packs := int(db.balance.get("weekly", {}).get("packs", 0))
+	var reward := "Cleared this week. Best score %d. Replays count for score only." % int(st["best"]) if st["cleared"] \
+		else "First clear this week: %s. Normal job pay (rep, XP, caches per Core) on every try." % HubScreen.count(packs, "pack", "packs")
+	v.add_child(UiKit.label(reward, 15, Palette.ENERGY, true))
+	if int(st["tries"]) > 0:
+		v.add_child(UiKit.label("Tries this week: %d · best score %d" % [int(st["tries"]), int(st["best"])], 14, Palette.TEXT_DIM))
+	v.add_child(UiKit.button("Load programs", _show_weekly_picker.bind(w), Vector2(300, 68), 20))
+	v.add_child(UiKit.button("Back", show_hub, Vector2(200, 56)))
+	_show(parts[0])
+
+
+func _show_weekly_picker(w: Dictionary) -> void:
+	var cs := CollectionScreen.new().setup(db, profile, true, w["job"], w["targets"])
+	cs.base_only = true
+	cs.closed.connect(_show_weekly)
+	cs.picks_confirmed.connect(func(picks: Array) -> void:
+		profile.last_picks = picks
+		run = Weekly.begin(db, profile, w, picks)
+		_save()
+		show_map())
+	_show(cs)
 
 
 ## Screenshots: show pack cards face up straight away.

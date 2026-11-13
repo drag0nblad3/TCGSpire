@@ -136,6 +136,10 @@ static func sections(db: CardDB) -> Array:
 	job_lines.append(["Rep", "A job pays the client's rep when it ends, more the further you climb. Rep buys that crew's rig upgrades and flashes its programs to firmware."])
 	job_lines.append(["Crews", "Burner (viruses and overclocking), Flux (data flow and firewalls), Wetware (bio-daemons and patches), Null (glitches, buffers and loops), Chrome (drone swarms and plating), Static (jamming and broadcasts), plus Street programs that fit any rig."])
 	job_lines.append(["Daily breach", "A daily challenge run with a fixed job, Heat and map for that date. One try per day, scored."])
+	var wk: Dictionary = db.balance.get("weekly", {})
+	job_lines.append(["Weekly challenge", "A Heat %d job that changes every Monday, the same for everyone, with %d rule changes rolled from a list. You load programs from your own library, but firmware and rig upgrades are off: every program plays at base level. Try as often as you like; the first clear each week pays %s." % [int(wk.get("heat", 2)), int(wk.get("mods", 3)), HubScreen.count(int(wk.get("packs", 1)), "pack", "packs").trim_prefix("+")]])
+	var lg: Dictionary = db.balance.get("login", {})
+	job_lines.append(["Daily login bonus", "Claim once a day from the hideout. Days 1-6 pay %s %s, day 7 pays %s, then the track starts over. Missing a day never resets it: you pick up on the next day of the track." % [" / ".join(lg.get("scrap", []).map(func(x: Variant) -> String: return str(int(x)))), Palette.w("dust").to_lower(), HubScreen.count(int(lg.get("packs", 1)), "pack", "packs").trim_prefix("+")]])
 	out.append(["Jobs and rep", "The run", job_lines])
 	var mods: Array = [
 		["Recompile (+)", "At a safehouse: upgrade one program for this run."],
@@ -152,7 +156,7 @@ static func sections(db: CardDB) -> Array:
 	var limit := Profile.deck_limit(db)
 	out.append(["Collecting", "Between runs", [
 		["Library", "Your deck is built from programs you own. Before each run you load extra programs from your library, up to %d copies of each." % limit],
-		[Palette.w("packs"), "Earned by play only: one per Core breached, one more for a finished job, one per level, one for playing the daily breach. Black sentries drop shards (%d make a %s)." % [Profile.shards_per_pack(db), Palette.w("pack").to_lower()]],
+		[Palette.w("packs"), "Earned by play only: one per Core breached, one more for a finished job, one per level, one for playing the daily breach, one for the first weekly challenge clear, one on day 7 of the login bonus. Black sentries drop shards (%d make a %s)." % [Profile.shards_per_pack(db), Palette.w("pack").to_lower()]],
 		["Hot slot", "Every %s has a hot slot (uncommon or better). A rare is guaranteed at least every %d %s and a mythic every %d." % [Palette.w("pack").to_lower(), int(db.balance["pack"].get("pity", {}).get("rare", 0)), packs, int(db.balance["pack"].get("pity", {}).get("mythic", 0))]],
 		["Rarity", "Rarer programs add complexity, not raw power."],
 		[Palette.w("dust"), "Scrap copies you no longer need for %s, and compile the ones you want." % dust],

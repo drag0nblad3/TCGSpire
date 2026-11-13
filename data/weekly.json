@@ -1,0 +1,12 @@
+[
+{"id":"overclocked_grid","name":"Overclocked Grid","text":"+1 RAM each turn, but you draw 1 fewer program.","mods":{"max_energy":1,"hand_size":-1}},
+{"id":"scorched_net","name":"Scorched Net","text":"Every enemy starts each fight with 4 Burn. Enemies have 15% more HP.","heat":{"enemy_hp_pct":0.15},"triggers":[{"on":"combat_start","effects":[{"op":"apply","status":"burn","stacks":4,"to":"all_enemies"}]}]},
+{"id":"hard_shell","name":"Hard Shell","text":"Jack into every fight with 8 Firewall. Safehouses repair half as much.","mods":{"start_ward":8},"heat":{"rest_heal_pct":-0.5}},
+{"id":"daemon_season","name":"Daemon Season","text":"+1 daemon slot and daemons get +2 HP. Enemy attacks deal +1 damage.","mods":{"board_slots":1,"daemon_hp":2},"heat":{"enemy_might":1}},
+{"id":"cold_market","name":"Cold Market","text":"Start with +100 creds, but fights pay half the creds.","mods":{"start_gold":100,"gold_pct":-0.5}},
+{"id":"field_patch","name":"Field Patch","text":"Repair 4 HP after each fight you win, but your max HP is 15 lower.","mods":{"combat_heal":4},"heat":{"max_hp":-15}},
+{"id":"wide_scan","name":"Wide Scan","text":"One more program choice after fights and one more subroutine choice. Enemies deal 10% more damage.","mods":{"reward_choices":1,"perk_choices":1},"heat":{"enemy_dmg_pct":0.1}},
+{"id":"burst_protocol","name":"Burst Protocol","text":"Every 5th program you run in a fight gives +1 RAM. Enemies have 10% more HP.","heat":{"enemy_hp_pct":0.1},"triggers":[{"on":"card_played","every":5,"effects":[{"op":"energy","amount":1}]}]},
+{"id":"glass_duel","name":"Glass Duel","text":"Every fight starts with 2 Brittle on you and on every enemy.","triggers":[{"on":"combat_start","effects":[{"op":"apply","status":"brittle","stacks":2,"to":"self"},{"op":"apply","status":"brittle","stacks":2,"to":"all_enemies"}]}]},
+{"id":"ghost_lines","name":"Ghost Lines","text":"+2 jumps per layer. Safehouses repair 25% less.","mods":{"jumps":2},"heat":{"rest_heal_pct":-0.25}}
+]

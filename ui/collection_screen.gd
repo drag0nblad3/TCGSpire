@@ -16,6 +16,8 @@ var picks: Array = []
 var job := ""
 ## Crews the job runs against (banned). Empty = the client's rivals.
 var targets: Array = []
+## Weekly challenge picker: show every program at base level (no firmware, no baked mod).
+var base_only := false
 var _problem: Label
 var _begin: Button
 var _filter := "all"
@@ -183,9 +185,9 @@ func _refresh() -> void:
 	for n in _grid.get_children():
 		n.queue_free()
 	for id in _ids():
-		var inst := db.instance(id, false, profile.firmware_level(id))
+		var inst := db.instance(id, false, 0 if base_only else profile.firmware_level(id))
 		inst.foil = int(col.foils.get(id, 0)) > 0
-		if profile.firmware_mods.has(id):
+		if profile.firmware_mods.has(id) and not base_only:
 			inst.mod = db.mod(profile.firmware_mods[id])
 		var cv := CardView.new().setup(inst)
 		cv.lift_selected = false

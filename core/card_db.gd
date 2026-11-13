@@ -23,6 +23,8 @@ var factions: Dictionary = {}
 ## Contract bonus clauses (data/contracts.json) and Exploit log entries (data/exploits.json), by id.
 var contracts: Dictionary = {}
 var exploits: Dictionary = {}
+## Weekly challenge modifiers (data/weekly.json), by id.
+var weekly: Dictionary = {}
 var errors: Array[String] = []
 
 static var _shared: CardDB
@@ -64,6 +66,8 @@ static func load_from(root: String) -> CardDB:
 		db.contracts[str(d.get("id", ""))] = d
 	for d in db._read_array(root + "/exploits.json"):
 		db.exploits[str(d.get("id", ""))] = d
+	for d in db._read_array(root + "/weekly.json"):
+		db.weekly[str(d.get("id", ""))] = d
 	db.encounters = db._read_dict(root + "/encounters.json")
 	db.balance = db._read_dict(root + "/balance.json")
 	db.errors.append_array(db.validate())
@@ -138,6 +142,8 @@ func validate() -> Array[String]:
 			errs.append("mod '%s': fits no card" % id)
 	for id in perks:
 		errs.append_array(Perks.validate(perks[id]))
+	for id in weekly:
+		errs.append_array(Weekly.validate(weekly[id]))
 	errs.append_array(Jobs.validate(self))
 	for id in events:
 		for ch in events[id].get("choices", []):

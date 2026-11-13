@@ -5,7 +5,7 @@ extends SceneTree
 ##                   [out=/tmp/shot.png] [frames=30] [plays=2] [seed=1] [theme=archive] [end_turn=1] [give=sparring_dummy,drone_swarm]
 ## Under --headless it still runs (smoke test for script errors) but writes no image.
 
-const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "pack_open", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume", "records", "exploits", "daily", "tutorial", "coach", "map_walls", "map_jump", "foil"]
+const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "pack_open", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume", "records", "exploits", "daily", "weekly", "weekly_map", "login", "tutorial", "coach", "map_walls", "map_jump", "foil"]
 
 
 func _initialize() -> void:
@@ -85,7 +85,7 @@ func _idle(cs) -> void:
 
 func _go(main: Control, scr: String, seed_in: int, inspect_card: String = "flare_volley") -> void:
 	var db: CardDB = main.db
-	if scr not in ["hub", "collection", "picker", "pack", "pack_open", "inspect", "rules", "jobs", "rig", "firmware", "resume", "records", "exploits", "tutorial", "coach", "foil"]:
+	if scr not in ["hub", "collection", "picker", "pack", "pack_open", "inspect", "rules", "jobs", "rig", "firmware", "resume", "records", "exploits", "tutorial", "coach", "foil", "weekly", "weekly_map", "login"]:
 		var p: Profile = main.profile
 		main.run = RunState.start(db, p, RunState.default_picks(db, p), seed_in)
 		main.run.add_talisman("oak_token")
@@ -201,6 +201,16 @@ func _go(main: Control, scr: String, seed_in: int, inspect_card: String = "flare
 			main._show(RecordsScreen.new().setup(db, main.profile, "exploits"))
 		"daily":
 			main._start_daily()
+		"weekly":
+			main._show_weekly()
+		"weekly_map":
+			var w := Weekly.challenge(db, Weekly.this_week())
+			main.run = Weekly.begin(db, main.profile, w, RunState.default_picks(db, main.profile, w["job"], w["targets"]))
+			main.show_map()
+		"login":
+			# Three days into the track, today's bonus already claimed.
+			main.profile.login = {"last": "2000-01-01", "day": 2}
+			main._claim_login()
 		"resume":
 			main._show(HubScreen.new().setup(db, main.profile, "Layer 2 · Node 17 · HP 40/60"))
 		"combat":

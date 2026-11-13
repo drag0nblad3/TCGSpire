@@ -53,12 +53,17 @@ var banned: Array = []
 var tally: Dictionary = {}
 var clauses: Array = []
 var daily := ""
+## Weekly challenge: its week key ("" = not one) and modifier ids (data/weekly.json).
+## A weekly run copies no rig ranks and no firmware: every program plays at base level.
+var weekly := ""
+var weekly_mods: Array = []
 
 
 ## picks: card ids chosen from the player's collection (must own each one).
 ## job: client faction id (see Jobs). targets: crews the job runs against
 ## (default: the client's rivals); their cards are dropped from picks.
-static func start(db_in: CardDB, profile: Profile, picks: Array, seed_in: int, heat_in: int = 0, job_in: String = "", targets: Array = []) -> RunState:
+## challenge: a Weekly.challenge() dict for a weekly run (no rig, no firmware, its modifiers on).
+static func start(db_in: CardDB, profile: Profile, picks: Array, seed_in: int, heat_in: int = 0, job_in: String = "", targets: Array = [], challenge: Dictionary = {}) -> RunState:
 	var r := RunState.new()
 	r.db = db_in
 	r.seed_value = seed_in
@@ -66,11 +71,15 @@ static func start(db_in: CardDB, profile: Profile, picks: Array, seed_in: int, h
 	r.heat = heat_in
 	r.job = job_in
 	r.banned = targets.duplicate() if not targets.is_empty() else Jobs.banned(db_in, job_in)
-	r.rig = profile.rig.duplicate()
+	if challenge.is_empty():
+		r.rig = profile.rig.duplicate()
+		r.firmware = profile.firmware.duplicate()
+		r.firmware_mods = profile.firmware_mods.duplicate()
+	else:
+		r.weekly = str(challenge["week"])
+		r.weekly_mods = challenge.get("mods", []).duplicate()
 	r.reward_rerolls_left = int(r.perk_mod("reward_rerolls"))
 	r.event_rerolls_left = int(r.perk_mod("event_rerolls"))
-	r.firmware = profile.firmware.duplicate()
-	r.firmware_mods = profile.firmware_mods.duplicate()
 	r.max_hp = int(db_in.balance.get("player", {}).get("max_hp", 60)) + int(r.heat_mod("max_hp", 0)) + int(r.perk_mod("max_hp"))
 	r.hp = r.max_hp
 	r.gold = int(db_in.balance.get("start_gold", 50)) + int(r.perk_mod("start_gold"))
@@ -106,6 +115,9 @@ static func start(db_in: CardDB, profile: Profile, picks: Array, seed_in: int, h
 		RunOutcomes.apply(r, {"op": "mod", "amount": n_mods, "rarity": "common"})
 	for i in int(r.perk_mod("start_perks")):
 		RunOutcomes.apply(r, {"op": "perk"})
+	for m in Weekly.mods_of(db_in, r.weekly_mods):
+		for o in m.get("pickup", []):
+			RunOutcomes.apply(r, o)
 	return r
 
 
@@ -150,6 +162,9 @@ func heat_mod(key: String, default: Variant) -> Variant:
 		var mods: Dictionary = levels[i].get("mods", {})
 		if mods.has(key):
 			v = (float(v) + float(mods[key])) if (default is int or default is float) else mods[key]
+	if default is int or default is float:
+		for m in Weekly.mods_of(db, weekly_mods):
+			v = float(v) + float(m.get("heat", {}).get(key, 0.0))
 	return v
 
 
@@ -159,6 +174,8 @@ func heat_mult(key: String) -> float:
 	var v := 1.0
 	for i in mini(heat, levels.size()):
 		v *= 1.0 + float(levels[i].get("mods", {}).get(key, 0.0))
+	for m in Weekly.mods_of(db, weekly_mods):
+		v *= 1.0 + float(m.get("heat", {}).get(key, 0.0))
 	return v
 
 
@@ -171,6 +188,8 @@ func perk_mod(key: String) -> float:
 		v += float(db.perks.get(pid, {}).get("mods", {}).get(key, 0.0)) * int(rig[pid])
 	for tid in talismans:
 		v += float(db.talismans.get(tid, {}).get("mods", {}).get(key, 0.0))
+	for m in Weekly.mods_of(db, weekly_mods):
+		v += float(m.get("mods", {}).get(key, 0.0))
 	return v
 
 
@@ -179,7 +198,8 @@ func combat_opts() -> Dictionary:
 		"max_hp": max_hp,
 		"talismans": talismans,
 		"perks": perks.map(func(pid: String) -> Dictionary: return db.perks[pid]) \
-			+ rig.keys().filter(func(pid: String) -> bool: return int(rig[pid]) > 0 and db.perks.get(pid, {}).has("triggers")).map(func(pid: String) -> Dictionary: return db.perks[pid]),
+			+ rig.keys().filter(func(pid: String) -> bool: return int(rig[pid]) > 0 and db.perks.get(pid, {}).has("triggers")).map(func(pid: String) -> Dictionary: return db.perks[pid]) \
+			+ Weekly.mods_of(db, weekly_mods),
 		"extra_energy": int(perk_mod("max_energy")),
 		"extra_hand": int(perk_mod("hand_size")),
 		"extra_slots": int(perk_mod("board_slots")),
@@ -596,7 +616,7 @@ func summary() -> String:
 const SAVED := ["seed_value", "hp", "max_hp", "gold", "floor_num", "heat", "talismans", "node_id", "path", "jumps_used",
 	"combats_won", "elites_won", "boss_won", "act", "acts_cleared", "double_crossed", "over", "card_plays",
 	"remove_cost", "outcome_counter", "locked_talismans", "perks", "rig", "firmware", "firmware_mods",
-	"mods_installed", "job", "banned", "tally", "clauses", "daily"]
+	"mods_installed", "job", "banned", "tally", "clauses", "daily", "weekly", "weekly_mods"]
 
 
 func to_dict() -> Dictionary:
