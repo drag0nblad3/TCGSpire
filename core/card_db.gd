@@ -20,6 +20,9 @@ var mods: Dictionary = {}
 var perks: Dictionary = {}
 ## Job factions (data/factions.json): client name, rivals, rep currency.
 var factions: Dictionary = {}
+## Contract bonus clauses (data/contracts.json) and Exploit log entries (data/exploits.json), by id.
+var contracts: Dictionary = {}
+var exploits: Dictionary = {}
 var errors: Array[String] = []
 
 static var _shared: CardDB
@@ -57,6 +60,10 @@ static func load_from(root: String) -> CardDB:
 		db.perks[str(d.get("id", ""))] = d
 	for d in db._read_array(root + "/factions.json"):
 		db.factions[str(d.get("id", ""))] = d
+	for d in db._read_array(root + "/contracts.json"):
+		db.contracts[str(d.get("id", ""))] = d
+	for d in db._read_array(root + "/exploits.json"):
+		db.exploits[str(d.get("id", ""))] = d
 	db.encounters = db._read_dict(root + "/encounters.json")
 	db.balance = db._read_dict(root + "/balance.json")
 	db.errors.append_array(db.validate())

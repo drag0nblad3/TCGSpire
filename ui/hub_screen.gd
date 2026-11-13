@@ -9,6 +9,8 @@ signal settings_pressed
 signal resume_pressed
 signal abandon_pressed
 signal rig_pressed
+signal daily_pressed
+signal records_pressed
 
 var db: CardDB
 var profile: Profile
@@ -56,6 +58,9 @@ func _ready() -> void:
 	bar.max_value = need
 	bar.value = have
 	v.add_child(bar)
+	var title := str(profile.settings.get("title", ""))
+	if title != "":
+		v.add_child(UiKit.label(_title_name(title), 16, Palette.UPGRADED))
 	var s := profile.stats
 	v.add_child(UiKit.label("Runs %d   Wins %d   Best floor %d   Cards %d   %s %d" % [
 		int(s.get("runs", 0)), int(s.get("wins", 0)), int(s.get("best_floor", 0)),
@@ -84,15 +89,31 @@ func _ready() -> void:
 		v.add_child(UiKit.button("Abandon run", func() -> void: abandon_pressed.emit(), Vector2(300, 48), 16))
 	else:
 		v.add_child(UiKit.button("Take a job", func() -> void: start_pressed.emit(heat), Vector2(300, 72), 24))
+	if saved_run == "":
+		var d := Records.daily(db, Records.today())
+		var done: bool = str(profile.daily.get("last", "")) == d["date"]
+		var today_score := int(profile.daily.get("scores", {}).get(d["date"], 0))
+		var db_btn := UiKit.button(("Daily breach done · score %d" % today_score) if done else ("Daily breach: %s job · Heat %d" % [Lexicon.faction(d["job"]), d["heat"]]),
+			func() -> void: daily_pressed.emit(), Vector2(300, 60), 16)
+		db_btn.disabled = done
+		v.add_child(db_btn)
 	v.add_child(UiKit.button("Program library", func() -> void: collection_pressed.emit(), Vector2(300, 60)))
 	var pk := UiKit.button("Open %s (%d)" % [Palette.w("packs").to_lower(), profile.packs_unopened], func() -> void: packs_pressed.emit(), Vector2(300, 60))
 	pk.disabled = profile.packs_unopened <= 0
 	v.add_child(pk)
-	v.add_child(UiKit.button("Rig upgrades", func() -> void: rig_pressed.emit(), Vector2(300, 60)))
+	var rig_row := UiKit.hbox(12)
+	rig_row.add_child(UiKit.button("Rig upgrades", func() -> void: rig_pressed.emit(), Vector2(200, 60)))
+	rig_row.add_child(UiKit.button("Records", func() -> void: records_pressed.emit(), Vector2(200, 60)))
+	v.add_child(rig_row)
 	var row := UiKit.hbox(12)
 	row.add_child(UiKit.button("How to play", func() -> void: Rules.open(self), Vector2(200, 52), 16))
 	row.add_child(UiKit.button("Settings", func() -> void: settings_pressed.emit(), Vector2(200, 52), 16))
 	v.add_child(row)
+
+
+## Titles are either a crew title (binders) or an Exploit log id.
+func _title_name(t: String) -> String:
+	return str(db.exploits[t]["name"]) if db.exploits.has(t) else t
 
 
 func _set_heat(h: int) -> void:

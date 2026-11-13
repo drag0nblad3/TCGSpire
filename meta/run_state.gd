@@ -45,6 +45,11 @@ var mods_installed := 0
 ## Targets are banned (picks and offers) and their enemies show up on the map.
 var job := ""
 var banned: Array = []
+## Records: counters from every fight (Records.tally_combat), the job's bonus clause ids,
+## and the daily breach date ("" = a normal run).
+var tally: Dictionary = {}
+var clauses: Array = []
+var daily := ""
 
 
 ## picks: card ids chosen from the player's collection (must own each one).
@@ -218,6 +223,7 @@ func start_combat(encounter_id: String) -> Combat:
 ## Returns rewards: {"gold": int, "cards": [ids], "talisman": id or ""}.
 func finish_combat(c: Combat) -> Dictionary:
 	hp = c.player.hp
+	Records.tally_combat(self, c)
 	for id in c.play_counts():
 		card_plays[id] = int(card_plays.get(id, 0)) + c.play_counts()[id]
 	var rewards := {"gold": 0, "cards": [], "talisman": ""}
@@ -538,7 +544,7 @@ func summary() -> String:
 const SAVED := ["seed_value", "hp", "max_hp", "gold", "floor_num", "heat", "talismans", "node_id", "path",
 	"combats_won", "elites_won", "boss_won", "act", "acts_cleared", "double_crossed", "over", "card_plays",
 	"remove_cost", "outcome_counter", "locked_talismans", "perks", "rig", "firmware", "firmware_mods",
-	"mods_installed", "job", "banned"]
+	"mods_installed", "job", "banned", "tally", "clauses", "daily"]
 
 
 func to_dict() -> Dictionary:

@@ -50,7 +50,7 @@
    "rare": 5.5,
    "mythic": 0.5
   },
-  "foil_chance": 0.04
+  "foil_chance": 0.05
  },
  "reward": {
   "choices": 3,
@@ -228,7 +228,8 @@
    "uncommon": 100,
    "rare": 400,
    "mythic": 1600
-  }
+  },
+  "foil_mult": 4
  },
  "acts": 3,
  "act_heal_pct": 0.5,
@@ -298,5 +299,25 @@
   2,
   6,
   12
- ]
+ ],
+ "contracts": {
+  "per_job": 2,
+  "rep_mult": 1.0
+ },
+ "binders": {
+  "common": {
+   "dust": 60
+  },
+  "uncommon": {
+   "dust": 120
+  },
+  "full": {
+   "dust": 300,
+   "card_back": true,
+   "title": true
+  }
+ },
+ "daily": {
+  "heat": 1
+ }
 }

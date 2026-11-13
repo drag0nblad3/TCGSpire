@@ -54,6 +54,7 @@ func _ready() -> void:
 				Jobs.required(db, job, profile.starter_picks(db)), Lexicon.faction(job), " and ".join(ban)], 15, Palette.faction(job), true))
 		_problem = UiKit.label("", 14, Palette.HP, true)
 		v.add_child(_problem)
+		v.add_child(_loadout_row())
 	var filters := UiKit.hbox(8)
 	for f in FILTERS:
 		if pick_mode and f in targets:
@@ -82,6 +83,36 @@ func _ready() -> void:
 		bottom.add_child(_begin)
 	v.add_child(bottom)
 	_refresh()
+
+
+## Saved loadouts for this crew: tap a slot to load it, "Save" stores the current picks there.
+func _loadout_row() -> Control:
+	var row := UiKit.hbox(8)
+	row.add_child(UiKit.label("Loadouts", 14, Palette.TEXT_DIM))
+	for slot in Profile.LOADOUT_SLOTS:
+		var saved := profile.loadout(job, slot)
+		var load_b := UiKit.button("Slot %d\n%s" % [slot + 1, ("%d programs" % saved.size()) if not saved.is_empty() else "empty"], func() -> void:
+			var got := profile.usable_loadout(db, job, slot, targets)
+			if got.is_empty():
+				UiKit.toast(self, "Slot %d is empty." % (slot + 1))
+				return
+			picks = got
+			_refresh(), Vector2(104, 52), 13)
+		load_b.disabled = saved.is_empty()
+		row.add_child(load_b)
+		row.add_child(UiKit.button("Save", func() -> void:
+			profile.save_loadout(job, slot, picks)
+			profile.save()
+			UiKit.toast(self, "Saved to slot %d." % (slot + 1))
+			_rebuild(), Vector2(64, 52), 13))
+	return row
+
+
+## Rebuilds the whole screen (loadout labels change after a save).
+func _rebuild() -> void:
+	for n in get_children():
+		n.queue_free()
+	_ready()
 
 
 func _base_summary() -> String:
@@ -223,6 +254,7 @@ func _show_detail(id: String) -> void:
 	var shown := db.instance(id, false, profile.firmware_level(id))
 	if profile.firmware_mods.has(id):
 		shown.mod = db.mod(profile.firmware_mods[id])
+	shown.foil = int(col.foils.get(id, 0)) > 0
 	var cv := CardView.new().setup(shown)
 	cv.scale = Vector2(1.6, 1.6)
 	holder.add_child(cv)
@@ -258,6 +290,15 @@ func _show_detail(id: String) -> void:
 			_show_detail(id), Vector2(220, 60))
 	dis.disabled = col.count(id) <= 1
 	row.add_child(dis)
+	if int(col.foils.get(id, 0)) > 0:
+		var fdis := UiKit.button("Disenchant foil (+%d)" % Collection.foil_value(id, db), func() -> void:
+			if col.disenchant_foil(id, db):
+				profile.save()
+				overlay.queue_free()
+				_refresh()
+				_show_detail(id), Vector2(240, 60))
+		fdis.disabled = col.count(id) <= 1
+		row.add_child(fdis)
 	v.add_child(row)
 	v.add_child(UiKit.label("Your last copy can't be disenchanted.", 12, Palette.TEXT_DIM))
 	v.add_child(_firmware_row(id, overlay))
