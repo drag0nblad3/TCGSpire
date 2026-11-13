@@ -53,6 +53,13 @@ Original design only: don't copy cards, names, characters or look from existing 
   turns, -1 per hit taken, Purge moves (enemy damage `"to": "daemon"`) take their full number. Re-running a daemon
   that is up tops its HP back up. Scaling: `daemon_hp` (rig/subroutine mod, implant `"daemon": {"hp": n}`),
   `rally` (+HP to all daemons), Patch on a daemon (cards with `"target": "ally"`).
+- Card pool: every crew (Street included) has 8 common / 6 uncommon / 4 rare / 2 mythic (`test_data` enforces it).
+  Joint ops (`data/cards/joint.json`, `"faction2"`): one per non-rival crew pair, on top of the spread. They count as
+  both crews for job picks (`CardDef.is_of`), are banned if either crew is a target (`banned_by`), stay out of binders,
+  and firmware is paid in the home crew's rep. Cards without an entry in `card_art.json` draw the procedural fallback.
+  Ops added for them: `amplify` (multiply a status), `strip` (remove an enemy's helpful statuses), `sacrifice` (crash your
+  front daemon, its HP becomes damage/ward/heal/draw/energy), `damage_per_status` with `"of": "target"`, status `stall`
+  (Lagged: the enemy skips one move and keeps the intent; never stacks).
 - Records (`meta/records.gd`, cosmetic/currency only): run tally from combat events (`RunState.tally`), contract bonus
   clauses (`data/contracts.json`, rolled per job offer, pay rep), exploit log (`data/exploits.json`, lifetime stats),
   binders (own every card of a crew rarity page: dust, full set = card back + title), daily breach (fixed seed/job per

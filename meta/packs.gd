@@ -43,6 +43,6 @@ static func roll_card(db: CardDB, rng: GameRng, weights: Dictionary, banned: Arr
 
 
 static func _pool(db: CardDB, rarity: String, banned: Array = [], excluded: Array = []) -> Array:
-	var ids := db.ids_where(func(c: CardDef) -> bool: return c.rarity == rarity and rarity not in ["starter", "curse"] and c.faction not in banned and c.id not in excluded)
+	var ids := db.ids_where(func(c: CardDef) -> bool: return c.rarity == rarity and rarity not in ["starter", "curse"] and not c.banned_by(banned) and c.id not in excluded)
 	ids.sort()
 	return ids

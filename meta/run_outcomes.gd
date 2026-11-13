@@ -45,7 +45,7 @@ static func apply(run: RunState, o: Dictionary) -> String:
 			var id := str(o.get("card", ""))
 			if id == "":
 				var pool := run.db.ids_where(func(c: CardDef) -> bool:
-					return c.rarity == str(o.get("rarity", "common")) and (not o.has("faction") or c.faction == o["faction"]) and c.faction not in run.banned)
+					return c.rarity == str(o.get("rarity", "common")) and (not o.has("faction") or c.is_of(str(o["faction"]))) and not c.banned_by(run.banned))
 				pool.sort()
 				id = str(rng.pick(pool)) if not pool.is_empty() else ""
 			if id == "" or run.db.card(id) == null:

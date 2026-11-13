@@ -15,6 +15,7 @@ const DEFS := {
 	"frail": {"debuff": true, "desc": "Fragmented: gain 25% less Firewall. Loses 1 at end of turn."},
 	"charge": {"debuff": false, "desc": "Buffer: stored power. Some programs spend it for big effects."},
 	"echo": {"debuff": false, "desc": "Loop: your next program runs twice. Uses 1 stack."},
+	"stall": {"debuff": true, "desc": "Lagged: skips its next move, and that intent waits a turn. Never more than 1."},
 }
 
 const DECAYING := ["brittle", "weaken", "frail"]

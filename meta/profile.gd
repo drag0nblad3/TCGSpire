@@ -375,7 +375,7 @@ func usable_loadout(db: CardDB, job: String, slot: int, banned: Array) -> Array:
 	var out: Array = []
 	for id in loadout(job, slot):
 		var c := db.card(str(id))
-		if c != null and c.faction not in banned and out.count(id) < collection.count(id) and out.size() < starter_picks(db):
+		if c != null and not c.banned_by(banned) and out.count(id) < collection.count(id) and out.size() < starter_picks(db):
 			out.append(id)
 	return out
 

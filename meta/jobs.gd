@@ -71,9 +71,9 @@ static func check(db: CardDB, faction: String, picks: Array, picks_allowed: int,
 		var c := db.card(str(id))
 		if c == null:
 			continue
-		if c.faction in ban:
-			return "%s programs are banned on this job." % Lexicon.faction(c.faction)
-		if c.faction == faction:
+		if c.banned_by(ban):
+			return "%s programs are banned on this job." % Lexicon.faction(c.faction if c.faction in ban else c.faction2)
+		if c.is_of(faction):
 			theirs += 1
 	var need := required(db, faction, picks_allowed)
 	if theirs < need:
@@ -100,7 +100,13 @@ static func validate(db: CardDB) -> Array[String]:
 	var errs: Array[String] = []
 	var card_factions := {}
 	for id in db.cards:
-		card_factions[db.cards[id].faction] = true
+		var cd: CardDef = db.cards[id]
+		card_factions[cd.faction] = true
+		if cd.faction2 != "":
+			if not db.factions.has(cd.faction) or not db.factions.has(cd.faction2) or cd.faction2 == cd.faction:
+				errs.append("card '%s': joint op needs two different crews" % id)
+			elif cd.faction2 in db.factions[cd.faction].get("rivals", []) or cd.faction in db.factions[cd.faction2].get("rivals", []):
+				errs.append("card '%s': joint op between rivals" % id)
 	for f in db.factions:
 		if not card_factions.has(f):
 			errs.append("faction '%s': no cards" % f)

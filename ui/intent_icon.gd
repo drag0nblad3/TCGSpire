@@ -62,6 +62,11 @@ static func draw(ci: CanvasItem, c: Vector2, r: float, kind: String, col: Color 
 			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(r * 0.14, -r * 0.68), c + Vector2(-r * 0.42, r * 0.1),
 				c + Vector2(-r * 0.05, r * 0.1), c + Vector2(-r * 0.15, r * 0.68),
 				c + Vector2(r * 0.42, -r * 0.12), c + Vector2(r * 0.06, -r * 0.12)]), col)
+		"stall":
+			# Pause bars inside a ring.
+			ci.draw_arc(c, r * 0.8, 0, TAU, 20, col, w, true)
+			ci.draw_rect(Rect2(c + Vector2(-r * 0.35, -r * 0.4), Vector2(r * 0.22, r * 0.8)), col)
+			ci.draw_rect(Rect2(c + Vector2(r * 0.13, -r * 0.4), Vector2(r * 0.22, r * 0.8)), col)
 		"curse":
 			var card := Rect2(c - Vector2(r * 0.5, r * 0.7), Vector2(r, r * 1.4))
 			ci.draw_rect(card, Color(col, 0.3))

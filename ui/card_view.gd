@@ -136,7 +136,7 @@ func _draw() -> void:
 
 	# Use a second line before reducing the size of long program names.
 	var name_font := Palette.NAME_FONT
-	var name_box := Rect2(rect.position + Vector2(28, 2), Vector2(SIZE.x - 48, 30))
+	var name_box := Rect2(rect.position + Vector2(28, 2), Vector2(SIZE.x - (64 if d.faction2 != "" else 48), 30))
 	var name_text := card.display_name()
 	var name_size := title_size(name_text, name_box.size.x, name_box.size.y)
 	var name_height := name_font.get_multiline_string_size(name_text, HORIZONTAL_ALIGNMENT_LEFT, name_box.size.x, name_size).y
@@ -147,6 +147,9 @@ func _draw() -> void:
 	draw_circle(orb, 11, Color(Palette.ENERGY, dim))
 	draw_string(title_font, orb + Vector2(-11, 5), str(card.cost()), HORIZONTAL_ALIGNMENT_CENTER, 22, 14, Palette.CARD_BG)
 	Symbols.draw_on(self, rect.position + Vector2(SIZE.x - 11, 16), 8, d.faction, Color(fc, dim))
+	if d.faction2 != "":
+		# Joint op: the second crew's mark sits beside the home crew's.
+		Symbols.draw_on(self, rect.position + Vector2(SIZE.x - 28, 16), 8, d.faction2, Color(Palette.faction(d.faction2), dim))
 
 	# Every card surface uses the same cached art; keep procedural fallback for future content.
 	var art := Rect2(rect.position + Vector2(8, 34), Vector2(SIZE.x - 16, 42))
@@ -180,7 +183,7 @@ func _draw() -> void:
 	# Type line.
 	# Type line; a modded card shows its mod there instead.
 	if card.mod.is_empty():
-		draw_string(font, rect.position + Vector2(6, 88), "%s · %s" % [Lexicon.type_name(d.type), Lexicon.faction(d.faction)],
+		draw_string(font, rect.position + Vector2(6, 88), "%s · %s" % [Lexicon.type_name(d.type), "/".join(d.factions().map(func(f: String) -> String: return Lexicon.faction(f)))],
 			HORIZONTAL_ALIGNMENT_CENTER, SIZE.x - 12, 10, Color(fc, dim))
 	else:
 		draw_string(font, rect.position + Vector2(6, 88), "[ %s ]" % card.mod_name(),

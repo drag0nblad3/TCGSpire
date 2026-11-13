@@ -14,12 +14,15 @@ const DESC := {
 	"heal": "Repairs its HP.",
 	"summon": "Calls more sentries into the fight.",
 	"curse": "Uploads malware into your deck or hand.",
+	"stall": "Lagged: skips its next move. This intent waits until the turn after.",
 	"unknown": "Does something unusual. Tap the enemy to read the move.",
 }
 
 
 static func of(c: Combat, en: Fighter) -> Array:
 	var out: Array = []
+	if en.status("stall") > 0:
+		return [{"kind": "stall", "value": 0}]
 	var by_kind := {}
 	for e in en.current_move().get("effects", []):
 		var op := str(e.get("op", ""))
@@ -70,4 +73,5 @@ static func explain(en: Fighter) -> String:
 	var parts: Array[String] = []
 	for e in mv.get("effects", []):
 		parts.append(Effects.describe(e).replace(" to ALL enemies", " to you and your units"))
-	return "%s: %s" % [mv.get("name", "?"), " ".join(parts)]
+	var lag := " (Lagged: skips a turn first.)" if en.status("stall") > 0 else ""
+	return "%s: %s%s" % [mv.get("name", "?"), " ".join(parts), lag]

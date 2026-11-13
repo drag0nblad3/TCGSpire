@@ -27,6 +27,7 @@ const STATUS := {
 	"frail": "Fragmented",
 	"charge": "Buffer",
 	"echo": "Loop",
+	"stall": "Lagged",
 }
 
 const KEYWORD := {

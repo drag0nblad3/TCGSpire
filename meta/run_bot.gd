@@ -106,7 +106,7 @@ static func best_picks(db: CardDB, profile: Profile, job: String, targets: Array
 	var pool: Array = []
 	for id in profile.collection.owned_ids():
 		var c := db.card(id)
-		if c == null or c.rarity in ["starter", "curse"] or c.faction in ban:
+		if c == null or c.rarity in ["starter", "curse"] or c.banned_by(ban):
 			continue
 		for k in mini(profile.collection.count(id), 2):
 			pool.append(id)
@@ -115,7 +115,7 @@ static func best_picks(db: CardDB, profile: Profile, job: String, targets: Array
 	pool.sort_custom(func(a: String, b: String) -> bool: return val.call(a) > val.call(b))
 	var out: Array = []
 	for id in pool:
-		if out.size() < Jobs.required(db, job, n) and db.card(id).faction == job:
+		if out.size() < Jobs.required(db, job, n) and db.card(id).is_of(job):
 			out.append(id)
 	for id in pool:
 		if out.size() >= n:
@@ -137,13 +137,19 @@ static func card_value(c: CardDef, upgraded: bool = false) -> float:
 			"damage":
 				v += n * float(e.get("hits", 1)) * aoe
 			"damage_per_ward", "damage_per_status":
-				v += 8.0 * aoe
+				if str(e.get("of", "")) == "target":
+					# Reads the enemy's stacks: only as good as the rest of the deck's setup.
+					v += (float(e.get("base", 0)) + float(e.get("mult", 1.0)) * 2.0) * aoe
+				elif str(e.get("op", "")) == "damage_per_ward":
+					v += 8.0 * aoe * minf(float(e.get("mult", 1.0)), 1.0)
+				else:
+					v += 8.0 * aoe
 			"ward":
 				v += n * 0.85
 			"apply":
 				var st := str(e.get("status", ""))
 				var k := float(e.get("stacks", 1))
-				v += k * ({"burn": 2.2, "brittle": 2.5, "weaken": 2.0, "might": 3.0, "regen": 2.0, "thorns": 1.8, "fortify": 8.0, "echo": 6.0, "charge": 1.6, "frail": 0.8, "overcharge": -3.0}.get(st, 1.5)) * aoe
+				v += k * ({"burn": 2.2, "brittle": 2.5, "weaken": 2.0, "might": 3.0, "regen": 2.0, "thorns": 1.8, "fortify": 8.0, "echo": 6.0, "charge": 1.6, "frail": 0.8, "overcharge": -3.0, "stall": 6.0}.get(st, 1.5)) * aoe
 			"draw":
 				v += n * 3.5
 			"energy":
@@ -158,6 +164,14 @@ static func card_value(c: CardDef, upgraded: bool = false) -> float:
 				v -= n * 0.6
 			"add_card":
 				v += 3.0
+			"amplify":
+				v += 2.0 * aoe
+			"strip":
+				v += 2.0 * aoe
+			"sacrifice":
+				v += 1.5 * float(e.get("mult", 1.0))  # dead without a daemon up
+	if c.get_effects(upgraded).any(func(e: Dictionary) -> bool: return str(e.get("op", "")) == "sacrifice"):
+		v *= 0.5  # needs a daemon up
 	if c.type == "power":
 		v *= 1.6  # lasts the whole fight
 	if "exhaust" in c.get_keywords(upgraded) and c.type != "power":
@@ -189,7 +203,7 @@ static func _pick_reward(run: RunState, ids: Array) -> String:
 	var best := ""
 	var best_v := 0.0
 	for id in ids:
-		var v := card_value(run.db.card(id)) * (1.1 if run.db.card(id).faction == run.job else 1.0)
+		var v := card_value(run.db.card(id)) * (1.1 if run.db.card(id).is_of(run.job) else 1.0)
 		if v > best_v:
 			best_v = v
 			best = id

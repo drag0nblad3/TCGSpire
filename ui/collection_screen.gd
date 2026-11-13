@@ -32,7 +32,7 @@ func setup(db_in: CardDB, p: Profile, pick: bool = false, job_in: String = "", t
 	if pick:
 		var ban := targets
 		for id in p.last_picks:
-			if picks.count(id) < p.collection.count(id) and picks.size() < p.starter_picks(db) and db.card(id) != null and db.card(id).faction not in ban:
+			if picks.count(id) < p.collection.count(id) and picks.size() < p.starter_picks(db) and db.card(id) != null and not db.card(id).banned_by(ban):
 				picks.append(id)
 		if Jobs.check(db, job, picks, p.starter_picks(db), targets) != "":
 			picks = RunState.default_picks(db, p, job, targets)
@@ -132,8 +132,8 @@ func _set_filter(f: String) -> void:
 
 func _ids() -> Array:
 	var ids := db.ids_where(func(c: CardDef) -> bool:
-		return c.rarity not in ["starter", "curse"] and (_filter == "all" or c.faction == _filter) \
-			and (not pick_mode or (profile.collection.owns(c.id) and c.faction not in targets)))
+		return c.rarity not in ["starter", "curse"] and (_filter == "all" or c.is_of(_filter)) \
+			and (not pick_mode or (profile.collection.owns(c.id) and not c.banned_by(targets))))
 	var order := CardDef.RARITIES
 	ids.sort_custom(func(a: String, b: String) -> bool:
 		var ca := db.card(a)

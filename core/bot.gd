@@ -101,13 +101,38 @@ static func _effect_value(c: Combat, e: Dictionary, target: Fighter, ward: int) 
 				return s
 			return _hit_value(c, target, amt, 1) if target != null else 0.0
 		"damage_per_status":
-			var amt := int(float(e.get("base", 0)) + c.player.status(str(e.get("status", ""))) * float(e.get("mult", 1.0)))
+			var st := str(e.get("status", ""))
+			var on_target := str(e.get("of", "")) == "target"
 			var s := 0.0
 			for f in (foes if to == "all_enemies" else ([target] if target != null else [])):
-				s += _hit_value(c, f, amt, 1)
-			if e.get("consume", false):
-				s -= c.player.status(str(e.get("status", ""))) * 0.8
+				var holder: Fighter = f if on_target else c.player
+				s += _hit_value(c, f, int(float(e.get("base", 0)) + holder.status(st) * float(e.get("mult", 1.0))), 1)
+			if e.get("consume", false) and not on_target:
+				s -= c.player.status(st) * 0.8
 			return s
+		"amplify":
+			var st := str(e.get("status", ""))
+			var s := 0.0
+			for f in (foes if to == "all_enemies" else ([c.player] if to == "self" else ([target] if target != null else []))):
+				var extra := float(int(f.status(st) * (float(e.get("mult", 2.0)) - 1.0)))
+				if extra > 0:
+					s += _self_status_value(c, st, extra) if f == c.player else _enemy_status_value(c, f, st, extra)
+			return s
+		"strip":
+			var s := 0.0
+			for f in (foes if to == "all_enemies" else ([target] if target != null else [])):
+				for k in f.statuses:
+					if not Statuses.DEFS.get(k, {}).get("debuff", true):
+						s += f.status(k) * (2.0 if k == "might" else 1.2) + (6.0 if k == "fortify" else 0.0)
+			return s
+		"sacrifice":
+			if c.units.is_empty():
+				return -2.0
+			var u: Fighter = c.units[0]
+			var fx := {"op": str(e.get("effect", "damage")), "amount": int(u.hp * float(e.get("mult", 1.0)))}
+			if e.has("to"):
+				fx["to"] = e["to"]
+			return _effect_value(c, fx, target, ward) - DaemonRules.value({"hp": u.hp, "rule": u.rule}) * 0.6
 		"ward":
 			var gain := Effects.ward_gain(c.player, int(n) + c.rule_sum("ward_bonus"))
 			var need := maxf(c.incoming_damage() - ward, 0.0)
@@ -209,6 +234,10 @@ static func _enemy_status_value(c: Combat, f: Fighter, st: String, stacks: float
 			return c.intent_damage(f) * 0.25 * minf(stacks, 2.0) + stacks * 0.8
 		"frail":
 			return stacks * 0.6
+		"stall":
+			if f.status("stall") > 0:
+				return 0.0
+			return c.intent_damage(f) * 1.1 + 2.0
 	return stacks * 1.5
 
 
