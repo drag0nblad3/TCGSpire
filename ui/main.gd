@@ -32,6 +32,9 @@ func _ready() -> void:
 	add_child(bg)
 	db = CardDB.shared()
 	profile = Profile.load_or_new(db)
+	var audio := GameAudio.new()
+	add_child(audio)
+	audio.configure(profile.settings)
 	apply_theme(str(profile.settings.get("theme", Themes.DEFAULT)))
 	_menu_btn = UiKit.button("Menu", _open_menu, Vector2(84, 40), 15)
 	_menu_btn.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
@@ -228,6 +231,16 @@ func _profile_cheat_done(message: String) -> void:
 func _open_settings() -> void:
 	var speed := int(profile.settings.get("anim_speed", 0))
 	get_tree().root.add_child(GameMenu.new().setup("Settings", [
+		["Sound effects: %s" % ("Muted" if profile.settings.get("sfx_muted", false) else "On"), func() -> void:
+			profile.settings["sfx_muted"] = not bool(profile.settings.get("sfx_muted", false))
+			_update_audio_settings()],
+		["Effects volume: %d%%" % roundi(float(profile.settings.get("sfx_volume", 0.6)) * 100), func() -> void:
+			var level := roundi(float(profile.settings.get("sfx_volume", 0.6)) * 5)
+			profile.settings["sfx_volume"] = float((level + 1) % 6) / 5.0
+			_update_audio_settings()],
+		["Test sound", func() -> void:
+			GameAudio.play("ward")
+			_open_settings()],
 		["Look: %s" % Themes.ALL[Palette.theme_id]["name"], func() -> void:
 			profile.settings["theme"] = Themes.next_after(Palette.theme_id)
 			_save()
@@ -251,6 +264,14 @@ func _open_settings() -> void:
 			_open_settings()],
 		["Done", _open_menu],
 	]))
+
+
+func _update_audio_settings() -> void:
+	if is_instance_valid(GameAudio.instance):
+		GameAudio.instance.configure(profile.settings)
+	_save()
+	GameAudio.play("tap")
+	_open_settings()
 
 
 ## "Layer 2 · Node 17 · HP 40/60" for the hub's resume button, or "" if no saved run.
@@ -496,6 +517,7 @@ func _show_pack() -> void:
 		cv.hot = p.get("hot", false)
 		cv.pressed.connect(func(view: CardView) -> void:
 			if view.face_down:
+				GameAudio.play(db.instance(p["id"]).def.rarity)
 				view.flip_reveal()
 				on_reveal.call(view, p))
 		views.append(cv)
@@ -523,6 +545,7 @@ func _show_pack() -> void:
 
 ## A short encrypted-packet break, owned by the pack screen so navigation cancels it.
 func _play_pack_opening(host: Control) -> void:
+	GameAudio.play("pack")
 	var overlay := Control.new()
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	overlay.mouse_filter = Control.MOUSE_FILTER_STOP

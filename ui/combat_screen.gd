@@ -433,11 +433,15 @@ func _play_events(played: CardView) -> int:
 	while _event_cursor < combat.events.size():
 		var e: Dictionary = combat.events[_event_cursor]
 		_event_cursor += 1
+		if step_scale > 0.0:
+			GameAudio.play(GameAudio.event_cue(e))
 		var v: FighterView = _views.get(str(e.get("target", "")))
 		if v != null and not is_instance_valid(v):
 			v = null
 		match e["t"]:
 			"play":
+				if step_scale > 0.0 and played != null:
+					GameAudio.play(played.card.def.faction)
 				if played != null and is_instance_valid(played):
 					_fly_card(played, _views.get(str(e["target"])))
 					played = null
