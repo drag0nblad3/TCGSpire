@@ -20,7 +20,11 @@ static func play(db: CardDB, profile: Profile, seed_in: int, heat: int = 0, job:
 		var up: Array = options.filter(func(id: int) -> bool: return id not in run.side_moves())
 		if not up.is_empty():
 			options = up
-		var node := run.enter(_choose_node(run, options))
+		var dest: int = _choose_node(run, options)
+		var side: bool = dest in run.side_moves()
+		var node := run.enter(dest)
+		if side:
+			continue  # a sidestep only moves; that node is not played
 		match node["type"]:
 			"fight", "elite", "boss":
 				var c := run.start_combat(node["encounter"])

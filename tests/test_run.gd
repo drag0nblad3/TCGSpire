@@ -55,6 +55,8 @@ func test_sidestep_once_per_floor() -> void:
 		check(id in r.available_nodes(), "sidestep offered")
 	r.enter(side[0])
 	eq(r.side_row, 0, "sidestep used on row 0")
+	check(r.was_sidestep(r.path.size() - 1), "sidestep marked as pass-through")
+	check(not r.was_sidestep(0), "start node was played")
 	eq(r.side_moves(), [], "only one sidestep per floor")
 	for id in r.available_nodes():
 		eq(int(r.map.node(id)["row"]), 1, "only upward moves left")

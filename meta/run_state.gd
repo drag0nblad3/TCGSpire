@@ -201,6 +201,8 @@ func available_nodes() -> Array:
 
 ## Sidesteps open from the current node: a row neighbour not yet visited that
 ## climbs on, at most one sidestep per floor (side_row remembers the last one).
+## A sidestep only moves you: the node you land on is not played (no fight, shop,
+## rest or cache), so sidesteps can't farm extra stops. was_sidestep() marks them.
 func side_moves() -> Array:
 	if over or node_id < 0:
 		return []
@@ -208,6 +210,11 @@ func side_moves() -> Array:
 	if side_row == row:
 		return []
 	return map.side_nodes(node_id).filter(func(id: int) -> bool: return id not in path and not map.is_dead_end(id))
+
+
+## True if path[i] was reached by a sidestep (so it was passed through, not played).
+func was_sidestep(i: int) -> bool:
+	return i > 0 and i < path.size() and int(map.node(path[i])["row"]) == int(map.node(path[i - 1])["row"])
 
 
 func current_node() -> Dictionary:

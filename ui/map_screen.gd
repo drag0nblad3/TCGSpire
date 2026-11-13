@@ -58,8 +58,8 @@ func _hint() -> String:
 	if run.node_id >= 0 and run.map.is_dead_end(run.node_id):
 		return "Dead end: sidestep to a node beside you to keep climbing"
 	if not side.is_empty():
-		return "Climb to a lit node, or sidestep along this floor (once per floor)"
-	return "Choose a lit node · One sidestep per floor · Scroll up toward the Core"
+		return "Climb to a lit node, or sidestep once along this floor (you pass through, no stop)"
+	return "Choose a lit node · One pass-through sidestep per floor · Scroll up toward the Core"
 
 
 func _process(_dt: float) -> void:
@@ -144,13 +144,14 @@ func _draw_map() -> void:
 		_canvas.draw_dashed_line(from, to, Color(Palette.ENERGY, pulse), 3, 9, true)
 		_canvas.draw_polyline(PackedVector2Array([to + Vector2(-dir * 9, -8), to, to + Vector2(-dir * 9, 8)]), Color(Palette.ENERGY, pulse), 3, true)
 		var mid := (from + to) / 2.0
-		_canvas.draw_string(font, mid + Vector2(-50, -9), "SIDESTEP", HORIZONTAL_ALIGNMENT_CENTER, 100, 12, Palette.ENERGY)
+		_canvas.draw_string(font, mid + Vector2(-60, -9), "SIDESTEP · NO STOP", HORIZONTAL_ALIGNMENT_CENTER, 120, 12, Palette.ENERGY)
 	for n in run.map.nodes:
 		var p := _pos(n["id"])
 		var col: Color = Palette.NODE[n["type"]]
 		var r := 30.0 if n["type"] == "boss" else 24.0
 		var is_avail: bool = n["id"] in avail
 		var visited: bool = n["id"] in run.path
+		var passed: bool = visited and run.was_sidestep(run.path.find(n["id"]))
 		var current: bool = n["id"] == run.node_id
 		if not is_avail and not visited and run.node_id >= 0 and n["row"] <= run.map.node(run.node_id)["row"]:
 			col = Color(col, 0.3)
@@ -160,7 +161,7 @@ func _draw_map() -> void:
 		Symbols.draw_on(_canvas, p, r * 0.75, n["type"], col)
 		# Labels and shapes make node types readable without relying on color.
 		_canvas.draw_string(font, p + Vector2(-55, r + 17), NAMES[n["type"]], HORIZONTAL_ALIGNMENT_CENTER, 110, 14, col)
-		if visited:
+		if visited and not passed:
 			var c := p + Vector2(r - 1, -r + 1)
 			_canvas.draw_circle(c, 8, Palette.ENERGY)
 			_canvas.draw_polyline(PackedVector2Array([c + Vector2(-4, 0), c + Vector2(-1, 3), c + Vector2(4, -3)]), Palette.CARD_BG, 2, true)

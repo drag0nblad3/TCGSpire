@@ -590,6 +590,11 @@ func show_map() -> void:
 
 
 func _enter_node(id: int) -> void:
+	if id in run.side_moves():
+		# A sidestep only repositions: the node beside you is not played.
+		run.enter(id)
+		show_map()
+		return
 	var node := run.enter(id)
 	_save_run({"screen": "node"})
 	_play_node(node)
