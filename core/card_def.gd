@@ -21,8 +21,8 @@ const KEYWORD_DESC := {
 const TYPE_DESC := {
 	"attack": "Exploit: usually deals damage to an enemy.",
 	"skill": "Script: Firewall, draws, statuses and other tricks.",
-	"unit": "Daemon: stays on your board, hits the front enemy at the end of your turn and can be attacked.",
-	"power": "Rootkit: its effect lasts for the rest of the fight. The program is wiped after it runs.",
+	"unit": "Daemon: stays on your board for a few turns and changes the rules while it runs. Enemies can attack it.",
+	"power": "Rootkit: a lasting effect for the rest of the fight. Rootkits are wiped after they run.",
 }
 
 var id := ""

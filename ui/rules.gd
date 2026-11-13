@@ -1,87 +1,152 @@
 class_name Rules
 extends Control
-## "How to play" overlay: rules, intent legend, statuses and keywords. Status and
-## keyword text comes straight from Statuses.DEFS / CardDef.KEYWORD_DESC, so
-## new content documents itself. Open with Rules.open(node).
+## Rules reference overlay: a contents strip that jumps to numbered sections
+## (turn flow, programs, keywords, statuses, intents, daemons, the run, jobs,
+## upgrades, collecting, heat). Status, keyword, type and intent text comes
+## straight from Statuses.DEFS / CardDef.KEYWORD_DESC / TYPE_DESC / Intents.DESC,
+## so new content documents itself. Open with Rules.open(node[, heading]).
+##
+## sections() is data only: [heading, group, entries]. An entry is a paragraph
+## (String), a definition ([term, text]), a numbered step (["#", text]) or the
+## intent icon legend ("@intents").
 
 const WARD := "Firewall absorbs damage before HP and normally clears at the start of your turn. Hardened (or a Gatekeeper daemon) keeps all remaining Firewall. Liquidity Engine keeps 30%, rounded up."
 const UNITS := "Daemons: programs that stay on your board for a few turns and change the rules while they run. A daemon's HP is its countdown: it loses 1 at the start of each of your turns and 1 for each hit it takes, and Purge moves take more. At 0 it closes and its rule ends. Running a daemon that is already up tops its HP back up. Up to 3 can run at once."
+const LEGEND := "@intents"
+const GROUPS := ["In a fight", "The run", "Between runs"]
 
 var _tap := Tap.new()
+var _jump := ""
+var _scroll: ScrollContainer
+var _anchors := {}  # heading -> Control
 
 
-static func open(host: Node) -> void:
-	host.get_tree().root.add_child(Rules.new())
+static func open(host: Node, heading: String = "") -> Rules:
+	var r := Rules.new()
+	r._jump = heading
+	host.get_tree().root.add_child(r)
+	return r
 
 
-## [heading, [lines]] pairs. Data only so it is easy to test and extend.
 static func sections(db: CardDB) -> Array:
 	var p: Dictionary = db.balance.get("player", {})
 	var acts := int(db.balance.get("acts", 2))
+	var ram := int(p.get("max_energy", 3))
+	var hand := int(p.get("hand_size", 5))
+	var slots := int(db.balance.get("board_slots", 3))
 	var out: Array = []
-	out.append(["The job", [
+
+	# --- In a fight -------------------------------------------------------------
+	out.append(["Goal", "In a fight", [
 		Palette.w("tagline"),
-		"Your deck is your rig's program library. Each card is a program: Exploits attack, Scripts defend and set up, Daemons stay on your board, Rootkits change the rules for the rest of the fight.",
+		["Win a fight", "Bring every enemy to 0 HP. If your HP hits 0, the run ends."],
+		["Win the run", "Breach the Core at the top of %s." % ("both layers" if acts == 2 else "all %d layers" % acts)],
+		["Your deck", "Your deck is your rig's program library. Each card is a program you run by paying its RAM."],
 	]])
-	out.append(["The run", [
-		"Hack node by node up the network map. Each layer ends with a Core guarded by a boss; breach %s to own the Stack." % ("both layers" if acts == 2 else "all %d layers" % acts),
-		"Your HP is your rig's integrity and carries over between fights. Safehouses, some signals and implants repair it.",
-		"After a fight you rip one program from the sentries into your deck (or skip). A lean deck runs its best programs more often.",
+	out.append(["Turn flow", "In a fight", [
+		["#", "Start of your turn: Firewall clears (unless kept), RAM refills to %d, each daemon loses 1 HP, then you draw %d programs." % [ram, hand]],
+		["#", "Run programs in any order while you have RAM. The cost is the chip in a program's top-left corner."],
+		["#", "Press End turn. End-of-turn statuses tick, then your hand is discarded (Cache programs stay, Volatile ones are wiped)."],
+		["#", "Enemy turn: each enemy drops its own Firewall and does the move its intent showed. Then it shows its next intent."],
+		["Empty draw pile", "Your discard pile is shuffled back in to make a new draw pile."],
+		["Running a program", "Tap it. If it needs a target and there are several enemies, tap the enemy next. Tap the program again to cancel."],
+		["Reading", "Press and hold any program to read it large, with every keyword explained. Hold an enemy to read its next move."],
+		["Piles", "The buttons at the top show your draw pile (in random order), discard pile, wiped programs and whole deck."],
 	]])
-	out.append(["Your turn", [
-		"You have %d RAM each turn and draw %d programs. A program's RAM cost is in its top-left chip." % [int(p.get("max_energy", 3)), int(p.get("hand_size", 5))],
-		"Tap a program to run it. If it needs a target and there are several enemies, tap the enemy next. Tap the program again to cancel.",
-		"Press and hold any program to read it large, with every keyword explained. Hold an enemy to read its next move.",
-		"End turn: your daemons hit, then programs left in your hand are discarded. When your draw pile runs dry, the discard pile is shuffled back in.",
-		"The buttons at the top show your draw pile (in random order), discard pile, wiped programs and whole deck.",
-	]])
-	out.append(["Reading the sentries", ["Each enemy shows what it will do on its turn. The icons:"]])
-	out.append(["Defence", [WARD, UNITS]])
-	var st: Array = []
-	for k in Statuses.DEFS:
-		st.append("%s%s: %s" % [Lexicon.status(k), " (harmful)" if Statuses.DEFS[k]["debuff"] else "", Statuses.DEFS[k]["desc"]])
-	out.append(["Statuses", st])
-	var kw: Array = []
+	var types: Array = []
 	for t in CardDef.TYPE_DESC:
-		kw.append(CardDef.TYPE_DESC[t])
+		var d: String = CardDef.TYPE_DESC[t]
+		types.append([Lexicon.type_name(t), d.substr(d.find(":") + 1).strip_edges() if d.contains(":") else d])
+	types.append(["Malware", "Junk the enemy uploads into your deck. Usually Locked or harmful; wipe it when you can."])
+	out.append(["Program types", "In a fight", types])
+	var kw: Array = []
 	for k in CardDef.KEYWORD_DESC:
-		kw.append("%s: %s" % [Lexicon.keyword(k), CardDef.KEYWORD_DESC[k]])
-	out.append(["Programs and keywords", kw])
-	out.append(["Between fights", [
-		"Black sentries (X) are tougher fights that drop implants. Implants are passive cyberware that trigger on their own.",
-		"Safehouse (H): reboot to repair HP, or recompile (upgrade) a program. Fixer ($): buy programs and implants, or delete a program. Signals (?) are choices with risks. Caches (C) hold an implant.",
+		kw.append([Lexicon.keyword(k), CardDef.KEYWORD_DESC[k]])
+	out.append(["Keywords", "In a fight", kw])
+	var good: Array = []
+	var bad: Array = []
+	for k in Statuses.DEFS:
+		var d: String = Statuses.DEFS[k]["desc"]
+		var entry := [Lexicon.status(k), d.substr(d.find(":") + 1).strip_edges() if d.begins_with(Lexicon.status(k) + ":") else d]
+		(bad if Statuses.DEFS[k]["debuff"] else good).append(entry)
+	out.append(["Statuses", "In a fight", ["Helpful:"] + good + ["Harmful:"] + bad])
+	out.append(["Enemy intents", "In a fight", [
+		"Each enemy shows what it will do on its turn. Hold it to read the move.",
+		LEGEND,
+		["Exact numbers", "An attack number already includes its Boost, its Throttle and your Exposed, so you can raise exactly enough Firewall."],
+	]])
+	out.append(["Firewall and daemons", "In a fight", [
+		["Firewall", WARD],
+		["Daemons", UNITS.trim_prefix("Daemons: ").replace("Up to 3", "Up to %d" % slots)],
+		["Bars", "Your HP bar sits under the battlefield. Firewall shows as a shield beside it."],
+	]])
+
+	# --- The run ----------------------------------------------------------------
+	out.append(["The Stack", "The run", [
+		"Hack node by node up the network map. Each layer ends with a Core guarded by a boss.",
+		["HP", "Your HP is your rig's integrity and carries over between fights. Safehouses, some signals and implants repair it."],
+		["Rewards", "After a fight you rip one program from the sentries into your deck (or skip). A lean deck runs its best programs more often."],
+		["Sentry", "A normal fight."],
+		["Black sentry (X)", "A tougher fight that drops an implant. Implants are passive cyberware that trigger on their own."],
+		["%s (H)" % Palette.w("rest"), "Reboot to repair HP, or recompile (upgrade) a program, or tinker a mod in."],
+		["%s ($)" % Palette.w("shop"), "Buy programs, implants and mods, or delete a program."],
+		["Signal (?)", "A choice with risks."],
+		["Cache (C)", "Holds an implant."],
 	]])
 	var share := int(float(db.balance.get("jobs", {}).get("client_share", 0.5)) * 100)
-	var rivals: Array[String] = []
+	var rivals: Array = []
 	for f in Jobs.board(db):
-		rivals.append("%s bans %s" % [Lexicon.faction(f), " and ".join(Jobs.banned(db, f).map(func(x: String) -> String: return Lexicon.faction(x)))])
-	out.append(["Jobs and rep", [
-		"Every run is a job for one crew. At least %d%% of the programs you load must be theirs, and their rivals' programs are banned: you can't load them and nobody offers them during the job (%s)." % [share, "; ".join(rivals)],
-		"A job also runs against its targets: their crew's own enforcers guard most fights and black sentries on the map, and usually the Core itself." + ((" From Heat %d, jobs run against extra crews too (still one client), and each extra target pays %d%% more rep." % [_first_heat(db, "extra_targets"), int(float(db.balance.get("jobs", {}).get("rep_per_extra_target", 0.25)) * 100)]) if _first_heat(db, "extra_targets") > 0 else ""),
-		"A job pays the client's rep when it ends, more the further you climb. Rep buys that crew's rig upgrades and flashes its programs to firmware.",
-	]])
-	var mods: Array[String] = []
+		rivals.append([Lexicon.faction(f), "bans " + " and ".join(Jobs.banned(db, f).map(func(x: String) -> String: return Lexicon.faction(x)))])
+	var extra := _first_heat(db, "extra_targets")
+	var job_lines: Array = [
+		["Client", "Every run is a job for one crew. At least %d%% of the programs you load must be theirs." % share],
+		["Rivals", "Their rivals' programs are banned: you can't load them and nobody offers them during the job."],
+	]
+	job_lines.append_array(rivals)
+	job_lines.append(["Targets", "A job runs against its targets: their crew's own enforcers guard most fights and black sentries, and usually the Core itself." + ((" From Heat %d, jobs run against extra crews too (still one client), and each extra target pays %d%% more rep." % [extra, int(float(db.balance.get("jobs", {}).get("rep_per_extra_target", 0.25)) * 100)]) if extra > 0 else "")])
+	job_lines.append(["Rep", "A job pays the client's rep when it ends, more the further you climb. Rep buys that crew's rig upgrades and flashes its programs to firmware."])
+	job_lines.append(["Crews", "Burner (viruses and overclocking), Flux (data flow and firewalls), Wetware (bio-daemons and patches), Null (glitches, buffers and loops), Chrome (drone swarms and plating), Static (jamming and broadcasts), plus Street programs that fit any rig."])
+	out.append(["Jobs and rep", "The run", job_lines])
+	var mods: Array = [
+		["Recompile (+)", "At a safehouse: upgrade one program for this run."],
+		["Mods", "Each program holds one mod. Safehouses let you tinker, the Fixer sells mods, and some signals install them."],
+	]
 	for id in db.mods:
-		mods.append("%s: %s" % [db.mods[id]["name"], CardMods.describe(db.mods[id])])
-	out.append(["Upgrades and perks", [
-		"This run only: recompile a program at a safehouse (+), or install a mod. Each program holds one mod. Safehouses let you tinker, the Fixer sells mods, and some signals install them.",
-		"Mods: " + " ".join(mods),
-		"Subroutines: after black sentries and the first Core, load one of %d subroutines. They run for the rest of the job." % int(db.balance.get("perk_choices", 3)),
-		"Permanent: rig upgrades (hideout) apply to every run. Firmware: a deck holds up to %d copies of a program; extra copies beyond those upgrade it. Flashing v1 uses up %s extra copies (by rarity: common, uncommon, rare, mythic) and gives +%d%% to its numbers in every run; v2 uses up %s more (+%d%%, twice the price). Compile copies with %s to get there faster. After %d plays you can also bake a mod into its firmware." % [Profile.deck_limit(db), _ladder(db, 0), roundi((float(db.balance["firmware"]["scale"][0]) - 1.0) * 100), _ladder(db, 1), roundi((float(db.balance["firmware"]["scale"][1]) - 1.0) * 100), Palette.w("dust").to_lower(), int(db.balance["mastery"][int(db.balance["firmware"].get("mod_mastery_tier", 2)) - 1]["plays"])] + " Crew programs cost that crew's rep; Street and base programs cost %s (base programs need no copies)." % Palette.w("dust").to_lower(),
+		mods.append([str(db.mods[id]["name"]), CardMods.describe(db.mods[id])])
+	mods.append(["Subroutines", "After black sentries and the first Core, load one of %d subroutines. They run for the rest of the job." % int(db.balance.get("perk_choices", 3))])
+	out.append(["Upgrades and perks", "The run", mods])
+
+	# --- Between runs -----------------------------------------------------------
+	var dust := Palette.w("dust").to_lower()
+	var packs := Palette.w("packs").to_lower()
+	var limit := Profile.deck_limit(db)
+	out.append(["Collecting", "Between runs", [
+		["Library", "Your deck is built from programs you own. Before each run you load extra programs from your library, up to %d copies of each." % limit],
+		[Palette.w("packs"), "Earned by play only: one per Core breached, one more for a finished job, one per level, one for jacking into the daily breach. Black sentries drop shards (%d make a %s)." % [Profile.shards_per_pack(db), Palette.w("pack").to_lower()]],
+		["Hot slot", "Every %s has a hot slot (uncommon or better). A rare is guaranteed at least every %d %s and a mythic every %d." % [Palette.w("pack").to_lower(), int(db.balance["pack"].get("pity", {}).get("rare", 0)), packs, int(db.balance["pack"].get("pity", {}).get("mythic", 0))]],
+		["Rarity", "Rarer programs add complexity, not raw power."],
+		[Palette.w("dust"), "Scrap copies you no longer need for %s, and compile the ones you want." % dust],
+		["Mastery", "Running a program often raises its mastery."],
+		["Binders", "Own every program on a crew's rarity page to claim it. A full set pays a card back and a title."],
 	]])
-	out.append(["Your library", [
-		"Your deck is built from programs you own. Before each run you load extra programs from your library, up to %d copies of each." % Profile.deck_limit(db),
-		"Runs earn XP and %s: one per Core breached, one more for a finished job, one per level, one for jacking into the daily breach, and black sentries drop shards (%d make a %s). Crack them open for new programs (rarer programs add complexity, not raw power)." % [Palette.w("packs").to_lower(), Profile.shards_per_pack(db), Palette.w("pack").to_lower()],
-		"Every %s has a hot slot (uncommon or better). A rare is guaranteed at least every %d %s and a mythic every %d. Once a program's firmware is maxed and you own %d copies, %s reroll it once." % [Palette.w("pack").to_lower(), int(db.balance["pack"].get("pity", {}).get("rare", 0)), Palette.w("packs").to_lower(), int(db.balance["pack"].get("pity", {}).get("mythic", 0)), Profile.deck_limit(db), Palette.w("packs").to_lower()],
-		"Copies are upgrades: every copy brings a program closer to its next firmware level. Scrap copies you no longer need for %s and compile the ones you want. Running a program often raises its mastery." % Palette.w("dust").to_lower(),
-		"Crews: Burner (viruses and overclocking), Flux (data flow and firewalls), Wetware (bio-daemons and patches), Null (glitches, buffers and loops), Chrome (drone swarms and plating), Static (jamming and broadcasts), plus Street programs that fit any rig.",
-		"Heat: breach the final Core to unlock harder runs with extra modifiers. Enemy HP and damage boosts compound with each level.",
+	out.append(["Firmware", "Between runs", [
+		"Copies are upgrades: a deck holds up to %d copies of a program, and extra copies beyond those upgrade it." % limit,
+		["v1", "Uses up %s extra copies (by rarity: common, uncommon, rare, mythic) and gives +%d%% to its numbers in every run." % [_ladder(db, 0), roundi((float(db.balance["firmware"]["scale"][0]) - 1.0) * 100)]],
+		["v2", "Uses up %s more (+%d%%, twice the price)." % [_ladder(db, 1), roundi((float(db.balance["firmware"]["scale"][1]) - 1.0) * 100)]],
+		["Baked mod", "After %d plays you can bake a mod into a program's firmware." % int(db.balance["mastery"][int(db.balance["firmware"].get("mod_mastery_tier", 2)) - 1]["plays"])],
+		["Price", "Crew programs cost that crew's rep. Street and base programs cost %s (base programs need no copies)." % dust],
+		["Maxed", "Once a program's firmware is maxed and you own %d copies, %s reroll it once." % [limit, packs]],
+		["Rig upgrades", "Bought at the hideout with a crew's rep. They apply to every run."],
 	]])
-	out.append(["Tips", [
-		"An enemy's attack number already includes its Boost, its Throttle and your Exposed, so you can raise exactly enough Firewall.",
-		"Your HP bar sits under the battlefield. Firewall shows as a shield beside it.",
+	out.append(["Heat", "Between runs", [
+		"Breach the final Core to unlock the next Heat. Each level adds a modifier, and enemy HP and damage boosts compound with each level.",
 	]])
 	return out
+
+
+## Section headings in order (for the contents strip and tests).
+static func headings(db: CardDB) -> Array:
+	return sections(db).map(func(s: Array) -> String: return s[0])
 
 
 static func _first_heat(db: CardDB, mod: String) -> int:
@@ -102,21 +167,92 @@ func _ready() -> void:
 	var parts := UiKit.screen(10, BoxContainer.ALIGNMENT_BEGIN)
 	add_child(parts[0])
 	var v: VBoxContainer = parts[1]
-	v.add_child(UiKit.label("How to play", 30, Palette.ENERGY))
+	v.add_child(UiKit.label("Rules reference", 30, Palette.ENERGY))
+	var secs := sections(CardDB.shared())
+	v.add_child(_contents(secs))
 	var inner := UiKit.scroll(v)
-	for sec in sections(CardDB.shared()):
-		var h := UiKit.label(sec[0], 21, Palette.ENERGY)
-		h.add_theme_font_override("font", Palette.display())
-		inner.add_child(h)
-		for line in sec[1]:
-			var l := UiKit.label(str(line), 16, Palette.TEXT, true)
-			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-			l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			l.custom_minimum_size.x = 0
-			inner.add_child(l)
-		if sec[0] == "Reading the sentries":
-			inner.add_child(_legend())
+	_scroll = inner.get_parent() as ScrollContainer
+	var n := 0
+	var group := ""
+	for sec in secs:
+		if sec[1] != group:
+			group = sec[1]
+			var g := UiKit.label(group.to_upper(), 14, Palette.TEXT_DIM)
+			g.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+			inner.add_child(g)
+		n += 1
+		var box := _section(n, sec[0], sec[2])
+		_anchors[sec[0]] = box
+		inner.add_child(box)
 	v.add_child(UiKit.button("Close", queue_free, Vector2(200, 56)))
+	if _jump != "":
+		jump_to.call_deferred(_jump)
+
+
+## Scrolls so `heading` sits at the top. Unknown headings do nothing.
+func jump_to(heading: String) -> void:
+	var c: Control = _anchors.get(heading)
+	if c == null or _scroll == null:
+		return
+	await get_tree().process_frame
+	_scroll.scroll_vertical = int(c.position.y)
+
+
+## Chips grouped by part; tapping one scrolls to its section.
+func _contents(secs: Array) -> Control:
+	var flow := UiKit.flow(6)
+	flow.alignment = FlowContainer.ALIGNMENT_CENTER
+	var n := 0
+	for sec in secs:
+		n += 1
+		var heading: String = sec[0]
+		var b := UiKit.button("%d %s" % [n, heading], func() -> void: jump_to(heading), Vector2(0, 38), 13)
+		b.add_theme_color_override("font_color", Palette.ENERGY if sec[1] == GROUPS[0] else (Palette.UPGRADED if sec[1] == GROUPS[1] else Palette.TEXT))
+		flow.add_child(b)
+	return flow
+
+
+func _section(n: int, heading: String, entries: Array) -> Control:
+	var box := UiKit.vbox(6, BoxContainer.ALIGNMENT_BEGIN)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var h := UiKit.label("%d. %s" % [n, heading], 21, Palette.ENERGY)
+	h.add_theme_font_override("font", Palette.display())
+	h.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	box.add_child(h)
+	var step := 0
+	for e in entries:
+		if e is String and e == LEGEND:
+			box.add_child(_legend())
+		elif e is Array and e[0] == "#":
+			step += 1
+			box.add_child(_rich("[color=%s][b]%d[/b][/color]  %s" % [Palette.ENERGY.to_html(false), step, _esc(e[1])]))
+		elif e is Array:
+			box.add_child(_rich("[color=%s][b]%s[/b][/color]   %s" % [Palette.UPGRADED.to_html(false), _esc(e[0]), _esc(e[1])]))
+		elif str(e).ends_with(":") and str(e).length() < 20:
+			var sub := UiKit.label(str(e), 16, Palette.TEXT_DIM)
+			sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+			box.add_child(sub)
+		else:
+			box.add_child(_rich(_esc(str(e))))
+	return UiKit.panel(box, Color(Palette.PANEL_BG, 0.6))
+
+
+func _rich(bb: String) -> RichTextLabel:
+	var r := RichTextLabel.new()
+	r.bbcode_enabled = true
+	r.fit_content = true
+	r.scroll_active = false
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	r.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	r.add_theme_font_size_override("normal_font_size", 16)
+	r.add_theme_font_size_override("bold_font_size", 16)
+	r.add_theme_color_override("default_color", Palette.TEXT)
+	r.text = bb
+	return r
+
+
+static func _esc(s: String) -> String:
+	return s.replace("[", "[lb]")
 
 
 func _legend() -> Control:

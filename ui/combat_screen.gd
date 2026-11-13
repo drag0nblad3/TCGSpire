@@ -6,6 +6,8 @@ extends Control
 ## Views show the HP/Ward carried by each event, so bars drop with each hit.
 
 signal finished(won: bool)
+## After every program, end turn or cheat has finished animating (the tutorial coach listens).
+signal acted
 
 ## Seconds per step; tests and the screenshot tool can set this to 0.
 var step_scale := 1.0
@@ -61,7 +63,7 @@ func _ready() -> void:
 		var b := UiKit.button("", _show_pile.bind(p), Vector2(118, 46), 15)
 		_pile_btns[p] = b
 		piles.add_child(b)
-	piles.add_child(UiKit.button("?", func() -> void: Rules.open(self), Vector2(52, 46), 20))
+	piles.add_child(UiKit.button("?", func() -> void: Rules.open(self, "Turn flow"), Vector2(52, 46), 20))
 	col.add_child(piles)
 	if not combat.talismans.is_empty():
 		var trow := UiKit.hbox(6)
@@ -203,7 +205,7 @@ func _rebuild() -> void:
 	var sep := 6 if n <= 1 else mini(6, int((avail - n * CardView.SIZE.x * zoom) / (n - 1)))
 	_hand_row.add_theme_constant_override("separation", sep)
 	_energy.queue_redraw()
-	_floor_label.text = "Layer %d · Node %d   ·   %d creds   ·   Turn %d" % [run.act if run else 1, run.floor_num if run else 0, run.gold if run else 0, combat.turn]
+	_floor_label.text = ("Layer %d · Node %d   ·   %d creds   ·   Turn %d" % [run.act, run.floor_num, run.gold, combat.turn]) if run else "Practice fight   ·   Turn %d" % combat.turn
 	_pile_btns["draw"].text = "Draw %d" % combat.draw_pile.size()
 	_pile_btns["discard"].text = "Discard %d" % combat.discard_pile.size()
 	_pile_btns["exhaust"].text = "Wiped %d" % combat.exhaust_pile.size()
@@ -406,6 +408,7 @@ func _act(f: Callable, hand_idx: int = -1, action: String = "Enemy turn") -> voi
 	_busy = false
 	_rebuild()
 	_deal_in(draws)
+	acted.emit()
 	if combat.is_over():
 		_end_btn.disabled = true
 		await _wait(0.6)

@@ -11,7 +11,7 @@ Original design only: don't copy cards, names, characters or look from existing 
   top killers. `profile=experienced`/`veteran` = save after 10/39 bot runs with likely spending, `max` = everything owned/bought (`meta/profile_bot.gd`).
 - `scripts/sim_matrix.sh` — the standard balance check Tyler wants: 150 runs per cell, new heat 0-1, experienced 1-3, veteran 2-5, max 4-6.
 - `scripts/shot.sh screen=<name|all> out=/tmp/x.png [plays=2] [end_turn=1] [theme=archive]` — real render to PNG (xvfb).
-  Screens: hub map combat reward rest shop event collection picker pack pack_open end inspect rules jobs rig perk tinker crew firmware recompile menu settings resume. Uses a throwaway profile.
+  Screens: hub map combat reward rest shop event collection picker pack pack_open end inspect rules jobs rig perk tinker crew firmware recompile menu settings resume tutorial coach. Uses a throwaway profile.
 - Godot binary: `godot` on PATH, or set `GODOT=/path/to/godot`. Cloud sessions: download
   `Godot_v4.4.1-stable_linux.x86_64.zip` from the godotengine GitHub releases.
 

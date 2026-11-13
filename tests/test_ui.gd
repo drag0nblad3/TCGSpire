@@ -116,3 +116,84 @@ func test_combat_screen_select_cancel_play() -> void:
 	cs._on_end_turn()
 	eq(c.turn, 2)
 	cs.free()
+
+
+func test_rules_reference_structure() -> void:
+	var secs := Rules.sections(db)
+	var heads := Rules.headings(db)
+	for h in ["Turn flow", "Program types", "Keywords", "Statuses", "Enemy intents", "Firewall and daemons", "Collecting", "Firmware"]:
+		check(h in heads, "missing rules section " + h)
+	for sec in secs:
+		check(sec[1] in Rules.GROUPS, "unknown group for " + sec[0])
+		check(not (sec[2] as Array).is_empty(), "empty section " + sec[0])
+		for e in sec[2]:
+			check(e is String or (e is Array and e.size() == 2), "bad entry in " + sec[0])
+	# Every status and keyword is documented by its player-facing name.
+	var terms: Array = []
+	for sec in secs:
+		for e in sec[2]:
+			if e is Array:
+				terms.append(e[0])
+	for k in Statuses.DEFS:
+		check(Lexicon.status(k) in terms, "status not in rules: " + k)
+	for k in CardDef.KEYWORD_DESC:
+		check(Lexicon.keyword(k) in terms, "keyword not in rules: " + k)
+	for t in CardDef.TYPE_DESC:
+		check(not CardDef.TYPE_DESC[t].contains("hit the front enemy"), "stale daemon text")
+
+
+func test_tutorial_fight_is_teachable() -> void:
+	var c := Tutorial.make_combat(db)
+	var types: Array = c.hand.map(func(ci: CardInstance) -> String: return ci.def.type)
+	check("attack" in types, "opening hand needs an Exploit")
+	check(c.hand.any(func(ci: CardInstance) -> bool: return ci.def.id == "brace"), "opening hand needs Brace")
+	eq(Tutorial.STEPS.size(), Tutorial.STEPS.size())
+	for i in Tutorial.STEPS.size():
+		check(not Tutorial.step_text(db, i).contains("%"), "step text %d" % i)
+	var since := c.events.size()
+	check(not Tutorial.step_done(1, c, since), "attack step done too early")
+	var atk := types.find("attack")
+	c.play_card(atk, 0)
+	check(Tutorial.step_done(1, c, since), "attack step should finish after an Exploit")
+	var b := c.hand.find(c.hand.filter(func(ci: CardInstance) -> bool: return ci.def.id == "brace")[0])
+	c.play_card(b, -1)
+	check(Tutorial.step_done(2, c, since), "ward step should finish after Brace")
+	c.end_turn()
+	check(Tutorial.step_done(3, c, since), "turn step should finish on turn 2")
+
+
+func test_tutorial_coach_follows_screen() -> void:
+	var root: Window = (Engine.get_main_loop() as SceneTree).root
+	var c := Tutorial.make_combat(db)
+	var cs := CombatScreen.new().setup(c, null)
+	cs.step_scale = 0.0
+	root.add_child(cs)
+	if cs._hand_row == null:
+		cs._ready()
+	var coach := Tutorial.new().setup(cs)
+	cs.add_child(coach)
+	if coach._text == null:
+		coach._ready()
+	eq(coach.step, 0)
+	coach._advance()
+	eq(coach.step, 1)
+	var atk := -1
+	for i in c.hand.size():
+		if c.hand[i].def.type == "attack":
+			atk = i
+			break
+	cs._on_card_pressed(null, atk)
+	cs._on_enemy_pressed(null, 0)
+	eq(coach.step, 2, "coach should move on after an Exploit")
+	cs._on_end_turn()
+	check(coach.step >= 4, "coach should reach the daemon tip on turn 2")
+	cs.free()
+
+
+func test_hub_offers_tutorial_to_new_players() -> void:
+	var p := Profile.new_player(db)
+	var hub := HubScreen.new().setup(db, p)
+	check(hub.first_time(), "new profile should see the tutorial")
+	p.settings["tutorial_done"] = true
+	check(not hub.first_time(), "done tutorial should hide the prompt")
+	hub.free()
