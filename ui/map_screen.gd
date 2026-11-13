@@ -6,6 +6,8 @@ signal node_chosen(id: int)
 
 const ROW_H := 104.0
 const NAMES := {"fight": "Sentry", "elite": "Black sentry", "rest": "Safehouse", "shop": "Fixer", "event": "Signal", "treasure": "Cache", "vault": "Vault", "boss": "Core"}
+## Plain meaning beside each flavor name in the legend.
+const PLAIN := {"fight": "fight", "elite": "elite fight", "rest": "rest", "shop": "shop", "event": "event", "treasure": "loot", "vault": "jump-only elite + loot", "boss": "boss"}
 
 var run: RunState
 var _canvas: Control
@@ -35,7 +37,7 @@ func _ready() -> void:
 		var icon := Symbols.badge(kind, 26)
 		icon.modulate = Palette.NODE[kind]
 		item.add_child(icon)
-		item.add_child(UiKit.label(NAMES[kind], 14, Palette.TEXT))
+		item.add_child(UiKit.label("%s (%s)" % [NAMES[kind], PLAIN[kind]], 14, Palette.TEXT))
 		legend.add_child(item)
 	v.add_child(legend)
 	_scroll = ScrollContainer.new()
@@ -59,8 +61,8 @@ func _hint() -> String:
 	if not run.jump_moves().is_empty():
 		return "Climb a lit route, or JUMP diagonally through a wall (uses a jump)"
 	if run.jumps_total() == 0 and _has_vaults():
-		return "Walls cut some routes · Sealed vaults need a jump upgrade"
-	return "Choose a lit node · Walls cut some routes · Climb toward the Core"
+		return "Tap a lit node to move there. Walls block some routes; vaults need a jump upgrade."
+	return "Tap a lit node to move there. Climb to the Core (the boss) at the top."
 
 
 func _has_vaults() -> bool:

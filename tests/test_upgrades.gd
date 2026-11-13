@@ -300,6 +300,24 @@ func test_full_run_pays_an_extra_pack() -> void:
 	check(profile.packs_unopened - before >= 3 + int(db.balance["run_rewards"]["packs_full_run"]), "boss packs + full run pack")
 
 
+func test_payout_preview_matches_what_a_full_clear_pays() -> void:
+	var job: String = Jobs.board(db)[0]
+	var heat := 2
+	var pay := Jobs.payout_preview(db, profile, job, heat)
+	var r := RunState.start(db, profile, [], 1, heat, job, Jobs.banned(db, job) + ["x"].slice(0, Jobs.extra_targets(db, heat)))
+	r.acts_cleared = int(db.balance["acts"])
+	r.boss_won = true
+	r.floor_num = r.acts_cleared * (int(db.balance["map"]["rows"]) + 1)
+	eq(int(pay["packs"]), Profile.run_packs(db, r))
+	eq(int(pay["packs"]), r.acts_cleared * int(db.balance["run_rewards"]["packs_per_boss"]) + int(db.balance["run_rewards"]["packs_full_run"]))
+	eq(int(pay["xp"]), Profile.run_xp(db, r))
+	eq(int(pay["rep"]), Jobs.rep_reward(db, r))
+	var rep_before := profile.rep_of(job)
+	profile.finish_run(db, r)
+	check(profile.rep_of(job) - rep_before >= int(pay["rep"]), "preview rep is paid")
+	check(Records.clause_text(db, db.contracts.keys()[0], 0, job).contains(Jobs.rep_name(db, job)), "bonus names its rep")
+
+
 func test_save_roundtrip_and_migration() -> void:
 	profile.rep = {"tide": 7}
 	profile.rig = {"chassis": 2}

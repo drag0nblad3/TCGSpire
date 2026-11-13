@@ -59,6 +59,8 @@ func _ready() -> void:
 	_floor_label = UiKit.label("", 14, Palette.TEXT_DIM)
 	col.add_child(_floor_label)
 	var piles := UiKit.hbox(8)
+	# Left-aligned so the corner Menu button keeps the top-right free.
+	piles.alignment = BoxContainer.ALIGNMENT_BEGIN
 	for p in ["draw", "discard", "exhaust", "deck"]:
 		var b := UiKit.button("", _show_pile.bind(p), Vector2(118, 46), 15)
 		_pile_btns[p] = b
@@ -397,7 +399,7 @@ func cheat_win() -> void:
 
 func _act(f: Callable, hand_idx: int = -1, action: String = "Enemy turn") -> void:
 	_busy = true
-	_action_label.text = "Resolving program" if hand_idx >= 0 else action
+	_action_label.text = "Running program" if hand_idx >= 0 else action
 	_end_btn.disabled = true
 	for v in _views.values():
 		v.freeze()

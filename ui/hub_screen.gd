@@ -20,6 +20,7 @@ var heat := 0
 var saved_run := ""
 var _heat_label: Label
 var _heat_desc: Label
+var _rewards_label: Label
 
 
 func setup(db_in: CardDB, p: Profile, saved: String = "") -> HubScreen:
@@ -32,14 +33,14 @@ func setup(db_in: CardDB, p: Profile, saved: String = "") -> HubScreen:
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var parts := UiKit.screen(22)
+	var parts := UiKit.screen(14)
 	add_child(parts[0])
 	var v: VBoxContainer = parts[1]
 	var logo := Control.new()
-	logo.custom_minimum_size = Vector2(170, 170)
+	logo.custom_minimum_size = Vector2(140, 140)
 	logo.draw.connect(func() -> void:
 		var t := Time.get_ticks_msec() / 1000.0
-		Sigil.draw(logo, logo.size / 2, 70.0, "tcg-spire-logo", Palette.ENERGY, t)
+		Sigil.draw(logo, logo.size / 2, 58.0, "tcg-spire-logo", Palette.ENERGY, t)
 		logo.queue_redraw())
 	v.add_child(logo)
 	if Palette.FRAME == "circuit":
@@ -73,6 +74,7 @@ func _ready() -> void:
 		rep.add_child(UiKit.label("%s %d" % [Jobs.rep_name(db, f), profile.rep_of(f)], 14, Palette.faction(f)))
 		reps.add_child(rep)
 	v.add_child(reps)
+	v.add_child(UiKit.label("Rep: each crew pays its own on its jobs. Spend it on rig upgrades and firmware.", 13, Palette.TEXT_DIM, true))
 
 	var heat_row := UiKit.hbox(16)
 	heat_row.add_child(UiKit.button("<", func() -> void: _set_heat(heat - 1), Vector2(56, 48)))
@@ -93,19 +95,24 @@ func _ready() -> void:
 			var tut := UiKit.button("New here? Play the tutorial", func() -> void: tutorial_pressed.emit(), Vector2(300, 64), 18)
 			tut.add_theme_color_override("font_color", Palette.UPGRADED)
 			v.add_child(tut)
-		v.add_child(UiKit.button("Take a job", func() -> void: start_pressed.emit(heat), Vector2(300, 72), 24))
+		v.add_child(UiKit.button("Take a job\nStart a new run", func() -> void: start_pressed.emit(heat), Vector2(300, 88), 22))
+		v.add_child(UiKit.label("What a run pays", 17, Palette.ENERGY))
+		_rewards_label = UiKit.label("", 14, Palette.TEXT, true)
+		_rewards_label.custom_minimum_size.x = 560
+		v.add_child(_rewards_label)
+		_set_heat(heat)
 	if saved_run == "":
 		var d := Records.daily(db, Records.today())
 		var done: bool = str(profile.daily.get("last", "")) == d["date"]
 		var today_score := int(profile.daily.get("scores", {}).get(d["date"], 0))
-		var db_btn := UiKit.button(("Daily breach done · score %d" % today_score) if done else ("Daily breach: %s job · Heat %d" % [Lexicon.faction(d["job"]), d["heat"]]),
-			func() -> void: daily_pressed.emit(), Vector2(300, 60), 16)
+		var db_btn := UiKit.button(("Daily breach done · score %d\nA new one opens tomorrow" % today_score) if done else ("Daily breach: %s job · Heat %d\nDaily challenge run, one try" % [Lexicon.faction(d["job"]), d["heat"]]),
+			func() -> void: daily_pressed.emit(), Vector2(300, 68), 16)
 		db_btn.disabled = done
 		v.add_child(db_btn)
 	v.add_child(_collector_panel())
 	var rig_row := UiKit.hbox(12)
-	rig_row.add_child(UiKit.button("Rig upgrades", func() -> void: rig_pressed.emit(), Vector2(200, 60)))
-	rig_row.add_child(UiKit.button("Records", func() -> void: records_pressed.emit(), Vector2(200, 60)))
+	rig_row.add_child(UiKit.button("Rig upgrades\nPermanent bonuses", func() -> void: rig_pressed.emit(), Vector2(200, 68), 16))
+	rig_row.add_child(UiKit.button("Records\nStats and sets", func() -> void: records_pressed.emit(), Vector2(200, 68), 16))
 	v.add_child(rig_row)
 	var row := UiKit.hbox(12)
 	row.add_child(UiKit.button("Tutorial", func() -> void: tutorial_pressed.emit(), Vector2(130, 52), 16))
@@ -124,7 +131,7 @@ func _collector_panel() -> Control:
 	var box := UiKit.vbox(6)
 	var lib := CollectionScreen.library_progress(db, profile)
 	var ready := profile.ready_to_flash(db).size()
-	var pk := UiKit.button("Open %s (%d)\nShards %d / %d" % [Palette.w("packs").to_lower(), profile.packs_unopened, profile.pack_shards, Profile.shards_per_pack(db)],
+	var pk := UiKit.button("Open %s (%d)\nCard packs · shards %d / %d" % [Palette.w("packs").to_lower(), profile.packs_unopened, profile.pack_shards, Profile.shards_per_pack(db)],
 		func() -> void: packs_pressed.emit(), Vector2(300, 72), 20)
 	pk.disabled = profile.packs_unopened <= 0
 	box.add_child(pk)
@@ -133,8 +140,8 @@ func _collector_panel() -> Control:
 		extra.append("%d NEW" % profile.unseen.size())
 	if ready > 0:
 		extra.append("%d ready to flash" % ready)
-	var lib_b := UiKit.button("Program library %d / %d%s" % [lib[0], lib[1], ("\n" + " · ".join(extra)) if not extra.is_empty() else ""],
-		func() -> void: collection_pressed.emit(), Vector2(300, 72 if not extra.is_empty() else 60), 18)
+	var lib_b := UiKit.button("Program library %d / %d\n%s" % [lib[0], lib[1], " · ".join(extra) if not extra.is_empty() else "Your cards: browse, craft, upgrade"],
+		func() -> void: collection_pressed.emit(), Vector2(300, 72), 18)
 	if not profile.unseen.is_empty():
 		for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
 			lib_b.add_theme_color_override(state, Palette.UPGRADED)
@@ -167,6 +174,39 @@ func _title_name(t: String) -> String:
 	return str(db.exploits[t]["name"]) if db.exploits.has(t) else t
 
 
+## "+4 data caches", "+1 data cache".
+static func count(n: int, one: String, many: String) -> String:
+	return "+%d %s" % [n, Palette.w(one).to_lower() if n == 1 else Palette.w(many).to_lower()]
+
+
+## Job board lines for what one job pays, every amount with its unit.
+static func payout_lines(db: CardDB, p: Profile, job: String, heat: int, extra: int) -> Array[String]:
+	var pay := Jobs.payout_preview(db, p, job, heat, extra)
+	var rep := Jobs.rep_name(db, job)
+	var lines: Array[String] = ["Full clear: %s · +%d %s · +%d XP" % [count(pay["packs"], "pack", "packs"), pay["rep"], rep, pay["xp"]]]
+	if int(pay["shards_per_elite"]) > 0:
+		lines.append("Each black sentry (elite): +%d %s shard (%d make one) · +%d %s · +%d XP" % [pay["shards_per_elite"], Palette.w("pack").to_lower(),
+			pay["shards_per_pack"], pay["elite_rep"], rep, pay["elite_xp"]])
+	return lines
+
+
+## Hub summary of what a run pays at the chosen heat (rep goes to the crew you work for).
+func _rewards_text() -> String:
+	var pay := Jobs.payout_preview(db, profile, Jobs.board(db)[0], heat)
+	var lines: Array[String] = [
+		"Clear all %d layers at Heat %d: %s, +%d rep for your client crew, +%d XP." % [int(db.balance.get("acts", 3)), heat, count(pay["packs"], "pack", "packs"), pay["rep"], pay["xp"]],
+		"Each Core (boss) you breach: %s, kept even if you lose later. Rep and XP pay for every floor you clear." % count(pay["per_core"], "pack", "packs")]
+	if int(pay["shards_per_elite"]) > 0:
+		lines.append("Each black sentry (elite fight): +%d %s shard (%d make one), +%d rep, +%d XP." % [pay["shards_per_elite"], Palette.w("pack").to_lower(), pay["shards_per_pack"], pay["elite_rep"], pay["elite_xp"]])
+	var bonus: Array = db.contracts.keys().map(func(id: String) -> int: return Records.clause_rep(db, id, heat))
+	if not bonus.is_empty():
+		lines.append("Job bonuses: %d per job, +%d to +%d rep each if you meet them." % [int(db.balance.get("contracts", {}).get("per_job", 2)), bonus.min(), bonus.max()])
+	var nxt := profile.next_level_reward(db)
+	if not nxt.is_empty():
+		lines.append("Next level (%d): %s, +%d %s." % [nxt["level"], count(nxt["packs"], "pack", "packs"), nxt["dust"], Palette.w("dust").to_lower()])
+	return "\n".join(lines)
+
+
 func _set_heat(h: int) -> void:
 	heat = clampi(h, 0, mini(profile.max_heat, db.balance.get("heat", []).size()))
 	_heat_label.text = "Heat %d" % heat
@@ -174,6 +214,8 @@ func _set_heat(h: int) -> void:
 	var lines: Array[String] = []
 	for i in heat:
 		lines.append(str(levels[i]["desc"]))
-	_heat_desc.text = "No modifiers." if lines.is_empty() else " ".join(lines)
+	_heat_desc.text = "Heat is difficulty. " + ("Heat 0 has no extra modifiers." if lines.is_empty() else " ".join(lines))
 	if heat == profile.max_heat and heat < levels.size():
 		_heat_desc.text += "\nBreach the final Core to unlock Heat %d." % (heat + 1)
+	if _rewards_label != null:
+		_rewards_label.text = _rewards_text()

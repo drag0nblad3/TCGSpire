@@ -57,10 +57,10 @@ static var BACKDROP := {"style": 0, "top": Color(0.09, 0.07, 0.15), "bottom": Co
 static var WORDS := {}
 const DEFAULT_WORDS := {
 	"title": "NEON UNDERCITY", "hero": "Ghost",
-	"tagline": "Under the arcology, spells run as code and the covens run the street. You're a Ghost: jack in, rip programs from corporate sentries, and climb the Stack to its Core.",
+	"tagline": "You're a Ghost, a hacker for hire under the arcology. Take jobs from the street crews, fight your way up their networks, and collect programs (your cards) to build a stronger deck.",
 	"pack": "Data cache", "packs": "Data caches", "dust": "Scrap",
 	"rest": "Safehouse", "rest_text": "A locked door, a cot, and a cooling rig.",
-	"shop": "Fixer", "treasure": "Loot cache", "camp": "Jack out to the hideout",
+	"shop": "Fixer", "treasure": "Loot cache", "camp": "Back to the hideout",
 }
 
 static var _display_font: Font
