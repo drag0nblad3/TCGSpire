@@ -90,7 +90,8 @@ func fw_mult() -> float:
 	return float(fw_scale[mini(fw, fw_scale.size() - 1)]) if fw > 0 else 1.0
 
 
-## Effects with their numbers scaled by m (rounded half up; never below the original).
+## Effects with their numbers scaled by m. Numbers of 4 or more round up (5 -> 7 at +25%), so a
+## firmware level always shows; smaller ones round half up (1 stays 1 at +25%). Never below the original.
 static func scaled(effs: Array, m: float) -> Array:
 	if is_equal_approx(m, 1.0):
 		return effs
@@ -102,7 +103,7 @@ static func scaled(effs: Array, m: float) -> Array:
 		for k in FW_KEYS.get(str(d.get("op", "")), []):
 			if d.has(k) and (d[k] is int or d[k] is float) and float(d[k]) > 0.0:
 				var v: float = float(d[k]) * m
-				d[k] = v if k == "mult" else maxi(int(floor(v + 0.5)), int(d[k]))
+				d[k] = v if k == "mult" else maxi(int(ceil(v - 0.001)) if float(d[k]) >= 4.0 else int(floor(v + 0.5)), int(d[k]))
 		out.append(d)
 	return out
 

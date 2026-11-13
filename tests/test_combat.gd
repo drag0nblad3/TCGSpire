@@ -28,18 +28,41 @@ func test_discard_and_reshuffle() -> void:
 	check(c.events.any(func(e: Dictionary) -> bool: return e["t"] == "reshuffle"), "no reshuffle event")
 
 
-func test_overclock_cannot_repeat_after_being_redrawn_in_the_same_turn() -> void:
-	var c := make_combat(["overclock+", "focus+", "arc_bolt"], "last_mirror")
+func test_once_per_turn_cannot_repeat_after_being_redrawn_in_the_same_turn() -> void:
+	var c := make_combat(["checksum", "focus+", "arc_bolt"], "last_mirror")
 	c.start()
-	var overclock: CardInstance = c.hand.filter(func(card: CardInstance) -> bool: return card.def.id == "overclock")[0]
-	check(c.play_card(c.hand.find(overclock)), "first Overclock")
+	var once: CardInstance = c.hand.filter(func(card: CardInstance) -> bool: return card.def.id == "checksum")[0]
+	check(c.play_card(c.hand.find(once)), "first Checksum")
 	check(c.play_card(c.hand.find_custom(func(card: CardInstance) -> bool: return card.def.id == "arc_bolt")), "Arc Bolt")
 	check(c.play_card(c.hand.find_custom(func(card: CardInstance) -> bool: return card.def.id == "focus")), "Defrag")
-	check(c.hand.has(overclock), "Defrag redrew Overclock")
-	check(not c.play_card(c.hand.find(overclock)), "the redrawn copy is blocked")
-	check(c.play_card(give(c, "overclock")), "a different copy still plays")
+	check(c.hand.has(once), "Defrag redrew Checksum")
+	check(not c.play_card(c.hand.find(once)), "the redrawn copy is blocked")
+	check(c.play_card(give(c, "checksum")), "a different copy still plays")
 	c.end_turn()
-	check(c.can_play(c.hand.find(overclock)), "the first copy is ready next turn")
+	check(c.can_play(c.hand.find(once)), "the first copy is ready next turn")
+
+
+func test_overclock_is_wiped_after_one_use() -> void:
+	var c := make_combat([])
+	c.start()
+	var before := c.energy
+	check(c.play_card(give(c, "overclock")), "Overclock")
+	eq(c.energy, before + 2)
+	check(c.exhaust_pile.any(func(card: CardInstance) -> bool: return card.def.id == "overclock"), "wiped, not discarded")
+
+
+func test_leech_repairs_you_and_itself() -> void:
+	var c := make_combat([])
+	c.start()
+	c.energy = 10
+	c.play_card(give(c, "leech_line"))
+	var leech: Fighter = c.units[0]
+	leech.hp -= 1
+	c.player.hp -= 5
+	var hp := c.player.hp
+	c.play_card(give(c, "jab"), 0)
+	eq(c.player.hp, hp + 1, "repairs you")
+	eq(leech.hp, leech.max_hp, "repairs itself")
 
 
 func test_win_when_all_enemies_die() -> void:

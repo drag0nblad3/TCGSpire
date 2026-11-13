@@ -639,7 +639,7 @@ func _show_pack(kind: String = "") -> void:
 		var cell := UiKit.vbox(6, BoxContainer.ALIGNMENT_BEGIN)
 		cell.custom_minimum_size.y = CardView.SIZE.y + 46
 		cell.add_child(cv)
-		var sb := UiKit.button("", Callable(), Vector2(CardView.SIZE.x, 40), 14)
+		var sb := UiKit.button("", func() -> void: pass, Vector2(CardView.SIZE.x, 40), 14)
 		sb.visible = false
 		sb.tooltip_text = "Turn this copy into %s. You keep %d." % [Palette.w("dust").to_lower(), Profile.deck_limit(db)]
 		sb.pressed.connect(func() -> void:

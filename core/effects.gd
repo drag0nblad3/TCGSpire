@@ -46,7 +46,8 @@ const LOOP_KEY := {
 const SACRIFICE_EFFECTS := ["damage", "ward", "heal", "draw", "energy"]
 
 ## "daemon" (enemy moves, Purge): your front daemon only; nothing if none is running.
-const TARGETS := ["target", "self", "all_enemies", "all_allies", "front", "daemon"]
+## "this" (daemon rule triggers only): the daemon whose rule is firing.
+const TARGETS := ["target", "self", "all_enemies", "all_allies", "front", "daemon", "this"]
 
 
 static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> void:
@@ -211,6 +212,8 @@ static func targets(c: Combat, e: Dictionary, src: Fighter, target: Fighter, def
 			return foes
 		"all_allies":
 			return allies
+		"this":
+			return [c.rule_daemon] if c.rule_daemon != null and c.units.has(c.rule_daemon) else []
 		"front":
 			if friendly:
 				return foes.slice(0, 1)
@@ -278,7 +281,7 @@ static func _describe(e: Dictionary) -> String:
 		"ward":
 			return "Gain %d Firewall." % n
 		"heal":
-			return "Repair %d HP." % n
+			return ("This daemon repairs %d HP." % n) if to == "this" else ("Repair %d HP." % n)
 		"apply":
 			var s := Lexicon.status(str(e.get("status", "")))
 			var stacks := int(e.get("stacks", 1))

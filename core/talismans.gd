@@ -66,8 +66,10 @@ static func fire(c: Combat, on: String, ctx: Dictionary = {}) -> void:
 				if c.talisman_counters[key] % int(trig["every"]) != 0:
 					continue
 			c.emit("rule" if t.has("daemon") else "talisman", {"id": tid})
+			c.rule_daemon = t.get("daemon")
 			for e in trig.get("effects", []):
 				Effects.resolve(c, e, c.player, ctx.get("target"))
+			c.rule_daemon = null
 
 
 ## Always-on rule flag from implants (Combat.rule_sum adds it to the daemons' flags).
