@@ -436,7 +436,7 @@ func _show_jobs(heat: int) -> void:
 		var clauses := Records.roll_clauses(db, board_rng.fork("clauses:" + f))
 		var j := Jobs.info(db, f)
 		var against: Array = offer["targets"].map(func(x: String) -> String: return Lexicon.faction(x))
-		var b := UiKit.button("", _show_picker.bind(heat, f, offer["targets"], clauses), Vector2(640, 196), 15)
+		var b := UiKit.button("", _show_picker.bind(heat, f, offer["targets"], clauses), Vector2(640, 250), 15)
 		var margin := MarginContainer.new()
 		margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -456,8 +456,10 @@ func _show_jobs(heat: int) -> void:
 			[j.get("job", ""), 15, Palette.TEXT],
 			["Load %d+ %s programs · Against: %s (banned)" % [Jobs.required(db, f, n), Lexicon.faction(f), " + ".join(against)], 14, Palette.TEXT_DIM],
 			["Pays %s · You have %d" % [Jobs.rep_name(db, f), profile.rep_of(f)], 14, Palette.faction(f)]]
+		for l in HubScreen.payout_lines(db, profile, f, heat, offer["targets"].size() - Jobs.banned(db, f).size()):
+			lines.append([l, 14, Palette.TEXT])
 		for id in clauses:
-			lines.append(["Bonus " + Records.clause_text(db, id, heat), 13, Palette.UPGRADED])
+			lines.append(["Bonus " + Records.clause_text(db, id, heat, f), 13, Palette.UPGRADED])
 		for line in lines:
 			var label := UiKit.label(line[0], line[1], line[2])
 			label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

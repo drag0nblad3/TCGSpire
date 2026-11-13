@@ -101,10 +101,12 @@ static func clause_rep(db: CardDB, id: String, heat: int) -> int:
 	return int(base * (1.0 + 0.1 * heat) * float(db.balance.get("contracts", {}).get("rep_mult", 1.0)))
 
 
-## "Ghost protocol (+25 rep): Win 3 fights without losing any HP."
-static func clause_text(db: CardDB, id: String, heat: int = 0) -> String:
+## "Ghost protocol (+25 Kiln marks): Win 3 fights without losing any HP."
+## `job` names the rep it pays in; without one it says "rep".
+static func clause_text(db: CardDB, id: String, heat: int = 0, job: String = "") -> String:
 	var cl: Dictionary = db.contracts.get(id, {})
-	return "%s (+%d): %s" % [cl.get("name", id), clause_rep(db, id, heat), cl.get("text", "")]
+	var unit := Jobs.rep_name(db, job) if job != "" else "rep"
+	return "%s (+%d %s): %s" % [cl.get("name", id), clause_rep(db, id, heat), unit, cl.get("text", "")]
 
 
 # --- daily breach --------------------------------------------------------------------

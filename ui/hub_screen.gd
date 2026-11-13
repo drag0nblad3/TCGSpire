@@ -20,6 +20,7 @@ var heat := 0
 var saved_run := ""
 var _heat_label: Label
 var _heat_desc: Label
+var _rewards_label: Label
 
 
 func setup(db_in: CardDB, p: Profile, saved: String = "") -> HubScreen:
@@ -95,6 +96,11 @@ func _ready() -> void:
 			tut.add_theme_color_override("font_color", Palette.UPGRADED)
 			v.add_child(tut)
 		v.add_child(UiKit.button("Take a job\nStart a new run", func() -> void: start_pressed.emit(heat), Vector2(300, 88), 22))
+		v.add_child(UiKit.label("What a run pays", 17, Palette.ENERGY))
+		_rewards_label = UiKit.label("", 14, Palette.TEXT, true)
+		_rewards_label.custom_minimum_size.x = 560
+		v.add_child(_rewards_label)
+		_set_heat(heat)
 	if saved_run == "":
 		var d := Records.daily(db, Records.today())
 		var done: bool = str(profile.daily.get("last", "")) == d["date"]
@@ -168,6 +174,39 @@ func _title_name(t: String) -> String:
 	return str(db.exploits[t]["name"]) if db.exploits.has(t) else t
 
 
+## "+4 data caches", "+1 data cache".
+static func count(n: int, one: String, many: String) -> String:
+	return "+%d %s" % [n, Palette.w(one).to_lower() if n == 1 else Palette.w(many).to_lower()]
+
+
+## Job board lines for what one job pays, every amount with its unit.
+static func payout_lines(db: CardDB, p: Profile, job: String, heat: int, extra: int) -> Array[String]:
+	var pay := Jobs.payout_preview(db, p, job, heat, extra)
+	var rep := Jobs.rep_name(db, job)
+	var lines: Array[String] = ["Full clear: %s · +%d %s · +%d XP" % [count(pay["packs"], "pack", "packs"), pay["rep"], rep, pay["xp"]]]
+	if int(pay["shards_per_elite"]) > 0:
+		lines.append("Each black sentry (elite): +%d %s shard (%d make one) · +%d %s · +%d XP" % [pay["shards_per_elite"], Palette.w("pack").to_lower(),
+			pay["shards_per_pack"], pay["elite_rep"], rep, pay["elite_xp"]])
+	return lines
+
+
+## Hub summary of what a run pays at the chosen heat (rep goes to the crew you work for).
+func _rewards_text() -> String:
+	var pay := Jobs.payout_preview(db, profile, Jobs.board(db)[0], heat)
+	var lines: Array[String] = [
+		"Clear all %d layers at Heat %d: %s, +%d rep for your client crew, +%d XP." % [int(db.balance.get("acts", 3)), heat, count(pay["packs"], "pack", "packs"), pay["rep"], pay["xp"]],
+		"Each Core (boss) you breach: %s, kept even if you lose later. Rep and XP pay for every floor you clear." % count(pay["per_core"], "pack", "packs")]
+	if int(pay["shards_per_elite"]) > 0:
+		lines.append("Each black sentry (elite fight): +%d %s shard (%d make one), +%d rep, +%d XP." % [pay["shards_per_elite"], Palette.w("pack").to_lower(), pay["shards_per_pack"], pay["elite_rep"], pay["elite_xp"]])
+	var bonus: Array = db.contracts.keys().map(func(id: String) -> int: return Records.clause_rep(db, id, heat))
+	if not bonus.is_empty():
+		lines.append("Job bonuses: %d per job, +%d to +%d rep each if you meet them." % [int(db.balance.get("contracts", {}).get("per_job", 2)), bonus.min(), bonus.max()])
+	var nxt := profile.next_level_reward(db)
+	if not nxt.is_empty():
+		lines.append("Next level (%d): %s, +%d %s." % [nxt["level"], count(nxt["packs"], "pack", "packs"), nxt["dust"], Palette.w("dust").to_lower()])
+	return "\n".join(lines)
+
+
 func _set_heat(h: int) -> void:
 	heat = clampi(h, 0, mini(profile.max_heat, db.balance.get("heat", []).size()))
 	_heat_label.text = "Heat %d" % heat
@@ -178,3 +217,5 @@ func _set_heat(h: int) -> void:
 	_heat_desc.text = "Heat is difficulty. " + ("Heat 0 has no extra modifiers." if lines.is_empty() else " ".join(lines))
 	if heat == profile.max_heat and heat < levels.size():
 		_heat_desc.text += "\nBreach the final Core to unlock Heat %d." % (heat + 1)
+	if _rewards_label != null:
+		_rewards_label.text = _rewards_text()
