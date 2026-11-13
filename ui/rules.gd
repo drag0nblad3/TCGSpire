@@ -5,7 +5,7 @@ extends Control
 ## new content documents itself. Open with Rules.open(node).
 
 const WARD := "Firewall: absorbs damage before HP. Your Firewall is cleared at the start of your turn (unless you are Hardened)."
-const UNITS := "Daemons: programs that stay on your board for a few turns and change the rules while they run. A daemon closes when its uptime runs out, and its rule ends early if it is crashed. Purge moves and area attacks can hit daemons. Running a daemon that is already up refreshes it. Up to 3 can run at once."
+const UNITS := "Daemons: programs that stay on your board for a few turns and change the rules while they run. A daemon's HP is its countdown: it loses 1 at the start of each of your turns and 1 for each hit it takes, and Purge moves take more. At 0 it closes and its rule ends. Running a daemon that is already up tops its HP back up. Up to 3 can run at once."
 
 var _tap := Tap.new()
 

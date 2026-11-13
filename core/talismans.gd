@@ -3,7 +3,7 @@ extends RefCounted
 ## Passive run items. Defined in data/talismans.json:
 ##   {"id", "name", "rarity", "triggers": [{"on": TRIGGER, "effects": [...], filters...}],
 ##    "pickup": [run outcomes, e.g. {"op": "max_hp", "amount": 8}],
-##    "daemon": {"hp_pct": 0.3, "hp": 5, "uptime": 1} (scales every daemon you run)}
+##    "daemon": {"hp": 1} (every daemon you run gets that much more HP)}
 ## Trigger effects use the normal Effects vocabulary with the player as source.
 ## Filters: "every": N (fires on every Nth event), "turn": N (only that turn),
 ## "card_type": "attack" (card_played only).
@@ -54,12 +54,8 @@ static func describe(t: Dictionary) -> String:
 	for o in t.get("pickup", []):
 		parts.append(RunOutcomes.describe(o))
 	var dm: Dictionary = t.get("daemon", {})
-	if dm.has("hp_pct"):
-		parts.append("Your daemons have +%d%% HP." % roundi(float(dm["hp_pct"]) * 100))
 	if dm.has("hp"):
 		parts.append("Your daemons have +%d HP." % int(dm["hp"]))
-	if dm.has("uptime"):
-		parts.append("Your daemons run %d turn%s longer." % [int(dm["uptime"]), "" if int(dm["uptime"]) == 1 else "s"])
 	for trig in t.get("triggers", []):
 		var on: String = trig.get("on", "")
 		var when: String = LABEL.get(on, "?")
@@ -93,6 +89,6 @@ static func validate(t: Dictionary) -> Array[String]:
 	for o in t.get("pickup", []):
 		errs.append_array(RunOutcomes.validate(o, where))
 	for k in t.get("daemon", {}):
-		if k not in ["hp_pct", "hp", "uptime"]:
+		if k != "hp":
 			errs.append("%s: unknown daemon bonus '%s'" % [where, k])
 	return errs

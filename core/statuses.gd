@@ -10,7 +10,7 @@ const DEFS := {
 	"might": {"debuff": false, "desc": "Boost: attacks deal +1 damage per stack."},
 	"overcharge": {"debuff": true, "desc": "Overheat: start next turn with 1 less RAM per stack."},
 	"thorns": {"debuff": false, "desc": "Feedback: when attacked, deal damage equal to stacks back to the attacker."},
-	"regen": {"debuff": false, "desc": "Patch: repair HP equal to stacks at end of turn, then lose 1."},
+	"regen": {"debuff": false, "desc": "Patch: repair HP equal to stacks at end of turn, then lose 1. On a daemon it wins back turns."},
 	"fortify": {"debuff": false, "desc": "Hardened: your Firewall isn't cleared at the start of your turn."},
 	"frail": {"debuff": true, "desc": "Fragmented: gain 25% less Firewall. Loses 1 at end of turn."},
 	"charge": {"debuff": false, "desc": "Buffer: stored power. Some programs spend it for big effects."},

@@ -1,28 +1,29 @@
 class_name DaemonRules
 extends RefCounted
 ## A daemon is a temporary rule change on the player's board. The "summon" op carries
-##   {"op": "summon", "name", "hp", "uptime", "rule": {"flags": {FLAG: n}, "triggers": [...]}}
+##   {"op": "summon", "name", "hp", "rule": {"flags": {FLAG: n}, "triggers": [...]}}
 ## flags are passive rule changes (summed over living daemons, see Combat.rule_sum);
 ## triggers use the implant format (Talismans.TRIGGERS) with the player as source.
-## The rule ends when the daemon times out (uptime) or is crashed (HP).
+## HP is the countdown: -1 at the start of each of your turns, -1 per hit taken, and Purge
+## moves take their number. The rule ends at 0 HP.
 
 ## flag -> rules text ("%d" takes the flag's number).
 const FLAGS := {
 	"burn_no_decay": "Virus on enemies doesn't decay.",
 	"regen_no_decay": "Your Patch doesn't decay.",
 	"keep_ward": "Your Firewall isn't cleared at the start of your turn.",
-	"taunt": "Enemy attacks aimed at you hit this daemon first.",
+	"guard": "Enemy attacks deal %d less damage to you per hit.",
 	"attack_bonus": "Your attacks deal +%d damage.",
 	"ward_bonus": "Whenever you gain Firewall, gain %d more.",
 	"thorns": "Enemies that attack you take %d damage.",
 	"burn_bonus": "Whenever you apply Virus to an enemy, apply %d more.",
-	"regen_bonus": "Whenever you gain Patch, gain %d more.",
+	"regen_bonus": "Whenever you or a daemon gain Patch, gain %d more.",
 	"debuff_bonus": "Harmful statuses you apply to enemies get +%d.",
 }
 
 ## Rough worth of one turn of each flag (per point), for the bots.
 const FLAG_VALUE := {
-	"burn_no_decay": 2.5, "regen_no_decay": 1.5, "keep_ward": 3.5, "taunt": 0.0,
+	"burn_no_decay": 2.5, "regen_no_decay": 1.5, "keep_ward": 3.5, "guard": 2.2,
 	"attack_bonus": 2.5, "ward_bonus": 1.6, "thorns": 1.2, "burn_bonus": 2.0,
 	"regen_bonus": 1.5, "debuff_bonus": 1.5,
 }
@@ -55,17 +56,16 @@ static func validate(rule: Dictionary, where: String) -> Array[String]:
 	return errs
 
 
-## Static worth of a summon effect (no combat state): rule value per turn x uptime.
-static func value(e: Dictionary, uptime_bonus: int = 0) -> float:
-	var up := float(maxi(int(e.get("uptime", 2)) + uptime_bonus, 1))
-	var hp := float(e.get("hp", 1))
+## Static worth of a summon effect (no combat state): rule value per turn x turns (HP).
+## Later turns count for less: the fight may end or the daemon may be hit.
+static func value(e: Dictionary, hp_bonus: int = 0) -> float:
+	var hp := float(maxi(int(e.get("hp", 1)) + hp_bonus, 1))
+	var up := minf(hp, 3.0) + maxf(hp - 3.0, 0.0) * 0.5
 	var rule: Dictionary = e.get("rule", {})
-	var v := hp * 0.12
+	var v := 0.0
 	var flags: Dictionary = rule.get("flags", {})
 	for k in flags:
 		v += float(FLAG_VALUE.get(k, 1.0)) * float(flags[k]) * up
-	if flags.has("taunt"):
-		v += hp * 0.8
 	for trig in rule.get("triggers", []):
 		var per := 0.0
 		for fx in trig.get("effects", []):

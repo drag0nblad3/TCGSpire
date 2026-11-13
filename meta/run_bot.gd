@@ -155,9 +155,7 @@ static func card_value(c: CardDef, upgraded: bool = false) -> float:
 			"summon":
 				v += DaemonRules.value(e) * 0.9
 			"rally":
-				v += 1.5 + n * 2.0
-			"grow":
-				v += 1.0 + float(e.get("hp", 0)) * 0.3
+				v += 1.0 + n * 1.5
 			"heal":
 				v += n * 0.7
 			"lose_hp":

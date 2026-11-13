@@ -8,7 +8,7 @@
 {"id":"looped","name":"Prefetch","rarity":"uncommon","effects_add":[{"op":"draw","amount":1}]},
 {"id":"infected","name":"Infected","rarity":"common","target":"enemy","effects_add":[{"op":"apply","status":"burn","stacks":2}]},
 {"id":"exposing","name":"Port Scan","rarity":"uncommon","target":"enemy","effects_add":[{"op":"apply","status":"brittle","stacks":1}]},
-{"id":"boosted_daemon","name":"Long-Running","rarity":"uncommon","types":["unit"],"bump":{"op":"summon","hp":3,"uptime":1}},
+{"id":"boosted_daemon","name":"Long-Running","rarity":"uncommon","types":["unit"],"bump":{"op":"summon","hp":2}},
 {"id":"leech","name":"Leech","rarity":"common","types":["attack"],"effects_add":[{"op":"heal","amount":2,"to":"self"}]},
 {"id":"buffered","name":"Buffered","rarity":"uncommon","effects_add":[{"op":"apply","status":"charge","stacks":2,"to":"self"}]},
 {"id":"swarm_hook","name":"Swarm Hook","rarity":"uncommon","types":["unit","skill"],"effects_add":[{"op":"rally","amount":1}]},

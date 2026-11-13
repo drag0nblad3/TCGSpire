@@ -102,7 +102,7 @@ static func _effect_value(c: Combat, card: CardInstance, e: Dictionary, target: 
 		"apply":
 			var st := str(e.get("status", ""))
 			var stacks := float(e.get("stacks", 1))
-			if to == "self":
+			if to == "self" or card.def.target == "ally":
 				return _self_status_value(c, st, stacks)
 			if to == "all_enemies":
 				var s := 0.0
@@ -119,10 +119,8 @@ static func _effect_value(c: Combat, card: CardInstance, e: Dictionary, target: 
 		"rally":
 			var rv := 0.0
 			for u in c.units:
-				rv += DaemonRules.value({"hp": 0, "uptime": 1, "rule": u.rule}) * n
+				rv += DaemonRules.value({"hp": 1, "rule": u.rule}) * n * 0.6
 			return rv
-		"grow":
-			return c.units.size() * float(e.get("hp", 0)) * 0.25
 		"heal":
 			return minf(n, c.player.max_hp - c.player.hp) * 0.9
 		"lose_hp":
@@ -134,29 +132,23 @@ static func _effect_value(c: Combat, card: CardInstance, e: Dictionary, target: 
 	return 0.0
 
 
-## A daemon is worth its rule for the turns it adds; one that is already up only refreshes.
+## A daemon is worth its rule for the turns (HP) it adds; one that is already up only tops up.
 static func _summon_value(c: Combat, e: Dictionary) -> float:
-	var up := int(e.get("uptime", 2)) + c.daemon_uptime
+	var hp := int(e.get("hp", 1)) + c.daemon_hp
 	var rule: Dictionary = e.get("rule", {})
 	var flags: Dictionary = rule.get("flags", {})
-	var gain := float(up)
 	for u in c.units:
 		if u.name == str(e.get("name", "")):
-			gain = maxf(float(up - u.uptime), 0.0)
-			if gain <= 0.0 and u.hp >= u.max_hp:
-				return 0.0
-			return DaemonRules.value(e, c.daemon_uptime) * gain / maxf(float(up), 1.0) + (u.max_hp - u.hp) * 0.3
+			return DaemonRules.value({"hp": 1, "rule": rule}) * maxf(float(hp - u.hp), 0.0) * 0.6
 	if c.units.size() >= c.board_slots:
 		return 0.0
-	var v := DaemonRules.value(e, c.daemon_uptime)
+	var v := DaemonRules.value(e, c.daemon_hp)
 	# State-aware tweaks for rules that only matter in some fights.
-	if flags.has("taunt"):
-		v = minf(float(e.get("hp", 1)), float(c.incoming_damage())) * 1.1 + 1.0
 	if flags.has("burn_no_decay"):
 		var burn := 0
 		for f in c.living(c.enemies):
 			burn += f.status("burn")
-		v = minf(float(burn), 8.0) * 0.9 * up + 1.0
+		v = minf(float(burn), 8.0) * 0.9 * minf(float(hp), 4.0) + 1.0
 	if flags.has("keep_ward") and c.player.status("fortify") > 0:
 		v *= 0.2
 	if flags.has("thorns"):

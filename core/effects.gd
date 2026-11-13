@@ -16,9 +16,8 @@ const OPS := {
 	"apply": ["status", "stacks", "to"],
 	"draw": ["amount"],
 	"energy": ["amount"],
-	"summon": ["name", "hp", "uptime", "rule"],
+	"summon": ["name", "hp", "rule"],
 	"rally": ["amount"],
-	"grow": ["hp"],
 	"cleanse": ["to"],
 	"add_card": ["card", "amount", "upgraded"],
 	"spawn": ["enemy"],
@@ -39,11 +38,14 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 				n += c.rule_sum("attack_bonus")
 			for i in int(e.get("hits", 1)):
 				for t in targets(c, e, src, target, "target"):
-					c.attack(src, _aim(c, e, src, t), n)
+					if str(e.get("to", "")) == "daemon":
+						c.deal_damage(t, n, src.id, "purge")
+					else:
+						c.attack(src, t, n)
 		"damage_per_ward":
 			var amt := int(src.ward * float(e.get("mult", 1.0)))
 			for t in targets(c, e, src, target, "target"):
-				c.attack(src, _aim(c, e, src, t), amt)
+				c.attack(src, t, amt)
 		"ward":
 			for t in targets(c, e, src, target, "self"):
 				if t == c.player and src == c.player:
@@ -69,17 +71,13 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 			c.energy += n
 			c.emit("energy", {"amount": n})
 		"summon":
-			c.summon(str(e.get("name", "Unit")), int(e.get("hp", 1)), int(e.get("uptime", 2)), e.get("rule", {}))
+			c.summon(str(e.get("name", "Unit")), int(e.get("hp", 1)), e.get("rule", {}))
 		"rally":
 			for u in c.units:
-				u.uptime += n
+				u.hp += n
+				u.max_hp = maxi(u.max_hp, u.hp)
+				c.emit("uptime", {"target": u.id, "hp": u.hp})
 			c.emit("rally", {"amount": n})
-		"grow":
-			var gh := int(e.get("hp", 0))
-			for u in c.units:
-				u.max_hp += gh
-				u.hp += gh
-			c.emit("grow", {"hp": gh})
 		"cleanse":
 			for t in targets(c, e, src, target, "self"):
 				for s in Statuses.debuffs(t):
@@ -99,7 +97,7 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 			var st := str(e.get("status", ""))
 			var amt2 := int(e.get("base", 0)) + int(src.status(st) * float(e.get("mult", 1.0)))
 			for t in targets(c, e, src, target, "target"):
-				c.attack(src, _aim(c, e, src, t), amt2)
+				c.attack(src, t, amt2)
 			if e.get("consume", false):
 				src.statuses.erase(st)
 		"lose_hp":
@@ -107,13 +105,6 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 				_lose_hp(c, t, n, src)
 		_:
 			push_error("Unknown effect op: %s" % op)
-
-
-## Enemy attacks aimed at the player (the default target) are pulled onto a Taunt daemon.
-static func _aim(c: Combat, e: Dictionary, src: Fighter, t: Fighter) -> Fighter:
-	if c.is_friendly(src) or str(e.get("to", "target")) != "target":
-		return t
-	return c.aim(t)
 
 
 ## Extra stacks from daemon rules when the player applies a status.
@@ -126,7 +117,7 @@ static func _apply_bonus(c: Combat, status: String, src: Fighter, t: Fighter) ->
 			bonus += c.rule_sum("burn_bonus")
 		if Statuses.DEFS.get(status, {}).get("debuff", false):
 			bonus += c.rule_sum("debuff_bonus")
-	elif t == c.player and status == "regen":
+	elif c.is_friendly(t) and status == "regen":
 		bonus += c.rule_sum("regen_bonus")
 	return bonus
 
@@ -181,6 +172,8 @@ static func describe(e: Dictionary) -> String:
 	match op:
 		"damage":
 			var hits := int(e.get("hits", 1))
+			if to == "daemon":
+				return "Purge %d: your front daemon loses %d HP." % [n, n]
 			return "Deal %d damage%s%s." % [n, (" %d times" % hits) if hits > 1 else "", where]
 		"damage_per_ward":
 			var mult := float(e.get("mult", 1.0))
@@ -201,12 +194,9 @@ static func describe(e: Dictionary) -> String:
 		"energy":
 			return "Gain %d RAM." % n
 		"summon":
-			var up := int(e.get("uptime", 2))
-			return "Run %s for %d turn%s (%d HP): %s" % [e.get("name", "Unit"), up, "" if up == 1 else "s", int(e.get("hp", 1)), DaemonRules.describe(e.get("rule", {}))]
+			return "Run %s (%d HP): %s" % [e.get("name", "Unit"), int(e.get("hp", 1)), DaemonRules.describe(e.get("rule", {}))]
 		"rally":
-			return "Your daemons run %d turn%s longer." % [n, "" if n == 1 else "s"]
-		"grow":
-			return "Your daemons gain +%d HP." % int(e.get("hp", 0))
+			return "Your daemons gain +%d HP." % n
 		"cleanse":
 			return "Purge your harmful statuses."
 		"add_card":

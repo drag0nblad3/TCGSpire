@@ -4,7 +4,8 @@ extends RefCounted
 ## Rules text is generated from effects (Effects.describe) unless "text" is given.
 
 const TYPES := ["attack", "skill", "unit", "power"]
-const TARGETS := ["enemy", "none"]
+## "ally": you or one of your daemons (hand-picked when a daemon is running).
+const TARGETS := ["enemy", "ally", "none"]
 const RARITIES := ["starter", "common", "uncommon", "rare", "mythic", "curse"]
 const KEYWORDS := ["exhaust", "retain", "unplayable", "innate", "ethereal"]
 ## Rules glossary for keywords (shown by the card inspector and the rules screen).
@@ -128,9 +129,7 @@ static func _param_name(e: Dictionary, k: String) -> String:
 	if k == "hits":
 		return "Hits"
 	if op == "summon":
-		return "%s %s" % [e.get("name", "Daemon"), "uptime" if k == "uptime" else "HP"]
-	if op == "grow":
-		return "Daemon HP"
+		return "%s HP" % e.get("name", "Daemon")
 	if op == "apply" and k == "stacks":
 		return Lexicon.status(str(e.get("status", "")))
 	if op in ["damage_per_status", "damage_per_ward"]:
@@ -141,7 +140,7 @@ static func _param_name(e: Dictionary, k: String) -> String:
 		"heal": return "Repair"
 		"draw": return "Draw"
 		"energy": return Lexicon.term("energy")
-		"rally": return "Daemon uptime"
+		"rally": return "Daemon HP"
 		"lose_hp": return "HP loss"
 		"add_card": return "Copies"
 	return k.capitalize()

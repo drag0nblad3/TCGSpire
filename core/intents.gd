@@ -7,7 +7,7 @@ extends RefCounted
 
 const DESC := {
 	"attack": "Attacks you. The number is damage per hit after Boost, Throttled and Exposed.",
-	"purge": "Purge: hits your front daemon. Crashing a daemon ends its rule early. Does nothing if no daemon is running.",
+	"purge": "Purge: your front daemon loses that much HP. At 0 it crashes and its rule ends. Does nothing if no daemon is running.",
 	"ward": "Raises its Firewall, which absorbs damage until its next turn.",
 	"buff": "Upgrades itself (for example Boost or Feedback).",
 	"debuff": "Infects you with a harmful status.",
@@ -32,10 +32,10 @@ static func of(c: Combat, en: Fighter) -> Array:
 					base = int(en.ward * float(e.get("mult", 1.0)))
 				elif op == "damage_per_status":
 					base = int(e.get("base", 0)) + int(en.status(str(e.get("status", ""))) * float(e.get("mult", 1.0)))
-				var per := base if op == "lose_hp" else Statuses.modify_attack(base, en, c.player)
+				var per := base if op == "lose_hp" else c.hit_on_player(base, en)
 				item = {"kind": "attack", "value": per, "hits": int(e.get("hits", 1)), "aoe": to == "all_enemies"}
 				if to == "daemon":
-					item = {"kind": "purge", "value": per}
+					item = {"kind": "purge", "value": base}
 			"ward":
 				item = {"kind": "ward", "value": int(e.get("amount", 0))}
 			"heal":
