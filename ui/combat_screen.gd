@@ -59,6 +59,8 @@ func _ready() -> void:
 	_floor_label = UiKit.label("", 14, Palette.TEXT_DIM)
 	col.add_child(_floor_label)
 	var piles := UiKit.hbox(8)
+	# Left-aligned so the corner Menu button keeps the top-right free.
+	piles.alignment = BoxContainer.ALIGNMENT_BEGIN
 	for p in ["draw", "discard", "exhaust", "deck"]:
 		var b := UiKit.button("", _show_pile.bind(p), Vector2(118, 46), 15)
 		_pile_btns[p] = b
@@ -326,6 +328,7 @@ func _on_card_pressed(_view: CardView, idx: int) -> void:
 		_rebuild()
 		return
 	if not combat.can_play(idx):
+		GameAudio.play("error")
 		var c: CardInstance = combat.hand[idx]
 		if c.has_keyword("unplayable"):
 			UiKit.toast(self, "%s can't be played." % c.display_name())
@@ -336,6 +339,7 @@ func _on_card_pressed(_view: CardView, idx: int) -> void:
 		return
 	var card: CardInstance = combat.hand[idx]
 	if (combat.needs_target(card) and combat.living(combat.enemies).size() > 1) or (combat.needs_ally(card) and not combat.units.is_empty()):
+		GameAudio.play("select")
 		_selected = idx
 		_rebuild()
 		return
@@ -433,11 +437,15 @@ func _play_events(played: CardView) -> int:
 	while _event_cursor < combat.events.size():
 		var e: Dictionary = combat.events[_event_cursor]
 		_event_cursor += 1
+		if step_scale > 0.0:
+			GameAudio.play(GameAudio.event_cue(e))
 		var v: FighterView = _views.get(str(e.get("target", "")))
 		if v != null and not is_instance_valid(v):
 			v = null
 		match e["t"]:
 			"play":
+				if step_scale > 0.0 and played != null:
+					GameAudio.play(played.card.def.faction)
 				if played != null and is_instance_valid(played):
 					_fly_card(played, _views.get(str(e["target"])))
 					played = null

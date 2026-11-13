@@ -32,10 +32,14 @@ func _ready() -> void:
 	add_child(bg)
 	db = CardDB.shared()
 	profile = Profile.load_or_new(db)
+	var audio := GameAudio.new()
+	add_child(audio)
+	audio.configure(profile.settings)
+	var music := GameMusic.new()
+	add_child(music)
+	music.configure(profile.settings)
 	apply_theme(str(profile.settings.get("theme", Themes.DEFAULT)))
 	_menu_btn = UiKit.button("Menu", _open_menu, Vector2(84, 40), 15)
-	_menu_btn.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	_menu_btn.position = Vector2(get_viewport_rect().size.x - 92, 4)
 	_menu_btn.visible = false
 	add_child(_menu_btn)
 	show_hub()
@@ -65,6 +69,7 @@ func _show(node: Control) -> void:
 	if _screen != null:
 		_screen.queue_free()
 	_screen = node
+	GameMusic.mood("combat" if node is CombatScreen else ("map" if run != null and not run.over else "menu"))
 	if _glass_pulse != null:
 		_glass_pulse.kill()
 		_glass_pulse = null
@@ -73,7 +78,7 @@ func _show(node: Control) -> void:
 	add_child(node)
 	if _menu_btn != null:
 		move_child(_menu_btn, -1)
-		_menu_btn.position = Vector2(get_viewport_rect().size.x - 92, 4)
+		_menu_btn.position = UiKit.corner_pos(self, _menu_btn.custom_minimum_size.x)
 		_menu_btn.visible = (run != null and not run.over) or _is_profile_cheat_screen(node)
 
 
@@ -228,6 +233,23 @@ func _profile_cheat_done(message: String) -> void:
 func _open_settings() -> void:
 	var speed := int(profile.settings.get("anim_speed", 0))
 	get_tree().root.add_child(GameMenu.new().setup("Settings", [
+		["Music: %s" % ("Muted" if profile.settings.get("music_muted", false) else "On"), func() -> void:
+			profile.settings["music_muted"] = not bool(profile.settings.get("music_muted", false))
+			_update_audio_settings()],
+		["Music volume: %d%%" % roundi(float(profile.settings.get("music_volume", 0.4)) * 100), func() -> void:
+			var level := roundi(float(profile.settings.get("music_volume", 0.4)) * 5)
+			profile.settings["music_volume"] = float((level + 1) % 6) / 5.0
+			_update_audio_settings()],
+		["Sound effects: %s" % ("Muted" if profile.settings.get("sfx_muted", false) else "On"), func() -> void:
+			profile.settings["sfx_muted"] = not bool(profile.settings.get("sfx_muted", false))
+			_update_audio_settings()],
+		["Effects volume: %d%%" % roundi(float(profile.settings.get("sfx_volume", 0.6)) * 100), func() -> void:
+			var level := roundi(float(profile.settings.get("sfx_volume", 0.6)) * 5)
+			profile.settings["sfx_volume"] = float((level + 1) % 6) / 5.0
+			_update_audio_settings()],
+		["Test sound", func() -> void:
+			GameAudio.play("ward")
+			_open_settings()],
 		["Look: %s" % Themes.ALL[Palette.theme_id]["name"], func() -> void:
 			profile.settings["theme"] = Themes.next_after(Palette.theme_id)
 			_save()
@@ -251,6 +273,16 @@ func _open_settings() -> void:
 			_open_settings()],
 		["Done", _open_menu],
 	]))
+
+
+func _update_audio_settings() -> void:
+	if is_instance_valid(GameAudio.instance):
+		GameAudio.instance.configure(profile.settings)
+	if is_instance_valid(GameMusic.instance):
+		GameMusic.instance.configure(profile.settings)
+	_save()
+	GameAudio.play("tap")
+	_open_settings()
 
 
 ## "Layer 2 · Node 17 · HP 40/60" for the hub's resume button, or "" if no saved run.
@@ -497,6 +529,7 @@ func _show_pack() -> void:
 		cv.hot = p.get("hot", false)
 		cv.pressed.connect(func(view: CardView) -> void:
 			if view.face_down:
+				GameAudio.play(db.instance(p["id"]).def.rarity)
 				view.flip_reveal()
 				on_reveal.call(view, p))
 		views.append(cv)
@@ -524,6 +557,7 @@ func _show_pack() -> void:
 
 ## A short encrypted-packet break, owned by the pack screen so navigation cancels it.
 func _play_pack_opening(host: Control) -> void:
+	GameAudio.play("pack")
 	var overlay := Control.new()
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -591,6 +625,7 @@ func show_map() -> void:
 
 
 func _enter_node(id: int) -> void:
+	GameAudio.play("travel")
 	var node := run.enter(id)
 	_save_run({"screen": "node"})
 	_play_node(node)
@@ -620,6 +655,9 @@ func _start_combat(node: Dictionary) -> void:
 	s.step_scale = anim_speed()
 	s.finished.connect(_on_combat_finished)
 	_show(s)
+	if node.get("type", "") == "boss":
+		GameMusic.mood("boss")
+		GameAudio.play("boss")
 	var accent := s.reveal_boss()
 	if accent.a > 0.0 and Palette.BACKDROP["style"] == 4:
 		_bg_mat.set_shader_parameter("boss_color", accent)
@@ -650,6 +688,7 @@ func _on_combat_finished(_won: bool) -> void:
 
 
 func _show_reward(lines: Array, tals: Array, choices: Array, perks: Array = [], kind: String = "") -> void:
+	GameAudio.play("reward")
 	_save_run({"screen": "reward", "lines": lines, "tals": tals, "choices": choices, "perks": perks, "kind": kind})
 	var next := show_map if perks.is_empty() else _show_perk_pick.bind(perks)
 	var parts := UiKit.screen(20)
@@ -713,10 +752,12 @@ func _show_rest() -> void:
 	v.add_child(UiKit.label("Pick one:", 16, Palette.TEXT_DIM))
 	v.add_child(UiKit.button("Reboot\nHeal %d HP" % run.rest_heal_amount(), func() -> void:
 		run.rest_heal()
+		GameAudio.play("heal")
 		show_map(), Vector2(320, 78), 20))
 	v.add_child(UiKit.button("Recompile a program\nUpgrade one card for the rest of this run", func() -> void:
 		add_child(DeckOverlay.new().setup("Choose a program to recompile", run.deck, "Cancel", func(i: int) -> void:
 			if i >= 0 and run.upgrade_card(i):
+				GameAudio.play("upgrade")
 				show_map(), true, true)), Vector2(440, 78), 19))
 	var mods := run.mod_choices(int(db.balance.get("rest_mod_choices", 2)), run.rng.fork("tinker:%d" % run.floor_num))
 	if not mods.is_empty():
@@ -725,6 +766,7 @@ func _show_rest() -> void:
 			v.add_child(_mod_button(mid, "", func() -> void:
 				_pick_mod_target(mid, func(i: int) -> void:
 					if run.install_mod(i, mid):
+						GameAudio.play("upgrade")
 						show_map())))
 	_show(parts[0])
 
@@ -759,6 +801,7 @@ func _show_shop(shop: Dictionary) -> void:
 		cv.playable = not item.get("sold", false) and run.gold >= int(item["price"])
 		cv.pressed.connect(func(_v: CardView) -> void:
 			if run.buy(item, false):
+				GameAudio.play("purchase")
 				_show_shop(shop))
 		cards.add_child(cv)
 	v.add_child(cards)
@@ -771,6 +814,7 @@ func _show_shop(shop: Dictionary) -> void:
 		var sold: bool = item.get("sold", false)
 		var b := UiKit.button("sold" if sold else "Buy %dc" % item["price"], func() -> void:
 			if run.buy(item, true):
+				GameAudio.play("purchase")
 				_show_shop(shop), Vector2(120, 44), 15)
 		b.disabled = sold or run.gold < int(item["price"])
 		box.add_child(b)
@@ -781,6 +825,7 @@ func _show_shop(shop: Dictionary) -> void:
 		var mb := _mod_button(item["id"], "  ·  sold" if sold else "  ·  %dc" % item["price"], func() -> void:
 			_pick_mod_target(item["id"], func(i: int) -> void:
 				if run.buy_mod(item, i):
+					GameAudio.play("purchase")
 					_show_shop(shop)))
 		mb.custom_minimum_size = Vector2(520, 60)
 		mb.disabled = sold or run.gold < int(item["price"])
@@ -788,6 +833,7 @@ func _show_shop(shop: Dictionary) -> void:
 	var rm := UiKit.button("Remove a card from your deck (%dc)" % run.remove_price(), func() -> void:
 		add_child(DeckOverlay.new().setup("Choose a program to remove", run.deck, "Cancel", func(i: int) -> void:
 			if i >= 0 and run.remove_card(i):
+				GameAudio.play("delete")
 				shop["remove"] = run.remove_price()
 				_show_shop(shop), true)), Vector2(300, 56))
 	rm.disabled = run.gold < run.remove_price() or shop.get("removed", false)
