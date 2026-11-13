@@ -336,3 +336,20 @@ func test_joint_op_cards_count_for_both_crews_and_obey_bans() -> void:
 	eq(Jobs.check(db, "bloom", ["fever_graft", "fever_graft"], 4, ["void"]), "", "fills Wetware picks")
 	check(Jobs.check(db, "tide", ["fever_graft"], 2, ["ember"]) != "", "Burner half is banned on a Flux job")
 	check("fever_graft" not in Records.binder_ids(db, "ember", "full"), "joint ops stay out of crew binders")
+
+
+func test_loop_trigger_fires_implants() -> void:
+	var c := Combat.create(db, [], "mites", GameRng.new(1), -1, {"talismans": ["tick_counter", "recursion_core"]})
+	for e in c.enemies:
+		e.hp = 99
+	c.energy = 9
+	var card: CardInstance = null
+	for id in db.cards:
+		if db.make_deck([id])[0].has_loop():
+			card = db.make_deck([id])[0]
+			break
+	c.hand.append(card)
+	var ward := c.player.ward
+	check(c.play_card(c.hand.size() - 1, 0), "played a Loop program")
+	eq(card.loops, 2, "Recursion Core adds a step")
+	check(c.player.ward >= ward + 2, "Tick Counter Firewall")

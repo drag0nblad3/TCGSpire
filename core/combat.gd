@@ -44,6 +44,8 @@ var enemy_might := 0
 var enemy_dmg_mult := 1.0
 ## Extra HP (= extra turns) for every daemon, from rig ranks, implants and subroutines.
 var daemon_hp := 0
+## Multiplier on a daemon program's base HP (implant "daemon": {"hp_mult": x}), applied before daemon_hp.
+var daemon_hp_mult := 1.0
 
 
 ## deck: Array of CardInstance (copied, not mutated). hp < 0 means full HP.
@@ -68,6 +70,7 @@ static func create(db_in: CardDB, deck: Array, encounter_id: String, rng_in: Gam
 		if db_in.talismans.has(tid):
 			c.talismans.append(db_in.talismans[tid])
 			c.daemon_hp += int(db_in.talismans[tid].get("daemon", {}).get("hp", 0))
+			c.daemon_hp_mult *= float(db_in.talismans[tid].get("daemon", {}).get("hp_mult", 1.0))
 	for pd in opts.get("perks", []):
 		if not pd.get("triggers", []).is_empty():
 			c.perks.append(pd)
@@ -213,6 +216,8 @@ func play_card(hand_idx: int, target_idx: int = -1) -> bool:
 	if card.has_loop():
 		card.loops += 1 + rule_sum("loop_bonus")
 		emit("loop", {"card": card.key(), "loops": card.loops})
+		if not is_over():
+			Talismans.fire(self, "loop", {"card": card, "target": target})
 	if card.def.type == "power" or card.has_keyword("exhaust"):
 		exhaust_pile.append(card)
 	else:
@@ -349,6 +354,9 @@ func crash_daemon(u: Fighter) -> void:
 
 ## A daemon left the board (crashed or ran out): Hive Link's blast.
 func _daemon_closed(u: Fighter) -> void:
+	if not is_over():
+		Talismans.fire(self, "daemon_closed", {"daemon": u})
+		_check_end()
 	if daemon_death_damage > 0 and not is_over():
 		emit("daemon_explosion", {"target": u.id})
 		for enemy in living(enemies):
@@ -357,6 +365,7 @@ func _daemon_closed(u: Fighter) -> void:
 
 
 func draw(n: int) -> void:
+	var reshuffles := 0
 	for i in n:
 		if hand.size() >= MAX_HAND:
 			break
@@ -367,16 +376,20 @@ func draw(n: int) -> void:
 			discard_pile = []
 			rng.shuffle(draw_pile)
 			emit("reshuffle")
+			reshuffles += 1
 		var card: CardInstance = draw_pile.pop_back()
 		hand.append(card)
 		emit("draw", {"card": card.key()})
+	for i in reshuffles:
+		if not is_over():
+			Talismans.fire(self, "reshuffle")
 
 
 ## Runs a daemon: a rule change that lasts while it has HP. It loses 1 HP at the start of each
 ## of your turns and 1 per hit taken (Purge takes more). Running one that is already up
 ## (same name) tops its HP back up instead of taking a slot.
 func summon(unit_name: String, hp: int, rule: Dictionary = {}) -> bool:
-	hp = maxi(hp + daemon_hp, 1)
+	hp = maxi(ceili(hp * daemon_hp_mult - 0.001) + daemon_hp, 1)
 	for u in units:
 		if u.name == unit_name:
 			u.max_hp = maxi(u.max_hp, hp)
@@ -399,7 +412,7 @@ func rule_sum(flag: String) -> int:
 	var total := 0
 	for u in units:
 		total += int(u.rule.get("flags", {}).get(flag, 0))
-	return total
+	return total + Talismans.flag_sum(self, flag)
 
 
 ## Enemy-side summon (op "spawn"). Max 5 enemies alive.

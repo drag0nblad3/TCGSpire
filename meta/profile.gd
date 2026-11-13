@@ -120,6 +120,10 @@ func finish_run(db: CardDB, run: RunState) -> Array:
 	packs_unopened += packs
 	lines.append("+%d XP, +%d pack%s" % [gained_xp, packs, "" if packs == 1 else "s"])
 	lines.append_array(add_shards(db, run.elites_won * int(cfg.get("shards_per_elite", 0))))
+	var scrap := int(run.perk_mod("run_scrap"))
+	if scrap > 0:
+		collection.dust += scrap
+		lines.append("+%d scrap from implants" % scrap)
 	var rep_gain := Jobs.rep_reward(db, run)
 	if rep_gain > 0:
 		rep[run.job] = rep_of(run.job) + rep_gain
@@ -147,6 +151,8 @@ static func run_packs(db: CardDB, run: RunState) -> int:
 	var n := run.acts_cleared * int(cfg.get("packs_per_boss", 1))
 	if run.boss_won:
 		n += int(cfg.get("packs_full_run", 0))
+	if run.acts_cleared > 0:
+		n += int(run.perk_mod("bonus_packs"))
 	return n
 
 
