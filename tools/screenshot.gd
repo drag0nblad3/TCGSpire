@@ -5,7 +5,7 @@ extends SceneTree
 ##                   [out=/tmp/shot.png] [frames=30] [plays=2] [seed=1] [theme=archive] [end_turn=1] [give=sparring_dummy,drone_swarm]
 ## Under --headless it still runs (smoke test for script errors) but writes no image.
 
-const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "pack_open", "pack_shelf", "pack_premium", "pack_crew", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume", "records", "exploits", "daily", "weekly", "weekly_map", "login", "tutorial", "coach", "map_walls", "map_jump", "foil"]
+const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "pack_open", "pack_shelf", "pack_premium", "pack_crew", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume", "records", "exploits", "daily", "signal_result", "weekly", "weekly_map", "login", "tutorial", "coach", "map_walls", "map_jump", "foil"]
 
 
 func _initialize() -> void:
@@ -247,6 +247,17 @@ func _go(main: Control, scr: String, seed_in: int, inspect_card: String = "flare
 			main.get("_screen")._show_detail("drone_swarm")
 		"reward":
 			main._show_reward(["+15 gold", "Found Bone Dice"], ["bone_dice"], main.run.reward_choices("elite"))
+		"signal_result":
+			# A Signal that paid a random mod, an upgrade, an implant and a subroutine, with the header info open.
+			main.run.clauses = db.contracts.keys().slice(0, 2)
+			main.run.add_perk("scavenger")
+			var before: Dictionary = main._run_snapshot()
+			var lines: Array = [RunOutcomes.apply(main.run, {"op": "mod", "amount": 1}), RunOutcomes.apply(main.run, {"op": "upgrade", "amount": 1})]
+			main.run.add_talisman("bone_dice")
+			main.run.add_perk("nanite_mesh")
+			main._show_message("Black-market bundle", lines, main._run_gains(before))
+			var header: RunHeader = main._screen.find_children("*", "RunHeader", true, false)[0]
+			header.toggle_info("perks", RunHeader.perk_text(main.run))
 		"rest":
 			main._show_rest()
 		"shop":

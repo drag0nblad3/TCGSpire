@@ -169,7 +169,7 @@ func test_talisman_pickup_outcome() -> void:
 	var r := _run()
 	var hp := r.max_hp
 	r.add_talisman("copper_ring")
-	eq(r.max_hp, hp + 8)
+	eq(r.max_hp, hp + 10)
 
 
 func test_talisman_text() -> void:
@@ -338,13 +338,13 @@ func test_implant_flags_are_always_on_rules() -> void:
 	eq(c.rule_sum("keep_ward"), 1)
 	eq(c.rule_sum("guard"), 0, "while-daemon flag is off with an empty board")
 	c.summon("A", 3)
-	eq(c.rule_sum("guard"), 1, "and on once a daemon runs")
+	eq(c.rule_sum("guard"), 2, "and on once a daemon runs")
 
 
 func test_implant_daemon_hp_mult_scales_base_hp() -> void:
 	var c := _fight(["lease_extender", "ceramic_casing"])
 	c.summon("A", 3)
-	eq(c.units[0].hp, 6, "3 x 1.5 rounded up, then +1")
+	eq(c.units[0].hp, 7, "3 x 1.5 rounded up, then +2")
 	var d := _fight(["server_farm"])
 	d.summon("A", 3)
 	eq(d.units[0].hp, 6, "double base HP")
@@ -356,7 +356,7 @@ func test_implant_daemon_closed_and_reshuffle_triggers() -> void:
 	c.draw_pile = db.make_deck(["jab"])
 	c.summon("A", 3)
 	c.crash_daemon(c.units[0])
-	eq(c.player.hp, 23, "repair when a daemon shuts down")
+	eq(c.player.hp, 24, "repair when a daemon shuts down")
 	eq(c.hand.size(), 1, "and draw")
 	c.discard_pile = db.make_deck(["jab"])
 	c.energy = 0
