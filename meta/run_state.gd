@@ -25,6 +25,9 @@ var elites_won := 0
 var boss_won := false
 var act := 1
 var acts_cleared := 0
+## Crew of each Core breached, in order (its encounter "faction"; generic Cores count as the
+## job's first target crew). Each pays a crew pack of that crew (Profile.run_pack_list).
+var boss_crews: Array = []
 ## Heat mod "double_cross": the client turns on you for the final act.
 var double_crossed := false
 var over := false
@@ -282,6 +285,7 @@ func finish_combat(c: Combat) -> Dictionary:
 		elites_won += 1
 		rewards["talisman"] = roll_talisman("", rng.fork("elite_t:%d" % floor_num))
 	if kind == "boss":
+		boss_crews.append(_boss_crew_of(c.encounter_id))
 		acts_cleared += 1
 		rewards["talisman"] = roll_talisman("boss", rng.fork("boss_t:%d" % act))
 		if act < total_acts():
@@ -291,6 +295,21 @@ func finish_combat(c: Combat) -> Dictionary:
 			boss_won = true
 			over = true
 	return rewards
+
+
+## Crew of the i-th Core breached (falls back like a generic Core for old saves and previews).
+func boss_crew(i: int) -> String:
+	return str(boss_crews[i]) if i < boss_crews.size() else _boss_crew_of("")
+
+
+func _boss_crew_of(encounter_id: String) -> String:
+	var f := str(db.encounters.get(encounter_id, {}).get("faction", "")) if db != null else ""
+	if Lexicon.FACTION.has(f):
+		return f
+	for t in banned:
+		if Lexicon.FACTION.has(str(t)):
+			return str(t)
+	return job if Lexicon.FACTION.has(job) else "neutral"
 
 
 func total_acts() -> int:
@@ -594,7 +613,7 @@ func summary() -> String:
 ## Plain fields copied as-is by to_dict()/from_dict(). Everything random forks
 ## from seed_value, so restoring these replays the rest of the run exactly.
 const SAVED := ["seed_value", "hp", "max_hp", "gold", "floor_num", "heat", "talismans", "node_id", "path", "jumps_used",
-	"combats_won", "elites_won", "boss_won", "act", "acts_cleared", "double_crossed", "over", "card_plays",
+	"combats_won", "elites_won", "boss_won", "act", "acts_cleared", "boss_crews", "double_crossed", "over", "card_plays",
 	"remove_cost", "outcome_counter", "locked_talismans", "perks", "rig", "firmware", "firmware_mods",
 	"mods_installed", "job", "banned", "tally", "clauses", "daily"]
 

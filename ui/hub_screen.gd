@@ -131,7 +131,13 @@ func _collector_panel() -> Control:
 	var box := UiKit.vbox(6)
 	var lib := CollectionScreen.library_progress(db, profile)
 	var ready := profile.ready_to_flash(db).size()
-	var pk := UiKit.button("Open %s (%d)\nCard packs · shards %d / %d" % [Palette.w("packs").to_lower(), profile.packs_unopened, profile.pack_shards, Profile.shards_per_pack(db)],
+	var crews := profile.packs_unopened - profile.pack_count(Packs.PREMIUM) - profile.pack_count(Packs.NORMAL)
+	var kinds: Array[String] = []
+	for part in [[profile.pack_count(Packs.PREMIUM), "premium"], [crews, "crew"], [profile.pack_count(Packs.NORMAL), "normal"]]:
+		if int(part[0]) > 0:
+			kinds.append("%d %s" % part)
+	var mix := " · ".join(kinds) if not kinds.is_empty() else "Card packs"
+	var pk := UiKit.button("Open %s (%d)\n%s · shards %d / %d" % [Palette.w("packs").to_lower(), profile.packs_unopened, mix, profile.pack_shards, Profile.shards_per_pack(db)],
 		func() -> void: packs_pressed.emit(), Vector2(300, 72), 20)
 	pk.disabled = profile.packs_unopened <= 0
 	box.add_child(pk)
@@ -147,7 +153,7 @@ func _collector_panel() -> Control:
 			lib_b.add_theme_color_override(state, Palette.UPGRADED)
 	box.add_child(lib_b)
 	var goal := _next_binder()
-	var lines: Array[String] = ["Rare within %d %s · mythic within %d" % [Packs.pity_left(db, profile, "rare"), Palette.w("packs").to_lower(), Packs.pity_left(db, profile, "mythic")]]
+	var lines: Array[String] = [PackArt.odds_line(db, profile, Packs.NORMAL)]
 	if goal != "":
 		lines.append(goal)
 	box.add_child(UiKit.label("\n".join(lines), 14, Palette.UPGRADED, true))
@@ -179,11 +185,27 @@ static func count(n: int, one: String, many: String) -> String:
 	return "+%d %s" % [n, Palette.w(one).to_lower() if n == 1 else Palette.w(many).to_lower()]
 
 
+## "+3 crew caches, +1 Zero-day cache" for a full clear.
+static func cache_text(db_in: CardDB, pay: Dictionary) -> String:
+	var kinds: Array = pay.get("pack_list", [])
+	var crew := kinds.filter(func(k: String) -> bool: return Packs.crew_of(k) != "").size()
+	var bits: Array[String] = []
+	if crew > 0:
+		bits.append("+%d crew cache%s" % [crew, "" if crew == 1 else "s"])
+	var prem := kinds.count(Packs.PREMIUM)
+	if prem > 0:
+		bits.append("+%d %s" % [prem, PackArt.title(db_in, Packs.PREMIUM)])
+	var normal := kinds.count(Packs.NORMAL)
+	if normal > 0:
+		bits.append(count(normal, "pack", "packs"))
+	return ", ".join(bits)
+
+
 ## Job board lines for what one job pays, every amount with its unit.
 static func payout_lines(db: CardDB, p: Profile, job: String, heat: int, extra: int) -> Array[String]:
 	var pay := Jobs.payout_preview(db, p, job, heat, extra)
 	var rep := Jobs.rep_name(db, job)
-	var lines: Array[String] = ["Full clear: %s · +%d %s · +%d XP" % [count(pay["packs"], "pack", "packs"), pay["rep"], rep, pay["xp"]]]
+	var lines: Array[String] = ["Full clear: %s · +%d %s · +%d XP" % [cache_text(db, pay), pay["rep"], rep, pay["xp"]]]
 	if int(pay["shards_per_elite"]) > 0:
 		lines.append("Each black sentry (elite): +%d %s shard (%d make one) · +%d %s · +%d XP" % [pay["shards_per_elite"], Palette.w("pack").to_lower(),
 			pay["shards_per_pack"], pay["elite_rep"], rep, pay["elite_xp"]])
@@ -194,8 +216,10 @@ static func payout_lines(db: CardDB, p: Profile, job: String, heat: int, extra: 
 func _rewards_text() -> String:
 	var pay := Jobs.payout_preview(db, profile, Jobs.board(db)[0], heat)
 	var lines: Array[String] = [
-		"Clear all %d layers at Heat %d: %s, +%d rep for your client crew, +%d XP." % [int(db.balance.get("acts", 3)), heat, count(pay["packs"], "pack", "packs"), pay["rep"], pay["xp"]],
-		"Each Core (boss) you breach: %s, kept even if you lose later. Rep and XP pay for every floor you clear." % count(pay["per_core"], "pack", "packs")]
+		"Clear all %d layers at Heat %d: %s, +%d rep for your client crew, +%d XP." % [int(db.balance.get("acts", 3)), heat, cache_text(db, pay), pay["rep"], pay["xp"]],
+		"Each Core (boss) you breach: +%d crew cache of that Core's crew (a generic Core pays the target crew's), kept even if you lose later. Rep and XP pay for every floor you clear." % int(pay["per_core"])]
+	if int(pay.get("full_run", 0)) > 0:
+		lines.append("Finish the whole job: +%d %s, the premium cache (rare or better every time)." % [int(pay["full_run"]), PackArt.title(db, Packs.PREMIUM)])
 	if int(pay["shards_per_elite"]) > 0:
 		lines.append("Each black sentry (elite fight): +%d %s shard (%d make one), +%d rep, +%d XP." % [pay["shards_per_elite"], Palette.w("pack").to_lower(), pay["shards_per_pack"], pay["elite_rep"], pay["elite_xp"]])
 	var bonus: Array = db.contracts.keys().map(func(id: String) -> int: return Records.clause_rep(db, id, heat))

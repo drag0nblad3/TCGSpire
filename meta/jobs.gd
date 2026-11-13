@@ -99,6 +99,8 @@ static func rep_reward(db: CardDB, run: RunState) -> int:
 ## What a job pays, worked out with the same formulas as the end of a run.
 ## "packs"/"xp"/"rep": a full clear (every Core breached) with no black sentries;
 ## "elite_rep"/"elite_xp": about what each black sentry crashed adds; "per_core": packs per Core.
+## "pack_list": the pack kinds of a full clear (crew packs assume generic Cores: the target crew's).
+## "full_run": premium packs for finishing the job.
 ## `extra` = target crews beyond the client's rival (Jobs.extra_targets at this heat).
 static func payout_preview(db: CardDB, profile: Profile, job: String, heat: int, extra: int = -1) -> Dictionary:
 	var r := RunState.new()
@@ -113,7 +115,8 @@ static func payout_preview(db: CardDB, profile: Profile, job: String, heat: int,
 	r.acts_cleared = acts
 	r.boss_won = true
 	r.floor_num = acts * (int(db.balance.get("map", {}).get("rows", 12)) + 1)
-	var out := {"packs": Profile.run_packs(db, r), "xp": Profile.run_xp(db, r), "rep": rep_reward(db, r),
+	var out := {"packs": Profile.run_packs(db, r), "pack_list": Profile.run_pack_list(db, r),
+		"full_run": int(db.balance.get("run_rewards", {}).get("packs_full_run", 0)), "xp": Profile.run_xp(db, r), "rep": rep_reward(db, r),
 		"per_core": int(db.balance.get("run_rewards", {}).get("packs_per_boss", 1)),
 		"shards_per_elite": int(db.balance.get("run_rewards", {}).get("shards_per_elite", 0)),
 		"shards_per_pack": Profile.shards_per_pack(db)}

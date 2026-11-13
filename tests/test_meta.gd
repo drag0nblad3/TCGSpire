@@ -51,7 +51,63 @@ func test_pack_pity_guarantees_rare_and_mythic() -> void:
 		since_mythic = 0 if "mythic" in rarities else since_mythic + 1
 		check(since_rare < int(pity["rare"]), "rare pity broke at pack %d" % i)
 		check(since_mythic < int(pity["mythic"]), "mythic pity broke at pack %d" % i)
-	eq(int(p.pack_pity["rare"]), since_rare, "pity counter tracks")
+	eq(p.pity_count(Packs.NORMAL, "rare"), since_rare, "pity counter tracks")
+
+
+func test_crew_packs_hold_only_that_crew() -> void:
+	for f in Lexicon.FACTION:
+		var kind := Packs.crew_kind(f)
+		check(kind in Packs.kinds(), "every crew has a pack: " + f)
+		for seed in 30:
+			var cards := Packs.open(db, GameRng.new(seed), null, kind)
+			eq(cards.size(), int(Packs.config(db, kind)["size"]))
+			for c in cards:
+				check(db.card(c["id"]).is_of(f), "%s pack pulled %s" % [f, c["id"]])
+			check(db.card(cards.back()["id"]).rarity in ["uncommon", "rare", "mythic"], "crew hot slot")
+
+
+func test_premium_pack_guarantees_rare_and_better_odds() -> void:
+	for seed in 60:
+		var cards := Packs.open(db, GameRng.new(seed), null, Packs.PREMIUM)
+		check(db.card(cards.back()["id"]).rarity in ["rare", "mythic"], "premium hot slot is rare+")
+	check(Packs.odds_at_least(db, Packs.PREMIUM, "mythic") > Packs.odds_at_least(db, Packs.NORMAL, "mythic") * 3, "premium mythic odds")
+	eq(Packs.odds_at_least(db, Packs.PREMIUM, "rare"), 1.0, "premium always has a rare")
+	check(float(Packs.config(db, Packs.PREMIUM)["foil_chance"]) > float(Packs.config(db, Packs.NORMAL)["foil_chance"]), "more foils")
+
+
+func test_mercy_timers_are_per_pack_kind() -> void:
+	var p := Profile.new()
+	var crew := Packs.crew_kind("ember")
+	p.add_packs(Packs.NORMAL, 30)
+	p.add_packs(crew, 1)
+	for i in 30:
+		p.open_pack(db, GameRng.new(1000 + i), Packs.NORMAL)
+	eq(p.pity_count(crew, "rare"), 0, "normal packs leave crew timers alone")
+	eq(p.pity_count(crew, "mythic"), 0)
+	var normal_mythic := p.pity_count(Packs.NORMAL, "mythic")
+	p.open_pack(db, GameRng.new(7), crew)
+	eq(p.pity_count(Packs.NORMAL, "mythic"), normal_mythic, "crew packs leave normal timers alone")
+	check(p.pack_pity.has(crew), "crew timer started")
+	var q := Profile.from_dict(p.to_dict())
+	eq(q.pack_pity, p.pack_pity, "timers saved by kind")
+	# A crew timer at its limit forces the hot slot even though normal ones are fresh.
+	q.pack_pity[crew] = {"rare": 0, "mythic": int(Packs.config(db, crew)["pity"]["mythic"]) - 1}
+	q.add_packs(crew, 1)
+	eq(db.card(q.open_pack(db, GameRng.new(3), crew).back()["id"]).rarity, "mythic", "crew mythic mercy")
+
+
+func test_packs_by_kind_save_and_migrate() -> void:
+	var p := Profile.new()
+	p.add_packs(Packs.PREMIUM, 1)
+	p.add_packs(Packs.crew_kind("void"), 2)
+	p.add_packs(Packs.NORMAL, 3)
+	eq(p.packs_unopened, 6)
+	eq(p.pack_kinds_owned(), [Packs.PREMIUM, Packs.crew_kind("void"), Packs.NORMAL], "shelf order")
+	var q := Profile.from_dict(p.to_dict())
+	eq(q.packs, p.packs)
+	var old := Profile.from_dict({"version": 8, "packs_unopened": 4, "pack_pity": {"rare": 2, "mythic": 9}})
+	eq(old.pack_count(Packs.NORMAL), 4, "v8 packs become normal packs")
+	eq(old.pity_count(Packs.NORMAL, "mythic"), 9, "v8 timers become normal timers")
 
 
 func test_pack_flags_new_cards_and_unlocks() -> void:
