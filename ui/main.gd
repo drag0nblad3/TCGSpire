@@ -597,7 +597,7 @@ func _enter_node(id: int) -> void:
 
 func _play_node(node: Dictionary) -> void:
 	match node.get("type", ""):
-		"fight", "elite", "boss":
+		"fight", "elite", "boss", "vault":
 			_start_combat(node)
 		"rest":
 			_show_rest()
@@ -605,13 +605,6 @@ func _play_node(node: Dictionary) -> void:
 			_show_shop(run.make_shop())
 		"event":
 			_show_event(run.pick_event())
-		"vault":
-			var v := run.open_vault()
-			var tid: String = v["talisman"]
-			var lines: Array = ["You crack the sealed vault: +%d creds." % v["gold"]]
-			if tid != "":
-				lines.append("Inside: %s." % db.talismans[tid]["name"])
-			_show_message("Sealed vault", lines, [tid] if tid != "" else [])
 		"treasure":
 			var tid := run.roll_talisman("", run.rng.fork("treasure:%d" % run.floor_num))
 			run.add_talisman(tid)
@@ -652,6 +645,12 @@ func _on_combat_finished(_won: bool) -> void:
 		run.add_talisman(rewards["talisman"])
 		lines.append("Recovered implant: %s" % db.talismans[rewards["talisman"]]["name"])
 		tals.append(rewards["talisman"])
+	if rewards.has("vault"):
+		var v: Dictionary = rewards["vault"]
+		lines.append("Vault cracked: +%d creds" % int(v["gold"]))
+		if str(v["talisman"]) != "":
+			lines.append("Vault implant: %s" % db.talismans[v["talisman"]]["name"])
+			tals.append(v["talisman"])
 	_show_reward(lines, tals, rewards["cards"], rewards.get("perks", []), rewards["kind"])
 
 

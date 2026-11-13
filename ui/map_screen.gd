@@ -25,9 +25,9 @@ func _ready() -> void:
 	v.add_child(RunHeader.new().setup(run))
 	var title := UiKit.hbox(12)
 	title.add_child(UiKit.label("THE STACK / %02d" % run.act, 24, Palette.ENERGY))
-	if run.jumps_total() > 0:
-		title.add_child(JumpTracker.new().setup(run))
 	v.add_child(title)
+	if run.jumps_total() > 0:
+		v.add_child(JumpTracker.new().setup(run))
 	v.add_child(UiKit.label(_hint(), 15, Palette.TEXT_DIM))
 	var legend := UiKit.flow(12)
 	for kind in ["fight", "elite", "event", "rest", "shop", "treasure", "vault", "boss"]:
@@ -215,27 +215,18 @@ func _draw_walls() -> void:
 		_wall(a, b)
 
 
+## A firewall: soft glow, a clean capsule bar with a bright core, small caps.
 func _wall(a: Vector2, b: Vector2) -> void:
 	var dir := (b - a).normalized()
-	var side := Vector2(-dir.y, dir.x)
-	var length := a.distance_to(b)
-	_canvas.draw_line(a - dir * 4, b + dir * 4, Color(Palette.CARD_BG, 0.95), 22, true)
-	_canvas.draw_line(a, b, Color(Palette.ENEMY, 0.35), 16, true)
-	# Block courses: alternating bricks along the wall.
-	var step := 18.0
-	var k := 0
-	var u := 0.0
-	while u < length:
-		var e := minf(u + step - 3.0, length)
-		var shade := 0.95 if k % 2 == 0 else 0.7
-		var off := side * (3.5 if k % 2 == 0 else -3.5)
-		_canvas.draw_line(a + dir * u + off, a + dir * e + off, Color(Palette.ENEMY, shade), 6, true)
-		_canvas.draw_line(a + dir * u - off, a + dir * e - off, Color(Palette.ENEMY, 1.65 - shade), 6, true)
-		u += step
-		k += 1
+	var t := Time.get_ticks_msec() / 1000.0
+	var glow := 0.16 + 0.05 * sin(t * 2.2 + a.x * 0.05)
+	_canvas.draw_line(a - dir * 6, b + dir * 6, Color(Palette.ENEMY, glow), 24, true)
+	_canvas.draw_line(a, b, Color(Palette.CARD_BG, 0.95), 12, true)
+	_canvas.draw_line(a, b, Color(Palette.ENEMY, 0.9), 8, true)
+	_canvas.draw_line(a + dir * 3, b - dir * 3, Color(Palette.TEXT, 0.75), 2, true)
 	for p in [a, b]:
-		_canvas.draw_rect(Rect2(p - Vector2.ONE * 7, Vector2.ONE * 14), Palette.ENEMY)
-		_canvas.draw_rect(Rect2(p - Vector2.ONE * 3, Vector2.ONE * 6), Palette.CARD_BG)
+		_canvas.draw_circle(p, 6, Palette.ENEMY)
+		_canvas.draw_circle(p, 2.5, Palette.TEXT)
 
 
 ## A short packet of light travels along the actual elbowed wire, bottom to top.

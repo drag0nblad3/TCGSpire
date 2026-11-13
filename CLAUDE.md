@@ -25,7 +25,7 @@ Original design only: don't copy cards, names, characters or look from existing 
   (counts, dust, craft/disenchant), `packs.gd`, `run_state.gd` (deck/HP/gold/talismans/heat,
   rest, shop, events; `to_dict`/`from_dict`), `run_save.gd` (run in progress, saved at every run screen change by
   `main._save_run`, resumed from the hub; a fight restarts from turn 1), `run_map.gd` (seeded branching map; short `walls` = segments in map space that cut every link they cross,
-  a stranded node gets an unwalled diagonal; nodes sealed off become "vault" (rare implant + creds); jumps are an earned
+  a stranded node gets an unwalled diagonal; walls are centred on the 1-2 links they cut; nodes sealed off become "vault" (elite guard, then rare implant + creds); jumps are an earned
   ability, perk mod `jumps` = charges per act: diagonal up one floor through walls, you play the landing node, `RunState.jump_moves`), `run_outcomes.gd` (run-level ops for
   events/pickups), `run_bot.gd` (plays whole runs for sims), `profile_bot.gd` (builds experienced/veteran/maxed saves for sims). Progression: XP levels, card mastery, heat.
   `jobs.gd`: every run is a job for one client faction (data/factions.json, 6 crews in 3 rival pairs) run

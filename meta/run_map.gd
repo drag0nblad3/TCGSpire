@@ -99,28 +99,69 @@ func _build_walls(cfg: Dictionary, rng: GameRng) -> void:
 	var tries := 0
 	while (n_h > 0 or n_v > 0) and tries < 60:
 		tries += 1
-		var w := {}
-		if n_h > 0:
-			# Horizontal: across one floor gap, about one or two columns wide.
-			var gap := rng.range_i(1, last_gap - 1)
-			var cx := rng.roll()
-			var half := 0.15 if rng.chance(0.5) else 0.25
-			# Sits low in the gap, clear of the node labels drawn under the floor above.
-			w = {"kind": "h", "a": [clampf(cx - half, 0.02, 0.98), gap + 0.33], "b": [clampf(cx + half, 0.02, 0.98), gap + 0.33]}
-		else:
-			# Vertical: between two columns, one or two floor gaps tall.
-			var gap := rng.range_i(1, last_gap - 1)
-			var x: float = [0.25, 0.333, 0.5, 0.667, 0.75][rng.range_i(0, 4)]
-			if not (_clear_of_nodes(gap, x) and _clear_of_nodes(gap + 1, x)):
-				continue
-			var tall := gap + 1 < last_gap and rng.chance(0.5) and _clear_of_nodes(gap + 2, x)
-			w = {"kind": "v", "a": [x, gap + 0.2], "b": [x, gap + (1.8 if tall else 0.8)]}
+		var gap := rng.range_i(1, last_gap - 1)
+		var w := _h_wall(gap, rng) if n_h > 0 else _v_wall(gap, last_gap, rng)
+		if w.is_empty():
+			continue
 		if _try_wall(w):
 			if w["kind"] == "h":
 				n_h -= 1
 			else:
 				n_v -= 1
 	_mark_vaults()
+
+
+## Horizontal wall low in a floor gap, centred on the 1-2 links it cuts.
+func _h_wall(gap: int, rng: GameRng) -> Dictionary:
+	var y := gap + 0.33  # clear of the node labels drawn under the floor above
+	var xs: Array = []
+	for id in rows[gap]:
+		for to in nodes[id]["next"]:
+			var a := _rel(nodes[id])
+			xs.append(a + (_rel(nodes[to]) - a) * (y - gap))
+	if xs.is_empty():
+		return {}
+	xs.sort()
+	var i := rng.range_i(0, xs.size() - 1)
+	var cover: Array = [xs[i]]
+	if i + 1 < xs.size() and xs[i + 1] - xs[i] < 0.3 and xs[i + 1] - xs[i] > 0.04 and rng.chance(0.45):
+		cover.append(xs[i + 1])
+	var mid: float = (cover[0] + cover[-1]) / 2.0
+	var half: float = (cover[-1] - cover[0]) / 2.0 + 0.08
+	# Must not clip a link it isn't centred on.
+	for x in xs:
+		if x not in cover and absf(x - mid) <= half + 0.02:
+			return {}
+	return {"kind": "h", "a": [mid - half, y], "b": [mid + half, y], "cuts": cover.size()}
+
+
+## Vertical wall between two columns, centred on the 1-2 diagonals it cuts.
+func _v_wall(gap: int, last_gap: int, rng: GameRng) -> Dictionary:
+	var x: float = [0.25, 0.333, 0.5, 0.667, 0.75][rng.range_i(0, 4)]
+	if not (_clear_of_nodes(gap, x) and _clear_of_nodes(gap + 1, x)):
+		return {}
+	var tall := gap + 1 < last_gap and _clear_of_nodes(gap + 2, x)
+	var ys: Array = []
+	for r in ([gap, gap + 1] if tall else [gap]):
+		for id in rows[r]:
+			for to in nodes[id]["next"]:
+				var a := _rel(nodes[id])
+				var b := _rel(nodes[to])
+				if (a - x) * (b - x) < 0.0:
+					ys.append(r + (x - a) / (b - a))
+	if ys.is_empty():
+		return {}
+	ys.sort()
+	var i := rng.range_i(0, ys.size() - 1)
+	var cover: Array = [ys[i]]
+	if i + 1 < ys.size() and ys[i + 1] - ys[i] < 0.9 and rng.chance(0.45):
+		cover.append(ys[i + 1])
+	var mid: float = (cover[0] + cover[-1]) / 2.0
+	var half: float = maxf((cover[-1] - cover[0]) / 2.0 + 0.12, 0.26)
+	for y in ys:
+		if y not in cover and absf(y - mid) <= half + 0.03:
+			return {}
+	return {"kind": "v", "a": [x, mid - half], "b": [x, mid + half], "cuts": cover.size()}
 
 
 func _clear_of_nodes(r: int, x: float) -> bool:
@@ -141,9 +182,11 @@ func _try_wall(w: Dictionary) -> bool:
 			if _crosses(n["id"], to, w):
 				n["next"].erase(to)
 				cut.append([n["id"], to])
+	var expected := int(w.get("cuts", cut.size()))
+	w.erase("cuts")
 	w["cut"] = cut
 	walls.append(w)
-	var ok := not cut.is_empty()
+	var ok := not cut.is_empty() and cut.size() == expected
 	if ok:
 		for n in nodes:
 			if n["type"] != "boss" and n["next"].is_empty() and not _reroute(n["id"]):
@@ -205,7 +248,6 @@ func _mark_vaults() -> void:
 	for n in nodes:
 		if not seen.has(n["id"]):
 			n["type"] = "vault"
-			n["encounter"] = ""
 
 
 func _reachable() -> Dictionary:
@@ -262,6 +304,8 @@ func _assign_encounters(db: CardDB, rng: GameRng, targets: Array = [], boss_fact
 				kind = "elite"
 			"boss":
 				kind = "boss"
+			"vault":
+				kind = "elite"  # every vault is guarded by an elite
 		if kind == "":
 			continue
 		var tier := 1 if node["row"] < 4 else 2

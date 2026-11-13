@@ -270,6 +270,8 @@ func finish_combat(c: Combat) -> Dictionary:
 	rewards["kind"] = kind
 	if kind == "elite" or (kind == "boss" and act < total_acts()):
 		rewards["perks"] = perk_choices(int(db.balance.get("perk_choices", 3)) + int(perk_mod("perk_choices")), rng.fork("perks:%d" % floor_num))
+	if current_node().get("type", "") == "vault":
+		rewards["vault"] = open_vault()
 	if kind == "elite":
 		elites_won += 1
 		rewards["talisman"] = roll_talisman("", rng.fork("elite_t:%d" % floor_num))
@@ -466,7 +468,8 @@ static func upgrade_candidates(cards: Array) -> Array:
 
 
 ## {"cards": [{"id", "price"}], "talismans": [{"id", "price"}], "remove": price}
-## A sealed vault (reached only by a jump): a rare implant plus a stack of creds.
+## A sealed vault (reached only by a jump, guarded by an elite): after the fight,
+## a rare implant plus a stack of creds on top of the elite's rewards.
 ## Returns {"talisman": id or "", "gold": int}.
 func open_vault() -> Dictionary:
 	var cfg: Dictionary = db.balance.get("vault", {})

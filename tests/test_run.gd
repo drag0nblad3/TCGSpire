@@ -31,8 +31,10 @@ func test_map_every_node_reachable_and_ends_in_boss() -> void:
 			if n["type"] != "boss":
 				check(not n["next"].is_empty(), "seed %d node %d dead end" % [s, n["id"]])
 			eq(seen.has(n["id"]), n["type"] != "vault", "seed %d node %d reachable unless a vault" % [s, n["id"]])
-			if n["type"] in ["fight", "elite", "boss"]:
+			if n["type"] in ["fight", "elite", "boss", "vault"]:
 				check(n["encounter"] != "", "seed %d node %d has no encounter" % [s, n["id"]])
+			if n["type"] == "vault":
+				eq(str(db.encounters[n["encounter"]]["kind"]), "elite", "seed %d vault %d guarded by an elite" % [s, n["id"]])
 
 
 func test_map_walls_are_short_and_really_cut() -> void:
@@ -47,6 +49,17 @@ func test_map_walls_are_short_and_really_cut() -> void:
 			for n in m.nodes:
 				for to in n["next"]:
 					check(not m.cut_by(n["id"], to, w), "seed %d link %d-%d runs through a wall" % [s, n["id"], to])
+			# Centred: the wall's midpoint sits on the middle of the links it cut.
+			var hits: Array = []
+			var a := Vector2(w["a"][0], w["a"][1])
+			var b := Vector2(w["b"][0], w["b"][1])
+			for link in w["cut"]:
+				var p1 := Vector2(m._rel(m.node(link[0])), float(m.node(link[0])["row"]))
+				var p2 := Vector2(m._rel(m.node(link[1])), float(m.node(link[1])["row"]))
+				hits.append(Geometry2D.segment_intersects_segment(p1, p2, a, b))
+			check(hits.size() in [1, 2], "seed %d wall cuts 1-2 links" % s)
+			var centre: Vector2 = (hits[0] + hits[-1]) / 2.0
+			check(centre.distance_to((a + b) / 2.0) < 0.01, "seed %d wall centred on its cuts" % s)
 		for n in m.nodes:
 			if n["type"] == "vault":
 				vaults += 1
@@ -90,6 +103,24 @@ func test_jump_goes_up_through_walls_and_plays_the_node() -> void:
 		eq(r2.map.walls.size(), r.map.walls.size(), "walls saved")
 		return
 	check(false, "no jump found in 30 runs")
+
+
+func test_vault_elite_win_also_pays_the_vault() -> void:
+	for s in 20:
+		var r := _run(s)
+		for n in r.map.nodes:
+			if n["type"] == "vault":
+				r.node_id = n["id"]
+				var c := r.start_combat(n["encounter"])
+				c.start()
+				for e in c.enemies:
+					e.hp = 0
+				c._check_end()
+				var rew := r.finish_combat(c)
+				eq(rew["kind"], "elite", "vault fight is an elite")
+				check(rew.has("vault") and rew["vault"]["gold"] > 0, "vault loot on top")
+				return
+	check(false, "no vault in 20 runs")
 
 
 func test_vault_pays_a_rare_implant_and_creds() -> void:
