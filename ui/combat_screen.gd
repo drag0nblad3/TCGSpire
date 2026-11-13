@@ -395,7 +395,7 @@ func cheat_win() -> void:
 
 func _act(f: Callable, hand_idx: int = -1, action: String = "Enemy turn") -> void:
 	_busy = true
-	_action_label.text = "Resolving program" if hand_idx >= 0 else action
+	_action_label.text = "Running program" if hand_idx >= 0 else action
 	_end_btn.disabled = true
 	for v in _views.values():
 		v.freeze()

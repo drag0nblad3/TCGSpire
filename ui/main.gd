@@ -395,6 +395,7 @@ func _show_jobs(heat: int) -> void:
 	var parts := UiKit.screen(16)
 	var v: VBoxContainer = parts[1]
 	v.add_child(UiKit.label("Job board", 32, Palette.ENERGY))
+	v.add_child(UiKit.label("Pick a crew to work for. This starts a new run: next you choose the programs (cards) to bring.", 15, Palette.TEXT_DIM, true))
 	var n := profile.starter_picks(db)
 	# Same board until the next run ends, so browsing doesn't reroll the targets.
 	var board_rng := GameRng.new(int(profile.stats.get("runs", 0)) * 7919 + heat)
@@ -686,7 +687,7 @@ func _show_perk_pick(choices: Array) -> void:
 	var v: VBoxContainer = parts[1]
 	v.add_child(RunHeader.new().setup(run))
 	v.add_child(UiKit.label("Load a subroutine", 32, Palette.ENERGY))
-	v.add_child(UiKit.label("Subroutines run in the background for the rest of this run.", 16, Palette.TEXT_DIM, true))
+	v.add_child(UiKit.label("Pick one perk. Subroutines run in the background for the rest of this run.", 16, Palette.TEXT_DIM, true))
 	for pid in choices:
 		var p: Dictionary = db.perks[pid]
 		v.add_child(UiKit.button("%s\n%s" % [p["name"], Perks.describe(p)], func() -> void:
@@ -710,16 +711,16 @@ func _show_rest() -> void:
 	if Palette.w("rest_text") != "":
 		v.add_child(UiKit.label(Palette.w("rest_text"), 16, Palette.TEXT_DIM, true))
 	v.add_child(UiKit.label("Pick one:", 16, Palette.TEXT_DIM))
-	v.add_child(UiKit.button("Reboot (+%d HP)" % run.rest_heal_amount(), func() -> void:
+	v.add_child(UiKit.button("Reboot\nHeal %d HP" % run.rest_heal_amount(), func() -> void:
 		run.rest_heal()
-		show_map(), Vector2(320, 70), 22))
-	v.add_child(UiKit.button("Recompile a program\nRaise one card a level (v1, v2) for the rest of this run", func() -> void:
+		show_map(), Vector2(320, 78), 20))
+	v.add_child(UiKit.button("Recompile a program\nUpgrade one card for the rest of this run", func() -> void:
 		add_child(DeckOverlay.new().setup("Choose a program to recompile", run.deck, "Cancel", func(i: int) -> void:
 			if i >= 0 and run.upgrade_card(i):
 				show_map(), true, true)), Vector2(440, 78), 19))
 	var mods := run.mod_choices(int(db.balance.get("rest_mod_choices", 2)), run.rng.fork("tinker:%d" % run.floor_num))
 	if not mods.is_empty():
-		v.add_child(UiKit.label("or tinker: install one mod (one per card, lasts this run)", 16, Palette.TEXT_DIM))
+		v.add_child(UiKit.label("Or tinker: add a mod to one card (one mod per card, lasts this run)", 16, Palette.TEXT_DIM))
 		for mid in mods:
 			v.add_child(_mod_button(mid, "", func() -> void:
 				_pick_mod_target(mid, func(i: int) -> void:
@@ -750,6 +751,7 @@ func _show_shop(shop: Dictionary) -> void:
 	var v: VBoxContainer = parts[1]
 	v.add_child(RunHeader.new().setup(run))
 	v.add_child(UiKit.label(Palette.w("shop"), 30))
+	v.add_child(UiKit.label("The shop. Spend creds on programs, implants (passive bonuses) and mods. Tap an implant to read it.", 15, Palette.TEXT_DIM, true))
 	var cards := UiKit.flow(10)
 	for item in shop["cards"]:
 		var cv := CardView.new().setup(db.instance(item["id"]))
@@ -783,14 +785,14 @@ func _show_shop(shop: Dictionary) -> void:
 		mb.custom_minimum_size = Vector2(520, 60)
 		mb.disabled = sold or run.gold < int(item["price"])
 		v.add_child(mb)
-	var rm := UiKit.button("Delete a program (%dc)" % run.remove_price(), func() -> void:
-		add_child(DeckOverlay.new().setup("Choose a program to delete", run.deck, "Cancel", func(i: int) -> void:
+	var rm := UiKit.button("Remove a card from your deck (%dc)" % run.remove_price(), func() -> void:
+		add_child(DeckOverlay.new().setup("Choose a program to remove", run.deck, "Cancel", func(i: int) -> void:
 			if i >= 0 and run.remove_card(i):
 				shop["remove"] = run.remove_price()
 				_show_shop(shop), true)), Vector2(300, 56))
 	rm.disabled = run.gold < run.remove_price() or shop.get("removed", false)
 	v.add_child(rm)
-	v.add_child(UiKit.button("Jack out", show_map))
+	v.add_child(UiKit.button("Leave shop", show_map))
 	_show(parts[0])
 
 
@@ -820,7 +822,7 @@ func _show_event(ev: Dictionary) -> void:
 		b.disabled = not run.can_choose(ch)
 		v.add_child(b)
 	if run.event_rerolls_left > 0 and db.events.size() > 1:
-		v.add_child(UiKit.button("Reroll Signal (%d left)" % run.event_rerolls_left, func() -> void:
+		v.add_child(UiKit.button("Reroll this signal (%d left)" % run.event_rerolls_left, func() -> void:
 			var replacement := run.reroll_event(ev["id"])
 			if not replacement.is_empty():
 				_show_event(replacement)))
@@ -856,8 +858,8 @@ func _end_run(abandoned: bool = false) -> void:
 		RunSave.clear(run_save_path)
 	var parts := UiKit.screen(16)
 	var v: VBoxContainer = parts[1]
-	v.add_child(UiKit.label("Root access. You own the Stack." if run.boss_won else ("Jacked out on node %d" if abandoned else "Flatlined on node %d") % run.floor_num, 34, Palette.ENERGY if run.boss_won else Palette.HP))
-	v.add_child(UiKit.label("Fights won %d   Black sentries %d   Deck %d programs" % [run.combats_won, run.elites_won, run.deck.size()], 16, Palette.TEXT_DIM))
+	v.add_child(UiKit.label("Run won! You own the Stack." if run.boss_won else ("Run abandoned on node %d" if abandoned else "Flatlined: run over on node %d") % run.floor_num, 34, Palette.ENERGY if run.boss_won else Palette.HP))
+	v.add_child(UiKit.label("Fights won %d   Elites %d   Deck %d cards" % [run.combats_won, run.elites_won, run.deck.size()], 16, Palette.TEXT_DIM))
 	for l in lines:
 		v.add_child(UiKit.label(str(l), 17))
 	v.add_child(UiKit.button(Palette.w("camp"), show_hub, Vector2(360, 64)))
