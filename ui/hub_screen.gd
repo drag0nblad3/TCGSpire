@@ -10,6 +10,8 @@ signal resume_pressed
 signal abandon_pressed
 signal rig_pressed
 signal daily_pressed
+signal weekly_pressed
+signal login_pressed
 signal records_pressed
 signal tutorial_pressed
 
@@ -75,6 +77,7 @@ func _ready() -> void:
 		reps.add_child(rep)
 	v.add_child(reps)
 	v.add_child(UiKit.label("Rep: each crew pays its own on its jobs. Spend it on rig upgrades and firmware.", 13, Palette.TEXT_DIM, true))
+	v.add_child(_login_panel())
 
 	var heat_row := UiKit.hbox(16)
 	heat_row.add_child(UiKit.button("<", func() -> void: _set_heat(heat - 1), Vector2(56, 48)))
@@ -108,7 +111,18 @@ func _ready() -> void:
 		var db_btn := UiKit.button(("Daily breach done · score %d\nA new one opens tomorrow" % today_score) if done else ("Daily breach: %s job · Heat %d\nDaily challenge run, one try" % [Lexicon.faction(d["job"]), d["heat"]]),
 			func() -> void: daily_pressed.emit(), Vector2(300, 68), 16)
 		db_btn.disabled = done
-		v.add_child(db_btn)
+		var w := Weekly.challenge(db, Weekly.this_week())
+		var ws := Weekly.state(profile, w["week"])
+		var wk_btn := UiKit.button(("Weekly challenge cleared · best %d
+Play again for score · new in %dd" % [int(ws["best"]), Weekly.days_left(Records.today())]) if ws["cleared"] \
+			else ("Weekly challenge: Heat %d
+%d rule changes · your cards, no upgrades" % [w["heat"], w["mods"].size()]),
+			func() -> void: weekly_pressed.emit(), Vector2(300, 68), 16)
+		var ch_row := UiKit.hbox(12)
+		db_btn.custom_minimum_size = Vector2(300, 68)
+		ch_row.add_child(db_btn)
+		ch_row.add_child(wk_btn)
+		v.add_child(ch_row)
 	v.add_child(_collector_panel())
 	var rig_row := UiKit.hbox(12)
 	rig_row.add_child(UiKit.button("Rig upgrades\nPermanent bonuses", func() -> void: rig_pressed.emit(), Vector2(200, 68), 16))
@@ -119,6 +133,36 @@ func _ready() -> void:
 	row.add_child(UiKit.button("Rules", func() -> void: Rules.open(self), Vector2(130, 52), 16))
 	row.add_child(UiKit.button("Menu", func() -> void: menu_pressed.emit(), Vector2(130, 52), 16))
 	v.add_child(row)
+
+
+## Daily login bonus: the 7-day track (claimed, today, ahead) and a Claim button while today's is open.
+func _login_panel() -> Control:
+	var open := LoginBonus.can_claim(profile, Records.today())
+	var next := LoginBonus.next_day(profile)
+	# Today's cycle day: the one waiting to be claimed, or the one already claimed today.
+	var today_day := next if open else int(profile.login.get("day", 0))
+	var box := UiKit.vbox(8)
+	box.add_child(UiKit.label("Daily login bonus · day %d of %d" % [today_day, LoginBonus.CYCLE], 17, Palette.ENERGY))
+	var track := UiKit.hbox(6)
+	track.alignment = BoxContainer.ALIGNMENT_CENTER
+	for day in range(1, LoginBonus.CYCLE + 1):
+		var r := LoginBonus.reward(db, day)
+		var done := day < today_day or (day == today_day and not open)
+		var now := day == today_day and open
+		var reward := ("+%d" % r["scrap"]) if int(r["scrap"]) > 0 else "cache"
+		var cell := UiKit.label("Day %d\n%s" % [day, "done" if done else reward], 13,
+			Palette.UPGRADED if done else (Palette.ENERGY if now else Palette.TEXT_DIM))
+		cell.custom_minimum_size = Vector2(54, 0)
+		track.add_child(UiKit.panel(cell, Palette.BUTTON if now else Palette.PANEL_BG))
+	box.add_child(track)
+	if open:
+		var b := UiKit.button("Claim day %d: %s" % [next, LoginBonus.reward_text(db, next)], func() -> void: login_pressed.emit(), Vector2(300, 56), 18)
+		for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+			b.add_theme_color_override(state, Palette.UPGRADED)
+		box.add_child(b)
+	else:
+		box.add_child(UiKit.label("Claimed today. Tomorrow: day %d, %s. Missing a day never resets the track." % [next, LoginBonus.reward_text(db, next)], 13, Palette.TEXT_DIM, true))
+	return box
 
 
 ## No finished tutorial and no runs yet: the hub offers the tutorial first.

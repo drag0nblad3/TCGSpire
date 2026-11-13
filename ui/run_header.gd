@@ -30,7 +30,10 @@ func _ready() -> void:
 		var job_row := UiKit.hbox(8)
 		job_row.add_child(Symbols.badge(run.job, 28))
 		add_child(job_row)
-		job_row.add_child(UiKit.label("%s for %s  ·  against %s" % ["Daily breach" if run.daily != "" else "Job", Jobs.info(run.db, run.job).get("client", run.job), " + ".join(against)], 14, Palette.faction(run.job)))
+		job_row.add_child(UiKit.label("%s for %s  ·  against %s" % ["Weekly challenge" if run.weekly != "" else ("Daily breach" if run.daily != "" else "Job"), Jobs.info(run.db, run.job).get("client", run.job), " + ".join(against)], 14, Palette.faction(run.job)))
+		if not run.weekly_mods.is_empty():
+			job_row.add_child(UiKit.button("Rule changes", func() -> void:
+				UiKit.toast(get_tree().root, "\n".join(run.weekly_mods.map(func(id: String) -> String: return Weekly.describe(run.db, id))), 6.0), Vector2(124, 34), 13))
 		if not run.clauses.is_empty():
 			job_row.add_child(UiKit.button("Bonuses %d/%d" % [run.clauses.filter(func(id: String) -> bool: return Records.clause_met(run.db, run, id)).size(), run.clauses.size()], func() -> void:
 				UiKit.toast(get_tree().root, clause_text(run), 5.0), Vector2(124, 34), 13))
