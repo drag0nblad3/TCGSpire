@@ -378,6 +378,7 @@ func _show_reward(lines: Array, tals: Array, choices: Array, perks: Array = [], 
 			run.add_card(id)
 			next.call())
 		row.add_child(cv)
+		cv.reveal_reward.call_deferred(float(row.get_child_count() - 1) * 0.1)
 	v.add_child(row)
 	if kind != "" and not choices.is_empty() and run.reward_rerolls_left > 0:
 		v.add_child(UiKit.button("Reroll programs (%d left)" % run.reward_rerolls_left, func() -> void:

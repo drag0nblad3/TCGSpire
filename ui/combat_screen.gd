@@ -126,13 +126,50 @@ func _ready() -> void:
 	_fx.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_fx)
+	_fx.draw.connect(_draw_target_line)
 
 	_event_cursor = combat.events.size()
 	_rebuild()
 	_deal_in(combat.hand.size())
 
 
+func _process(_dt: float) -> void:
+	if _fx != null:
+		_fx.queue_redraw()
+
+
+func _draw_target_line() -> void:
+	for view: FighterView in _enemies_row.get_children():
+		view.aimed = false
+	if _busy or _selected < 0 or _selected >= _hand_row.get_child_count():
+		return
+	var destination: FighterView
+	for view: FighterView in _enemies_row.get_children():
+		if view.targetable and view.get_global_rect().has_point(get_global_mouse_position()):
+			destination = view
+			break
+	if destination == null:
+		return
+	destination.aimed = true
+	var card_view: CardView = _hand_row.get_child(_selected)
+	var start := card_view.global_position + Vector2(card_view.size.x * 0.5, -18) - _fx.global_position
+	var end := destination.global_position + Vector2(destination.size.x * 0.5, destination.size.y - 8) - _fx.global_position
+	var points := PackedVector2Array()
+	var bend := Vector2(start.x, end.y + (start.y - end.y) * 0.3)
+	for i in 25:
+		var t := float(i) / 24.0
+		points.append(start.lerp(bend, t).lerp(bend.lerp(end, t), t))
+	_fx.draw_polyline(points, Color(Palette.ENERGY, 0.16), 9.0, true)
+	_fx.draw_polyline(points, Palette.ENERGY, 2.5, true)
+	_fx.draw_circle(end, 5.0, Palette.ENERGY)
+
+
 func _rebuild() -> void:
+	var lingering := {}
+	for id in _views:
+		var old: FighterView = _views[id]
+		if is_instance_valid(old):
+			lingering[id] = [old.flash, old.firewall_flash, old.virus_flash]
 	for n in _enemies_row.get_children() + _units_row.get_children() + _hand_row.get_children():
 		n.get_parent().remove_child(n)
 		n.queue_free()
@@ -147,6 +184,12 @@ func _rebuild() -> void:
 		_add_enemy_view(e, i)
 	for u in combat.units:
 		_add_unit_view(u)
+	for id in lingering:
+		if _views.has(id):
+			var view: FighterView = _views[id]
+			view.flash = lingering[id][0]
+			view.firewall_flash = lingering[id][1]
+			view.virus_flash = lingering[id][2]
 	var zoom := _hand_zoom(combat.hand.size())
 	for i in combat.hand.size():
 		var cv := CardView.new().setup(combat.hand[i], zoom)
@@ -381,6 +424,7 @@ func _play_events(played: CardView) -> int:
 				await _wait(0.16)
 			"ward":
 				if v != null:
+					v.firewall_flash = 1.0
 					v.shown_ward = int(e.get("ward", v.fighter.ward))
 				_float_text(v, "+%d Firewall" % e["amount"], Palette.WARD)
 				await _wait(0.12)
@@ -390,6 +434,8 @@ func _play_events(played: CardView) -> int:
 				_float_text(v, "+%d HP" % e["amount"], Palette.UPGRADED)
 				await _wait(0.12)
 			"status":
+				if v != null and e["status"] == "burn" and e["stacks"] > 0:
+					v.virus_flash = 1.0
 				var debuff: bool = Statuses.DEFS.get(e["status"], {}).get("debuff", false)
 				_float_text(v, "%s %s%d" % [Lexicon.status(str(e["status"])), "+" if e["stacks"] >= 0 else "", e["stacks"]], Palette.ENEMY if debuff else Palette.UPGRADED)
 				await _wait(0.1)
