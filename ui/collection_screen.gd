@@ -55,7 +55,8 @@ func _ready() -> void:
 		_problem = UiKit.label("", 14, Palette.HP, true)
 		v.add_child(_problem)
 		v.add_child(_loadout_row())
-	var filters := UiKit.hbox(8)
+	# Wraps onto a second row on narrow screens instead of pushing the page wider.
+	var filters := UiKit.flow(6)
 	for f in FILTERS:
 		if pick_mode and f in targets:
 			continue
@@ -187,6 +188,7 @@ func _refresh() -> void:
 		if profile.firmware_mods.has(id):
 			inst.mod = db.mod(profile.firmware_mods[id])
 		var cv := CardView.new().setup(inst)
+		cv.lift_selected = false
 		var n := col.count(id)
 		var stars := "*".repeat(profile.mastery_tier(db, id))
 		if pick_mode:

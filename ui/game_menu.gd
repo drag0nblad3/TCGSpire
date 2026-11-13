@@ -24,7 +24,8 @@ func _ready() -> void:
 	add_child(bg)
 	var parts := UiKit.screen(18)
 	add_child(parts[0])
-	var v: VBoxContainer = parts[1]
+	var v: VBoxContainer = UiKit.scroll(parts[1])
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	v.add_child(UiKit.label(_title, 34, Palette.ENERGY))
 	if _note != "":
 		v.add_child(UiKit.label(_note, 16, Palette.TEXT_DIM, true))
