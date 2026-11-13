@@ -4,12 +4,17 @@ extends SceneTree
 ##   godot --headless --path . -s res://tools/sim.gd -- [n=200] [deck=a,b,c] [enc=mites,golem]
 ##   ... -- mode=run [n=100] [heat=0] [job=ember|all]   (whole runs: win rate, floor reached, top killers;
 ##          job=all rotates through every faction job; profile=new|experienced|veteran|max picks the save:
-##          experienced = after 10 bot runs spending what they earned, veteran = after 39, max = every upgrade)
+##          experienced = after 10 bot runs spending what they earned, veteran = after 39, max = every upgrade;
+##          acts=1 adds per-act lines: share of runs reaching / dying in the act, turns per fight by kind)
 ## Default deck = base deck + default starter picks.
 
 
+## Default heat per save profile when heat= is not given.
+const DEFAULT_HEAT := {"new": 0, "experienced": 1, "veteran": 3, "max": 6}
+
+
 func _initialize() -> void:
-	var opts := {"n": "", "deck": "", "enc": "", "mode": "fight", "heat": "0", "job": "", "profile": "new"}
+	var opts := {"n": "", "deck": "", "enc": "", "mode": "fight", "heat": "", "job": "", "profile": "new", "acts": "0"}
 	for a in OS.get_cmdline_user_args():
 		var kv := a.split("=", true, 1)
 		if kv.size() == 2:
@@ -21,7 +26,7 @@ func _initialize() -> void:
 		quit(1)
 		return
 	if opts["mode"] == "run":
-		_sim_runs(db, int(opts["n"]) if opts["n"] != "" else 100, int(opts["heat"]), opts["job"], opts["profile"])
+		_sim_runs(db, int(opts["n"]) if opts["n"] != "" else 100, int(opts["heat"]) if opts["heat"] != "" else DEFAULT_HEAT.get(opts["profile"], 0), opts["job"], opts["profile"], opts["acts"] == "1")
 		quit(0)
 		return
 	var deck_ids: Array = []
@@ -51,7 +56,7 @@ func _initialize() -> void:
 	quit(0)
 
 
-func _sim_runs(db: CardDB, n: int, heat: int, job: String = "", which: String = "new") -> void:
+func _sim_runs(db: CardDB, n: int, heat: int, job: String = "", which: String = "new", acts: bool = false) -> void:
 	var jobs := Jobs.board(db)
 	var profile := Profile.new_player(db)
 	if which == "experienced":
@@ -68,8 +73,21 @@ func _sim_runs(db: CardDB, n: int, heat: int, job: String = "", which: String = 
 	var killers := {}
 	var act1 := 0
 	var act2 := 0
+	var per_act := {}  # act -> {"reached", "died", kind -> [turns...]}
 	for i in n:
 		var r := RunBot.play(db, profile, i, heat, jobs[i % jobs.size()] if job == "all" else job)
+		for f in r["fights"]:
+			var a: Dictionary = per_act.get(f["act"], {"reached": 0, "died": 0})
+			per_act[f["act"]] = a
+			if not a.has(f["kind"]):
+				a[f["kind"]] = []
+			a[f["kind"]].append(int(f["turns"]))
+			if not f["won"]:
+				a["died"] += 1
+		for k in range(1, r["run"].act + 1):
+			var a2: Dictionary = per_act.get(k, {"reached": 0, "died": 0})
+			per_act[k] = a2
+			a2["reached"] += 1
 		if r["run"].acts_cleared >= 1:
 			act1 += 1
 		if r["run"].acts_cleared >= 2:
@@ -87,3 +105,21 @@ func _sim_runs(db: CardDB, n: int, heat: int, job: String = "", which: String = 
 	for k in top.slice(0, 5):
 		parts.append("%s %d" % [k, killers[k]])
 	print("[%s] runs %d heat %d  act1 %5.1f%%  act2 %5.1f%%  win %5.1f%%  avg floor %4.1f  stuck %d  killers: %s" % [which, n, heat, 100.0 * act1 / n, 100.0 * act2 / n, 100.0 * wins / n, float(floors) / n, stuck, ", ".join(parts)])
+	if not acts:
+		return
+	var ks := per_act.keys()
+	ks.sort()
+	for k in ks:
+		var a: Dictionary = per_act[k]
+		var line := "  act %d  reached %5.1f%%  died here %5.1f%% of runs (%5.1f%% of those reaching)" % [
+			k, 100.0 * a["reached"] / n, 100.0 * a["died"] / n, 100.0 * a["died"] / maxi(a["reached"], 1)]
+		for kind in ["fight", "elite", "boss"]:
+			var t: Array = a.get(kind, [])
+			if t.is_empty():
+				continue
+			t.sort()
+			var sum := 0
+			for x in t:
+				sum += int(x)
+			line += "  %s %d: avg %.1f med %d p90 %d" % [kind, t.size(), float(sum) / t.size(), t[t.size() / 2], t[mini(t.size() - 1, int(t.size() * 0.9))]]
+		print(line)

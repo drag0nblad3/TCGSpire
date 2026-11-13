@@ -10,6 +10,7 @@ static func play(db: CardDB, profile: Profile, seed_in: int, heat: int = 0, job:
 	var targets := Jobs.targets(db, job, Jobs.extra_targets(db, heat), GameRng.new(seed_in).fork("job")) if job != "" else []
 	var run := RunState.start(db, profile, best_picks(db, profile, job, targets), seed_in, heat, job, targets)
 	var died_to := ""
+	var fights: Array = []
 	var steps := 0
 	while not run.over and steps < 80:
 		steps += 1
@@ -24,7 +25,9 @@ static func play(db: CardDB, profile: Profile, seed_in: int, heat: int = 0, job:
 		match node["type"]:
 			"fight", "elite", "boss":
 				var c := run.start_combat(node["encounter"])
-				Bot.run_combat(c)
+				var act_now := run.act
+				var res := Bot.run_combat(c)
+				fights.append({"act": act_now, "kind": node["type"], "turns": int(res["turns"]), "won": c.phase == Combat.Phase.WON})
 				var rewards := run.finish_combat(c)
 				if c.phase != Combat.Phase.WON:
 					died_to = node["encounter"]
@@ -76,6 +79,7 @@ static func play(db: CardDB, profile: Profile, seed_in: int, heat: int = 0, job:
 		"hp": run.hp,
 		"deck": run.deck.size(),
 		"died_to": died_to,
+		"fights": fights,
 		"stuck": not run.over and died_to == "",
 		"run": run,
 	}
