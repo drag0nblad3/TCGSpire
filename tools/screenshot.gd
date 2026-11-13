@@ -5,7 +5,7 @@ extends SceneTree
 ##                   [out=/tmp/shot.png] [frames=30] [plays=2] [seed=1] [theme=archive] [end_turn=1] [give=sparring_dummy,drone_swarm]
 ## Under --headless it still runs (smoke test for script errors) but writes no image.
 
-const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "pack_open", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume", "records", "exploits", "daily", "tutorial", "coach", "map_walls", "map_jump"]
+const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "pack_open", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume", "records", "exploits", "daily", "tutorial", "coach", "map_walls", "map_jump", "foil"]
 
 
 func _initialize() -> void:
@@ -85,7 +85,7 @@ func _idle(cs) -> void:
 
 func _go(main: Control, scr: String, seed_in: int, inspect_card: String = "flare_volley") -> void:
 	var db: CardDB = main.db
-	if scr not in ["hub", "collection", "picker", "pack", "pack_open", "inspect", "rules", "jobs", "rig", "firmware", "resume", "records", "exploits", "tutorial", "coach"]:
+	if scr not in ["hub", "collection", "picker", "pack", "pack_open", "inspect", "rules", "jobs", "rig", "firmware", "resume", "records", "exploits", "tutorial", "coach", "foil"]:
 		var p: Profile = main.profile
 		main.run = RunState.start(db, p, RunState.default_picks(db, p), seed_in)
 		main.run.add_talisman("oak_token")
@@ -115,6 +115,15 @@ func _go(main: Control, scr: String, seed_in: int, inspect_card: String = "flare
 			for id in ["sprout", "thornhide"]:
 				if main.db.card(id) != null:
 					main.profile.collection.add(id, 3)
+			main.show_hub()
+			main.get("_screen").collection_pressed.emit()
+		"foil":
+			# Every other owned card is a glitch foil, so foils sit next to plain cards.
+			var k := 0
+			for id in main.profile.collection.counts.keys():
+				if k % 2 == 0:
+					main.profile.collection.foils[id] = 1
+				k += 1
 			main.show_hub()
 			main.get("_screen").collection_pressed.emit()
 		"picker":
