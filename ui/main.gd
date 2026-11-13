@@ -311,6 +311,8 @@ func _show_pack() -> void:
 	var revealed := [0]
 	var on_reveal := func(view: CardView, p: Dictionary) -> void:
 		view.badge = _pack_badge(p)
+		view.pips = profile.copy_pips(db, p["id"])
+		view.fresh = p.get("new", false)
 		revealed[0] += 1
 		if revealed[0] >= pulled.size():
 			summary.text = _pack_summary(pulled)
@@ -345,10 +347,8 @@ func _show_pack() -> void:
 			on_reveal.call(views[k], pulled[k])
 
 
-## Collector pill on a revealed pack card: NEW, an unlocked firmware level, or copy progress.
+## Collector pill on a revealed pack card: an unlocked firmware level or its level (NEW is a ribbon, copies are pips).
 func _pack_badge(p: Dictionary) -> String:
-	if p.get("new", false):
-		return "NEW"
 	if p.get("unlocked", false):
 		return "v%d unlocked!" % (profile.firmware_level(p["id"]) + 1)
 	return profile.copy_badge(db, p["id"])

@@ -79,7 +79,12 @@ func _ready() -> void:
 	_grid = UiKit.flow(10)
 	inner.add_child(_grid)
 	var bottom := UiKit.hbox(16)
-	bottom.add_child(UiKit.button("Back", func() -> void: closed.emit(), Vector2(160, 60)))
+	bottom.add_child(UiKit.button("Back", func() -> void:
+		# Leaving the library marks its NEW cards as seen.
+		if not profile.unseen.is_empty():
+			profile.unseen.clear()
+			profile.save()
+		closed.emit(), Vector2(160, 60)))
 	if pick_mode:
 		_begin = UiKit.button("Begin run", func() -> void:
 			if Jobs.check(db, job, picks, profile.starter_picks(db), targets) == "":
@@ -142,7 +147,8 @@ func _ids() -> Array:
 	ids.sort_custom(func(a: String, b: String) -> bool:
 		var ca := db.card(a)
 		var cb := db.card(b)
-		return [ca.faction, order.find(ca.rarity), ca.cost, a] < [cb.faction, order.find(cb.rarity), cb.cost, b])
+		# Cards new to the collection lead the list until you've seen them.
+		return [0 if profile.unseen.has(a) else 1, ca.faction, order.find(ca.rarity), ca.cost, a] < [0 if profile.unseen.has(b) else 1, cb.faction, order.find(cb.rarity), cb.cost, b])
 	return ids
 
 
@@ -171,7 +177,8 @@ func _refresh() -> void:
 			_begin.disabled = problem != ""
 	else:
 		var ready := profile.ready_to_flash(db).size()
-		_header.text = "Library %d / %d   ·   %s %d%s" % [owned, total, Palette.w("dust"), col.dust, ("   ·   %d ready to flash" % ready) if ready > 0 else ""]
+		var fresh := profile.unseen.size()
+		_header.text = "Library %d / %d   ·   %s %d%s%s" % [owned, total, Palette.w("dust"), col.dust, ("   ·   %d NEW" % fresh) if fresh > 0 else "", ("   ·   %d ready to flash" % ready) if ready > 0 else ""]
 	for n in _grid.get_children():
 		n.queue_free()
 	for id in _ids():
@@ -187,7 +194,9 @@ func _refresh() -> void:
 			cv.badge = "%d/%d" % [chosen, profile.deck_copies(db, id)]
 			cv.selected = chosen > 0
 		else:
-			cv.badge = profile.copy_badge(db, id) + (" " + stars if stars != "" else "")
+			cv.badge = (profile.copy_badge(db, id) + " " + stars).strip_edges()
+			cv.pips = profile.copy_pips(db, id)
+			cv.fresh = profile.unseen.has(id)
 			cv.playable = n > 0
 		cv.pressed.connect(func(_v: CardView) -> void: _on_card(id))
 		_grid.add_child(cv)

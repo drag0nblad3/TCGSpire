@@ -117,8 +117,16 @@ func _collector_panel() -> Control:
 		func() -> void: packs_pressed.emit(), Vector2(300, 72), 20)
 	pk.disabled = profile.packs_unopened <= 0
 	box.add_child(pk)
-	var lib_b := UiKit.button("Program library %d / %d%s" % [lib[0], lib[1], ("\n%d ready to flash" % ready) if ready > 0 else ""],
-		func() -> void: collection_pressed.emit(), Vector2(300, 72 if ready > 0 else 60), 18)
+	var extra: Array[String] = []
+	if not profile.unseen.is_empty():
+		extra.append("%d NEW" % profile.unseen.size())
+	if ready > 0:
+		extra.append("%d ready to flash" % ready)
+	var lib_b := UiKit.button("Program library %d / %d%s" % [lib[0], lib[1], ("\n" + " · ".join(extra)) if not extra.is_empty() else ""],
+		func() -> void: collection_pressed.emit(), Vector2(300, 72 if not extra.is_empty() else 60), 18)
+	if not profile.unseen.is_empty():
+		for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+			lib_b.add_theme_color_override(state, Palette.UPGRADED)
 	box.add_child(lib_b)
 	var goal := _next_binder()
 	var lines: Array[String] = ["Rare within %d %s · mythic within %d" % [Packs.pity_left(db, profile, "rare"), Palette.w("packs").to_lower(), Packs.pity_left(db, profile, "mythic")]]

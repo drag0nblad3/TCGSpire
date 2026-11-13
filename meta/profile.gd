@@ -21,6 +21,8 @@ var stats: Dictionary = {"runs": 0, "wins": 0, "packs_opened": 0, "best_floor": 
 var packs_unopened := 0
 ## Pack shards from elites (balance.run_rewards.shards_per_pack make a pack).
 var pack_shards := 0
+## Cards added to the collection for the first time and not yet seen in the library: id -> true.
+var unseen: Dictionary = {}
 ## Packs opened since the last rare+ / mythic pull (balance.pack.pity).
 var pack_pity: Dictionary = {"rare": 0, "mythic": 0}
 var xp := 0
@@ -345,18 +347,24 @@ func ready_to_flash(db: CardDB) -> Array:
 		return db.card(id) != null and db.card(id).rarity != "starter" and firmware_block(db, id) == "")
 
 
-## Short collection status for a card: "x2", "x3 +1/2 v1", "x4 v1 ready", "x2 v2 max".
+## Firmware status pill for a card: "v1 ready", "v2 max", "v1" or "" (copies show as pips).
 func copy_badge(db: CardDB, id: String) -> String:
-	var n := collection.count(id)
 	var lvl := firmware_level(id)
-	var need := firmware_copies_needed(db, id)
-	if n <= 0:
-		return "x0"
-	if need <= 0:
-		return "x%d v%d max" % [n, lvl] if lvl > 0 else "x%d" % n
+	if collection.count(id) <= 0:
+		return ""
+	if firmware_copies_needed(db, id) <= 0:
+		return "v%d max" % lvl if lvl > 0 else ""
 	if firmware_block(db, id) == "":
-		return "x%d v%d ready" % [n, lvl + 1]
-	return "x%d +%d/%d v%d" % [n, spare_copies(db, id), need, lvl + 1]
+		return "v%d ready" % (lvl + 1)
+	return "v%d" % lvl if lvl > 0 else ""
+
+
+## Pips for a card: Vector2i(extras collected toward the next level, extras it needs).
+func copy_pips(db: CardDB, id: String) -> Vector2i:
+	var need := firmware_copies_needed(db, id)
+	if need <= 0 or collection.count(id) <= 0:
+		return Vector2i.ZERO
+	return Vector2i(mini(spare_copies(db, id), need), need)
 
 
 ## "" if it can be flashed, else the reason why not.
@@ -444,6 +452,8 @@ func open_pack(db: CardDB, rng: GameRng) -> Array:
 	var cards := Packs.open(db, rng, self)
 	for c in cards:
 		c["new"] = not collection.owns(c["id"])
+		if c["new"]:
+			unseen[c["id"]] = true
 		var before := copies_ready(db, c["id"])
 		collection.add(c["id"], 1, c["foil"])
 		c["count"] = collection.count(c["id"])
@@ -491,6 +501,7 @@ func to_dict() -> Dictionary:
 		"stats": stats,
 		"packs_unopened": packs_unopened,
 		"pack_shards": pack_shards,
+		"unseen": unseen,
 		"pack_pity": pack_pity,
 		"xp": xp,
 		"mastery": mastery,
@@ -518,6 +529,7 @@ static func from_dict(d: Dictionary, db: CardDB = null) -> Profile:
 		p.stats[k] = int(d["stats"][k])
 	p.packs_unopened = int(d.get("packs_unopened", 0))
 	p.pack_shards = int(d.get("pack_shards", 0))
+	p.unseen = d.get("unseen", {}).duplicate()
 	var pity: Dictionary = d.get("pack_pity", {})
 	p.pack_pity = {"rare": int(pity.get("rare", 0)), "mythic": int(pity.get("mythic", 0))}
 	p.xp = int(d.get("xp", 0))

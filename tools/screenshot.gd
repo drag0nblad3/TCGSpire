@@ -93,6 +93,14 @@ func _go(main: Control, scr: String, seed_in: int) -> void:
 			main.show_hub()
 			Rules.open(main)
 		"collection":
+			# A couple of NEW cards and some extra copies, so ribbons and pips show.
+			for id in ["spore_burst", "drone_swarm", "rivet_gun"]:
+				if main.db.card(id) != null:
+					main.profile.collection.add(id, 1 if not main.profile.collection.owns(id) else 2)
+					main.profile.unseen[id] = true
+			for id in ["sprout", "thornhide"]:
+				if main.db.card(id) != null:
+					main.profile.collection.add(id, 3)
 			main.show_hub()
 			main.get("_screen").collection_pressed.emit()
 		"picker":
@@ -115,9 +123,9 @@ func _go(main: Control, scr: String, seed_in: int) -> void:
 		"pack":
 			main._show_pack()
 		"pack_open":
-			# Two copies of every common, so pulls show copy progress and unlocks.
+			# Four copies of every common (2 deck + 2 extras), so pulls show pips and unlocks.
 			for id in main.db.ids_where(func(c: CardDef) -> bool: return c.rarity == "common"):
-				main.profile.collection.add(id, maxi(0, 2 - main.profile.collection.count(id)))
+				main.profile.collection.add(id, maxi(0, 4 - main.profile.collection.count(id)))
 			main.reveal_packs_now = true
 			main._show_pack()
 		"map":

@@ -38,6 +38,16 @@ var face_down := false:
 
 ## Pack hot slot: the back glows in the rare color and says so.
 var hot := false
+## Firmware progress pips: x = extra copies collected, y = extras the next level needs (0 = none shown).
+var pips := Vector2i.ZERO:
+	set(v):
+		pips = v
+		queue_redraw()
+## First copy in the collection: a pulsing NEW ribbon across the art.
+var fresh := false:
+	set(v):
+		fresh = v
+		queue_redraw()
 
 var reveal_progress := 1.0:
 	set(v):
@@ -133,6 +143,9 @@ func _draw() -> void:
 	if reveal_progress < 1.0:
 		sb.shadow_color = Color(fc, sin(reveal_progress * PI) * 0.65)
 		sb.shadow_size = 16
+	elif fresh:
+		sb.shadow_color = Color(Palette.UPGRADED, 0.35 + 0.3 * sin(Time.get_ticks_msec() / 1000.0 * 5.0))
+		sb.shadow_size = 14
 	draw_style_box(sb, rect)
 	if Palette.FRAME == "circuit":
 		_draw_circuit(rect, Color(fc if not selected else Palette.ENERGY, dim))
@@ -199,6 +212,30 @@ func _draw() -> void:
 
 	# Rarity pip.
 	draw_circle(rect.position + Vector2(SIZE.x / 2, SIZE.y - 8), 3.5, Palette.rarity(d.rarity))
+
+	if pips.y > 0:
+		var full := pips.x >= pips.y
+		var step := minf(9.0, 42.0 / maxf(1.0, pips.y - 1))
+		for k in pips.y:
+			var at := rect.position + Vector2(9 + k * step, SIZE.y - 8)
+			var col := Palette.UPGRADED if full else Palette.ENERGY
+			if k < pips.x:
+				draw_circle(at, 3.5, col)
+			else:
+				draw_arc(at, 3.0, 0, TAU, 14, Color(col, 0.8), 1.4)
+
+	if fresh:
+		var pulse := 0.6 + 0.4 * sin(Time.get_ticks_msec() / 1000.0 * 5.0)
+		var glow := StyleBoxFlat.new()
+		glow.bg_color = Color(0, 0, 0, 0)
+		glow.border_color = Color(Palette.UPGRADED, pulse)
+		glow.set_border_width_all(Palette.BORDER + 1)
+		glow.set_corner_radius_all(Palette.RADIUS)
+		draw_style_box(glow, rect)
+		var strip := Rect2(rect.position + Vector2(0, 60), Vector2(SIZE.x, 18))
+		draw_rect(strip, Color(Palette.UPGRADED, 0.92))
+		draw_string(Palette.display(), strip.position + Vector2(0, 14), "NEW", HORIZONTAL_ALIGNMENT_CENTER, SIZE.x, 14, Palette.CARD_BG)
+		queue_redraw()
 
 	if badge != "":
 		var bw := font.get_string_size(badge, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x + 12

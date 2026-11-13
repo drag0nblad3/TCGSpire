@@ -64,6 +64,24 @@ func test_pack_flags_new_cards_and_unlocks() -> void:
 	check(first["new"], "an empty collection makes every first copy new")
 
 
+func test_new_cards_stay_flagged_until_seen() -> void:
+	var p := Profile.new()
+	p.packs_unopened = 1
+	var cards := p.open_pack(db, GameRng.new(5))
+	for c in cards:
+		check(p.unseen.has(c["id"]), "first copies are flagged NEW")
+	eq(Profile.from_dict(p.to_dict()).unseen.size(), p.unseen.size(), "NEW flags saved")
+
+
+func test_pips_count_only_extras() -> void:
+	var p := Profile.new()
+	var need := int(Profile.copy_ladder(db, "kindle")[0])
+	p.collection.add("kindle", Profile.deck_limit(db))
+	eq(p.copy_pips(db, "kindle"), Vector2i(0, need), "deck copies fill no pips")
+	p.collection.add("kindle")
+	eq(p.copy_pips(db, "kindle"), Vector2i(1, need))
+
+
 func test_complete_ladders_are_rerolled() -> void:
 	# Own the full ladder of half the commons: those slots reroll once, so fewer
 	# complete commons show up than without the profile.
