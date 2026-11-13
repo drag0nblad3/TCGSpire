@@ -84,7 +84,7 @@ static func start(db_in: CardDB, profile: Profile, picks: Array, seed_in: int, h
 		if db_in.card(id) != null and db_in.card(id).banned_by(r.banned):
 			continue
 		used[id] = int(used.get(id, 0)) + 1
-		if used[id] > profile.collection.count(id):
+		if used[id] > profile.deck_copies(db_in, id):
 			push_error("Run pick '%s' exceeds owned copies" % id)
 			continue
 		r.deck.append(r.make_card(id))
@@ -116,14 +116,14 @@ static func default_picks(db_in: CardDB, profile: Profile, job_in: String = "", 
 		var need := Jobs.required(db_in, job_in, n)
 		for id in profile.collection.owned_ids():
 			var c := db_in.card(id)
-			if c == null or not c.is_of(job_in) or c.rarity == "starter":
+			if c == null or not c.is_of(job_in) or c.banned_by(ban) or c.rarity == "starter":
 				continue
-			for k in profile.collection.count(id):
+			for k in profile.deck_copies(db_in, id):
 				if out.size() < need:
 					out.append(id)
 	for id in db_in.balance.get("default_picks", []):
 		var c := db_in.card(id)
-		if c != null and not c.banned_by(ban) and profile.collection.count(id) > out.count(id) and out.size() < n:
+		if c != null and not c.banned_by(ban) and profile.deck_copies(db_in, id) > out.count(id) and out.size() < n:
 			out.append(id)
 	for id in profile.collection.owned_ids():
 		if out.size() >= n:

@@ -28,10 +28,10 @@ func owned_ids() -> Array:
 	return ids
 
 
-## Turns one spare copy into dust. The last copy can't be disenchanted.
-func disenchant(id: String, db: CardDB) -> bool:
+## Turns one spare copy into dust. The last copy (or the last `keep`) can't be disenchanted.
+func disenchant(id: String, db: CardDB, keep: int = 1) -> bool:
 	var c := db.card(id)
-	if c == null or count(id) <= 1 or c.rarity == "starter":
+	if c == null or count(id) <= maxi(1, keep) or c.rarity == "starter":
 		return false
 	counts[id] = count(id) - 1
 	if int(foils.get(id, 0)) > count(id):
@@ -42,9 +42,9 @@ func disenchant(id: String, db: CardDB) -> bool:
 
 ## Turns a spare glitch foil copy into dust (balance.dust.foil_mult times a normal copy).
 ## Needs a foil and another copy left over.
-func disenchant_foil(id: String, db: CardDB) -> bool:
+func disenchant_foil(id: String, db: CardDB, keep: int = 1) -> bool:
 	var c := db.card(id)
-	if c == null or count(id) <= 1 or int(foils.get(id, 0)) <= 0 or c.rarity == "starter":
+	if c == null or count(id) <= maxi(1, keep) or int(foils.get(id, 0)) <= 0 or c.rarity == "starter":
 		return false
 	counts[id] = count(id) - 1
 	foils[id] = int(foils[id]) - 1

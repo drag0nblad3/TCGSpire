@@ -67,12 +67,13 @@ static func sections(db: CardDB) -> Array:
 		"This run only: recompile a program at a safehouse (+), or install a mod. Each program holds one mod. Safehouses let you tinker, the Fixer sells mods, and some signals install them.",
 		"Mods: " + " ".join(mods),
 		"Subroutines: after black sentries and the first Core, load one of %d subroutines. They run for the rest of the job." % int(db.balance.get("perk_choices", 3)),
-		"Permanent: rig upgrades (hideout) apply to every run. Firmware: run a program %d times and flash it to v1 (+%d%% to its numbers in every run); run it %d times for v2 (+%d%%, twice the price). After %d plays you can also bake a mod into its firmware." % [int(db.balance["firmware"]["plays"][0]), roundi((float(db.balance["firmware"]["scale"][0]) - 1.0) * 100), int(db.balance["firmware"]["plays"][1]), roundi((float(db.balance["firmware"]["scale"][1]) - 1.0) * 100), int(db.balance["mastery"][int(db.balance["firmware"].get("mod_mastery_tier", 2)) - 1]["plays"])] + " Crew programs cost that crew's rep; Street and base programs cost %s." % Palette.w("dust").to_lower(),
+		"Permanent: rig upgrades (hideout) apply to every run. Firmware: a deck holds up to %d copies of a program; extra copies beyond those upgrade it. Flashing v1 uses up %s extra copies (by rarity: common, uncommon, rare, mythic) and gives +%d%% to its numbers in every run; v2 uses up %s more (+%d%%, twice the price). Compile copies with %s to get there faster. After %d plays you can also bake a mod into its firmware." % [Profile.deck_limit(db), _ladder(db, 0), roundi((float(db.balance["firmware"]["scale"][0]) - 1.0) * 100), _ladder(db, 1), roundi((float(db.balance["firmware"]["scale"][1]) - 1.0) * 100), Palette.w("dust").to_lower(), int(db.balance["mastery"][int(db.balance["firmware"].get("mod_mastery_tier", 2)) - 1]["plays"])] + " Crew programs cost that crew's rep; Street and base programs cost %s (base programs need no copies)." % Palette.w("dust").to_lower(),
 	]])
 	out.append(["Your library", [
-		"Your deck is built from programs you own. Before each run you load extra programs from your library.",
-		"Runs earn XP and %s. Crack them open for new programs (rarer programs add complexity, not raw power)." % Palette.w("packs").to_lower(),
-		"Scrap spare copies for %s and compile the programs you want. Running a program often raises its mastery." % Palette.w("dust").to_lower(),
+		"Your deck is built from programs you own. Before each run you load extra programs from your library, up to %d copies of each." % Profile.deck_limit(db),
+		"Runs earn XP and %s: one per Core breached, one more for a finished job, one per level, one for jacking into the daily breach, and black sentries drop shards (%d make a %s). Crack them open for new programs (rarer programs add complexity, not raw power)." % [Palette.w("packs").to_lower(), Profile.shards_per_pack(db), Palette.w("pack").to_lower()],
+		"Every %s has a hot slot (uncommon or better). A rare is guaranteed at least every %d %s and a mythic every %d. Once a program's firmware is maxed and you own %d copies, %s reroll it once." % [Palette.w("pack").to_lower(), int(db.balance["pack"].get("pity", {}).get("rare", 0)), Palette.w("packs").to_lower(), int(db.balance["pack"].get("pity", {}).get("mythic", 0)), Profile.deck_limit(db), Palette.w("packs").to_lower()],
+		"Copies are upgrades: every copy brings a program closer to its next firmware level. Scrap copies you no longer need for %s and compile the ones you want. Running a program often raises its mastery." % Palette.w("dust").to_lower(),
 		"Crews: Burner (viruses and overclocking), Flux (data flow and firewalls), Wetware (bio-daemons and patches), Null (glitches, buffers and loops), Chrome (drone swarms and plating), Static (jamming and broadcasts), plus Street programs that fit any rig.",
 		"Heat: breach the final Core to unlock harder runs with extra modifiers. Enemy HP and damage boosts compound with each level.",
 	]])
@@ -134,3 +135,12 @@ func _legend() -> Control:
 		row.add_child(l)
 		box.add_child(row)
 	return box
+
+
+## "3/3/2/2": copies for firmware level `lvl` by rarity (common, uncommon, rare, mythic).
+static func _ladder(db: CardDB, lvl: int) -> String:
+	var parts: Array[String] = []
+	for r in ["common", "uncommon", "rare", "mythic"]:
+		var l: Array = db.balance["firmware"].get("copies", {}).get(r, [])
+		parts.append(str(l[lvl]) if lvl < l.size() else "-")
+	return "/".join(parts)
