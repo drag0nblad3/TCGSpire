@@ -27,6 +27,7 @@ static var NODE := {
 	"shop": Color("#ffd65c"),
 	"event": Color("#3dc6ff"),
 	"treasure": Color("#f2c14e"),
+	"vault": Color("#ff8a3d"),
 	"boss": Color("#d36bff"),
 }
 

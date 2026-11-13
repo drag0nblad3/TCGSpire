@@ -30,6 +30,7 @@ const MODS := {
 	"hand_size": "Programs drawn each turn",
 	"board_slots": "Daemon slots",
 	"daemon_hp": "Daemon HP",
+	"jumps": "Jumps per layer",
 }
 const SCOPES := ["run", "rig"]
 const PCT := ["gold_pct", "rest_heal_pct", "shop_discount_pct"]
@@ -50,6 +51,8 @@ static func describe(p: Dictionary, rank: int = 1) -> String:
 
 static func describe_mod(k: String, v: float) -> String:
 	match k:
+		"jumps":
+			return "+%d jump%s per layer: leap diagonally to the next floor through walls, into sealed vaults too." % [int(v), "" if int(v) == 1 else "s"]
 		"max_hp":
 			return "+%d max HP." % int(v)
 		"start_gold":

@@ -5,7 +5,7 @@ extends SceneTree
 ##                   [out=/tmp/shot.png] [frames=30] [plays=2] [seed=1] [theme=archive] [end_turn=1] [give=sparring_dummy,drone_swarm]
 ## Under --headless it still runs (smoke test for script errors) but writes no image.
 
-const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "pack_open", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume", "records", "exploits", "daily", "tutorial", "coach"]
+const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "pack_open", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume", "records", "exploits", "daily", "tutorial", "coach", "map_walls", "map_jump"]
 
 
 func _initialize() -> void:
@@ -63,6 +63,16 @@ func _initialize() -> void:
 		else:
 			print("smoke ok: ", scr)
 	quit(0)
+
+
+## A map with a vault low enough to show on the first screen.
+func _vault_map(db: CardDB, seed_in: int) -> RunMap:
+	for s in range(seed_in, seed_in + 200):
+		var m := RunMap.generate(db, GameRng.new(s))
+		for n in m.nodes:
+			if n["type"] == "vault" and int(n["row"]) <= 7:
+				return m
+	return RunMap.generate(db, GameRng.new(seed_in))
 
 
 ## Waits for combat animations to finish (capped at ~10s).
@@ -133,6 +143,36 @@ func _go(main: Control, scr: String, seed_in: int) -> void:
 			main.reveal_packs_now = true
 			main._show_pack()
 		"map":
+			main.show_map()
+		"map_walls":
+			# No jump upgrade yet: walls, ghosted cut links and a sealed vault.
+			main.run.map = _vault_map(main.db, seed_in)
+			main.show_map()
+		"map_jump":
+			# Packet Hop + Ghost Routing (3 jumps, 1 spent): standing below a vault.
+			main.run.map = _vault_map(main.db, seed_in)
+			main.run.perks.append("packet_hop")
+			main.run.rig["ghost_routing"] = 1
+			main.run.jumps_used = 1
+			var m: RunMap = main.run.map
+			for n in m.nodes:
+				if n["type"] != "vault":
+					continue
+				for src in m.rows[int(n["row"]) - 1]:
+					if m.node(src)["type"] != "vault" and n["id"] in m.jump_targets(src):
+						var chain: Array = [src]
+						while int(m.node(chain[0])["row"]) > 0:
+							var below: int = chain[0]
+							for s2 in m.rows[int(m.node(below)["row"]) - 1]:
+								if below in m.node(s2)["next"]:
+									chain.push_front(s2)
+									break
+						main.run.path = chain
+						main.run.node_id = src
+						main.run.floor_num = chain.size()
+						break
+				if main.run.node_id >= 0:
+					break
 			main.show_map()
 		"menu":
 			main._start_combat({"type": "fight", "encounter": "wisp_court"})

@@ -5,9 +5,9 @@ extends Control
 signal node_chosen(id: int)
 
 const ROW_H := 104.0
-const NAMES := {"fight": "Sentry", "elite": "Black sentry", "rest": "Safehouse", "shop": "Fixer", "event": "Signal", "treasure": "Cache", "boss": "Core"}
+const NAMES := {"fight": "Sentry", "elite": "Black sentry", "rest": "Safehouse", "shop": "Fixer", "event": "Signal", "treasure": "Cache", "vault": "Vault", "boss": "Core"}
 ## Plain meaning beside each flavor name in the legend.
-const PLAIN := {"fight": "fight", "elite": "elite fight", "rest": "rest", "shop": "shop", "event": "event", "treasure": "loot", "boss": "boss"}
+const PLAIN := {"fight": "fight", "elite": "elite fight", "rest": "rest", "shop": "shop", "event": "event", "treasure": "loot", "vault": "jump-only elite + loot", "boss": "boss"}
 
 var run: RunState
 var _canvas: Control
@@ -28,9 +28,11 @@ func _ready() -> void:
 	var title := UiKit.hbox(12)
 	title.add_child(UiKit.label("THE STACK / %02d" % run.act, 24, Palette.ENERGY))
 	v.add_child(title)
-	v.add_child(UiKit.label("Tap a lit node to move there. Climb to the Core (the boss) at the top.", 15, Palette.TEXT_DIM))
+	if run.jumps_total() > 0:
+		v.add_child(JumpTracker.new().setup(run))
+	v.add_child(UiKit.label(_hint(), 15, Palette.TEXT_DIM))
 	var legend := UiKit.flow(12)
-	for kind in ["fight", "elite", "event", "rest", "shop", "treasure", "boss"]:
+	for kind in ["fight", "elite", "event", "rest", "shop", "treasure", "vault", "boss"]:
 		var item := UiKit.hbox(4)
 		var icon := Symbols.badge(kind, 26)
 		icon.modulate = Palette.NODE[kind]
@@ -54,15 +56,51 @@ func _ready() -> void:
 	_scroll.scroll_vertical = int(_node_pos(0, 1, row).y - _scroll.size.y * 0.6)
 
 
+## Jumps come from perks (Packet Hop, Ghost Routing); vaults hint at them.
+func _hint() -> String:
+	if not run.jump_moves().is_empty():
+		return "Climb a lit route, or JUMP diagonally through a wall (uses a jump)"
+	if run.jumps_total() == 0 and _has_vaults():
+		return "Tap a lit node to move there. Walls block some routes; vaults need a jump upgrade."
+	return "Tap a lit node to move there. Climb to the Core (the boss) at the top."
+
+
+func _has_vaults() -> bool:
+	for n in run.map.nodes:
+		if n["type"] == "vault":
+			return true
+	return false
+
+
 func _process(_dt: float) -> void:
 	if _canvas != null:
 		_canvas.queue_redraw()
 
 
 func _node_pos(col: int, cols: int, row: int) -> Vector2:
-	var w := _canvas.size.x
-	var jitter := float(((col * 7 + row * 13) % 5) - 2) * 6.0
-	return Vector2((col + 0.5) / cols * w + jitter, (run.map.rows.size() - row) * ROW_H - 20)
+	return _map_pt((col + 0.5) / cols, row)
+
+
+## Map space (x = relative column 0..1, y = row) to canvas pixels; walls use it too.
+func _map_pt(x: float, y: float) -> Vector2:
+	return Vector2(x * _canvas.size.x, (run.map.rows.size() - y) * ROW_H - 20)
+
+
+func _radius(id: int) -> float:
+	return 30.0 if run.map.node(id)["type"] == "boss" else 24.0
+
+
+## Where a straight wire from a to b leaves a's square plate.
+func _edge(id: int, toward: Vector2) -> Vector2:
+	var p := _pos(id)
+	var d := toward - p
+	var m := maxf(absf(d.x), absf(d.y))
+	return p if m <= 0.0 else p + d * ((_radius(id) + 3.0) / m)
+
+
+## A link drawn edge to edge: straight, so diagonals start and end at their nodes.
+func _wire(a: int, b: int) -> PackedVector2Array:
+	return PackedVector2Array([_edge(a, _pos(b)), _edge(b, _pos(a))])
 
 
 func _pos(id: int) -> Vector2:
@@ -97,20 +135,37 @@ func _draw_map() -> void:
 			var col := Color(Palette.ENERGY if next_step else Palette.TEXT_DIM, strength)
 			if on_path:
 				col = Palette.ENERGY
-			var a := _pos(n["id"])
-			var b := _pos(nx)
-			var mid := (a.y + b.y) / 2
-			var wire := PackedVector2Array([a, Vector2(a.x, mid + 10), Vector2(b.x, mid - 10), b])
+			var wire := _wire(n["id"], nx)
 			_canvas.draw_polyline(wire, Color(Palette.CARD_BG, 0.95), 8, true)
 			if on_path:
 				_canvas.draw_polyline(wire, Color(Palette.ENERGY, 0.16), 10, true)
 			_canvas.draw_polyline(wire, col, 5 if on_path else 3, true)
 			if not on_path:
 				_route_pulse(wire, fposmod(t * 0.24 + phase, 1.0), Color(Palette.ENERGY, 0.65 if next_step else 0.38))
+	_draw_walls()
+	# Jumps already taken stay on the trail as solid arcs.
+	for i in range(1, run.path.size()):
+		if run.was_jump(i):
+			var arc := _jump_arc(run.path[i - 1], run.path[i])
+			_canvas.draw_polyline(arc, Color(Palette.ENERGY, 0.16), 10, true)
+			_canvas.draw_polyline(arc, Palette.ENERGY, 5, true)
+	# Jumps open from the current node: dashed arcs over the walls, with a label.
+	for jid in run.jump_moves():
+		var arc := _jump_arc(run.node_id, jid)
+		var pulse := 0.65 + 0.35 * sin(t * 3.0)
+		for i in range(arc.size() - 1):
+			if i % 2 == 0:
+				_canvas.draw_line(arc[i], arc[i + 1], Color(Palette.ENERGY, pulse), 4, true)
+		var tip := arc[arc.size() - 1]
+		var back := (arc[arc.size() - 3] - tip).normalized() * 11.0
+		_canvas.draw_polyline(PackedVector2Array([tip + back.rotated(0.5), tip, tip + back.rotated(-0.5)]), Color(Palette.ENERGY, pulse), 3, true)
 	for n in run.map.nodes:
 		var p := _pos(n["id"])
 		var col: Color = Palette.NODE[n["type"]]
-		var r := 30.0 if n["type"] == "boss" else 24.0
+		var r := _radius(n["id"])
+		if n["type"] == "vault":
+			# Sealed vault: a locked double frame, so it reads as a prize behind walls.
+			_canvas.draw_style_box(_plate(Color(col, 0.10), Color(col, 0.55), 2), Rect2(p - Vector2.ONE * (r + 6), Vector2.ONE * (r + 6) * 2))
 		var is_avail: bool = n["id"] in avail
 		var visited: bool = n["id"] in run.path
 		var current: bool = n["id"] == run.node_id
@@ -128,6 +183,52 @@ func _draw_map() -> void:
 			_canvas.draw_polyline(PackedVector2Array([c + Vector2(-4, 0), c + Vector2(-1, 3), c + Vector2(4, -3)]), Palette.CARD_BG, 2, true)
 		if current:
 			_canvas.draw_arc(p, r + 7, PI * 0.1, PI * 0.9, 24, Palette.ENERGY, 3, true)
+	# A JUMP tag on top of each node a jump can reach.
+	for jid in run.jump_moves():
+		var top := _pos(jid) + Vector2(0, -_radius(jid) - 12)
+		_canvas.draw_style_box(_plate(Palette.CARD_BG, Palette.ENERGY, 2), Rect2(top - Vector2(24, 9), Vector2(48, 18)))
+		_canvas.draw_string(font, top + Vector2(-24, 5), "JUMP", HORIZONTAL_ALIGNMENT_CENTER, 48, 12, Palette.ENERGY)
+
+
+## A curved hop from a to the next floor, bowing outward so it reads as a leap.
+func _jump_arc(a: int, b: int) -> PackedVector2Array:
+	var p0 := _edge(a, _pos(b))
+	var p2 := _edge(b, _pos(a))
+	var dir := signf(p2.x - p0.x) if absf(p2.x - p0.x) > 4.0 else 1.0
+	var bow := Vector2(dir * -34.0, -6.0)
+	var c := (p0 + p2) / 2.0 + bow
+	var pts := PackedVector2Array()
+	for i in 17:
+		var u := i / 16.0
+		pts.append(p0.lerp(c, u).lerp(c.lerp(p2, u), u))
+	return pts
+
+
+## Firewall walls: thick block segments, with the links they cut left as faint
+## dashed ghosts so you can see what each wall blocks.
+func _draw_walls() -> void:
+	for w in run.map.walls:
+		for link in w.get("cut", []):
+			var ghost := _wire(int(link[0]), int(link[1]))
+			_canvas.draw_dashed_line(ghost[0], ghost[1], Color(Palette.TEXT_DIM, 0.6), 2, 7, true)
+	for w in run.map.walls:
+		var a := _map_pt(float(w["a"][0]), float(w["a"][1]))
+		var b := _map_pt(float(w["b"][0]), float(w["b"][1]))
+		_wall(a, b)
+
+
+## A firewall: soft glow, a clean capsule bar with a bright core, small caps.
+func _wall(a: Vector2, b: Vector2) -> void:
+	var dir := (b - a).normalized()
+	var t := Time.get_ticks_msec() / 1000.0
+	var glow := 0.16 + 0.05 * sin(t * 2.2 + a.x * 0.05)
+	_canvas.draw_line(a - dir * 6, b + dir * 6, Color(Palette.ENEMY, glow), 24, true)
+	_canvas.draw_line(a, b, Color(Palette.CARD_BG, 0.95), 12, true)
+	_canvas.draw_line(a, b, Color(Palette.ENEMY, 0.9), 8, true)
+	_canvas.draw_line(a + dir * 3, b - dir * 3, Color(Palette.TEXT, 0.75), 2, true)
+	for p in [a, b]:
+		_canvas.draw_circle(p, 6, Palette.ENEMY)
+		_canvas.draw_circle(p, 2.5, Palette.TEXT)
 
 
 ## A short packet of light travels along the actual elbowed wire, bottom to top.
