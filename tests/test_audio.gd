@@ -57,3 +57,16 @@ func test_additional_combat_cues() -> void:
 	eq(GameAudio.event_cue({"t": "status", "status": "burn"}), "virus")
 	eq(GameAudio.event_cue({"t": "reshuffle"}), "shuffle")
 	eq(GameAudio.event_cue({"t": "talisman"}), "implant")
+
+func test_music_playlists_are_complete_and_distinct() -> void:
+	var seen: Dictionary = {}
+	for mood in GameMusic.PLAYLISTS:
+		var tracks: Array = GameMusic.PLAYLISTS[mood]
+		eq(tracks.size(), 3, mood + " variety")
+		for track in tracks:
+			check(not seen.has(track), "no duplicated compositions")
+			seen[track] = true
+			var stream := load("res://assets/music/%s.ogg" % track) as AudioStreamOggVorbis
+			check(stream != null, track + " exports as audio")
+			if stream != null:
+				check(stream.get_length() >= 15.0, track + " complete phrase")

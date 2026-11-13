@@ -1,7 +1,7 @@
 class_name MusicScore
 extends RefCounted
-## Original eight-bar D-minor electronic score. Generated once per scene mood,
-## off the main thread, then cached as looped PCM. No assets or gameplay RNG.
+## Original eight-bar D-minor electronic score, used by the offline rebuild tool.
+## Shipping playback uses compressed Ogg files; no gameplay RNG is consumed.
 const RATE := 22050
 const MODES := ["menu", "map", "combat", "boss"]
 
