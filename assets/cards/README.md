@@ -29,3 +29,13 @@ New art follows the Field Service ink-and-ivory hardware style: faction-colored
 components, monochrome Street equipment, and both faction accents on joint cards.
 All 156 current cards have artwork, including primary daemon summon portraits.
 The coverage test requires every database card to resolve to a unique region.
+
+## Program combos expansion
+
+Seven new cards use `field_service_programs.webp` and `data/card_art_programs.json`.
+They follow the same Field Service style and unique 448×168 region convention.
+Generation notes and source crops are in `programs_provenance.json`.
+
+Wave two adds fourteen unique illustrations in `field_service_programs_wave2.webp`,
+with regions in `data/card_art_programs_wave2.json` and generation/crop notes in
+`programs_wave2_provenance.json`. The first batch's artwork is unchanged.

@@ -63,7 +63,7 @@ static func score(c: Combat, card: CardInstance, t: int = -1) -> float:
 		target = alive[0] if not alive.is_empty() else null
 	var v := 0.0
 	var ward := c.player.ward
-	var effects := card.effects()
+	var effects := CardPrograms.effects(c, card)
 	for e in effects:
 		# The bot plays "ally" programs on itself (target -1), so value them that way.
 		var ev: Dictionary = e
@@ -73,6 +73,14 @@ static func score(c: Combat, card: CardInstance, t: int = -1) -> float:
 		v += _effect_value(c, ev, target, ward)
 		if e.get("op", "") == "ward" and c.player in Effects.targets(c, e, c.player, target, "self"):
 			ward += Effects.ward_gain(c.player, int(e.get("amount", 0)))
+	# Hold a partial compiler when another affordable card can still feed it.
+	if card.effects().any(func(e: Dictionary) -> bool: return e.get("op") == "compile"):
+		var capacity := 0
+		for effect in card.effects():
+			if effect.get("op") == "compile":
+				capacity = int(effect.get("cap", 3))
+		if card.compiled.size() < capacity and c.hand.any(func(other: CardInstance) -> bool: return other != card and other.cost() <= c.energy and not other.has_keyword("unplayable") and not c.was_played_this_turn(other)):
+			v *= 0.25
 	# Loop programs get better every run this fight, so running one early pays later.
 	if card.has_loop():
 		v *= 1.2
@@ -85,6 +93,10 @@ static func _effect_value(c: Combat, e: Dictionary, target: Fighter, ward: int) 
 	var to := str(e.get("to", ""))
 	var foes := c.living(c.enemies)
 	match str(e.get("op", "")):
+		"plant":
+			return n * 0.55 if not c.draw_pile.is_empty() else 0.0
+		"relay":
+			return n * 1.2 if c.hand.size() > 1 else 0.0
 		"damage":
 			var hits := int(e.get("hits", 1))
 			if to == "all_enemies":

@@ -30,7 +30,7 @@ static func can_apply(m: Dictionary, card: CardInstance) -> bool:
 			return false
 	if m.has("bump"):
 		var op := str(m["bump"].get("op", ""))
-		if not d.get_effects(card.upgraded).any(func(e: Dictionary) -> bool: return e.get("op", "") == op):
+		if not d.get_effects(card.upgraded).any(func(e: Dictionary) -> bool: return _matches_bump(e, op)):
 			return false
 	for k in m.get("keywords_add", []):
 		if k in d.get_keywords(card.upgraded):
@@ -42,13 +42,19 @@ static func cost(m: Dictionary, base: int) -> int:
 	return maxi(base + int(m.get("cost", 0)), 0)
 
 
+## A charged attack still has a base damage amount; installed damage mods
+## affect that base, not the charge step or cap.
+static func _matches_bump(e: Dictionary, op: String) -> bool:
+	return e.get("op", "") == op or (e.get("op", "") == "cooldown" and str(e.get("effect", "damage")) == op)
+
+
 static func effects(m: Dictionary, base: Array) -> Array:
 	if m.is_empty():
 		return base
 	var out: Array = []
 	var bump: Dictionary = m.get("bump", {})
 	for e in base:
-		if not bump.is_empty() and e.get("op", "") == bump.get("op", ""):
+		if not bump.is_empty() and _matches_bump(e, str(bump.get("op", ""))):
 			var b: Dictionary = e.duplicate()
 			for k in bump:
 				if k != "op":

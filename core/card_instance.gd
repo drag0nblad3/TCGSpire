@@ -16,13 +16,29 @@ var fw_scale: Array = [1.0]
 ## Loop: times this copy has run in the current fight (Combat resets it). Each run
 ## grows every effect marked "loop": n by n (Effects.LOOP_KEY names the number).
 var loops := 0
+## Combat-only state belongs to this physical copy, never its shared definition.
+var cooldown := 0
+var compiled: Array = []
+var payload := 0
+var relay := 0
+var relay_cap := 0
 
 ## Numbers firmware scales, per op. Draw/RAM/copies stay as they are.
 const FW_KEYS := {
+	"cooldown": ["amount", "step", "cap"], "compile": ["amount"], "plant": ["amount"],
 	"damage": ["amount"], "ward": ["amount"], "heal": ["amount"], "apply": ["stacks"],
 	"rally": ["amount"],
 	"damage_per_ward": ["mult"], "damage_per_status": ["base", "mult"],
 }
+
+
+func reset_combat() -> void:
+	loops = 0
+	cooldown = 0
+	compiled.clear()
+	payload = 0
+	relay = 0
+	relay_cap = 0
 
 
 func _init(d: CardDef, up: bool = false) -> void:
@@ -81,6 +97,8 @@ static func scaled(effs: Array, m: float) -> Array:
 	var out: Array = []
 	for e in effs:
 		var d: Dictionary = e.duplicate()
+		if d.has("effects"):
+			d["effects"] = scaled(d["effects"], m)
 		for k in FW_KEYS.get(str(d.get("op", "")), []):
 			if d.has(k) and (d[k] is int or d[k] is float) and float(d[k]) > 0.0:
 				var v: float = float(d[k]) * m
@@ -134,6 +152,27 @@ func level_up_text() -> String:
 
 
 func text() -> String:
+	var base := _text()
+	var state: Array[String] = []
+	if cooldown > 0:
+		var stat := "damage"
+		for e in effects():
+			if e.get("op") == "cooldown" and e.get("effect", "damage") == "ward":
+				stat = "Firewall"
+		state.append("Charged: +%d %s." % [cooldown, stat])
+	if not compiled.is_empty():
+		state.append("Compiled: %s." % ", ".join(compiled.map(func(t: String) -> String: return Lexicon.type_name(t))))
+	if payload > 0:
+		state.append("Planted: gain %d Firewall when drawn; consumed." % payload)
+	if relay > 0:
+		if effects().any(func(e: Dictionary) -> bool: return e.get("op") == "relay_cashout"):
+			state.append("Relay %d: gain Firewall, then consume for bonus damage." % relay)
+		else:
+			state.append("Relay: gain %d Firewall on play, then pass +1 (max %d) to the leftmost other card in hand." % [relay, relay_cap])
+	return base + (" " + " ".join(state) if not state.is_empty() else "")
+
+
+func _text() -> String:
 	if loops > 0 and def.get_text(upgraded) != "" and has_loop():
 		return _generated_text()
 	if mod.is_empty() and fw == 0:
@@ -168,4 +207,9 @@ func copy() -> CardInstance:
 	c.fw = fw
 	c.fw_scale = fw_scale
 	c.loops = loops
+	c.cooldown = cooldown
+	c.compiled = compiled.duplicate()
+	c.payload = payload
+	c.relay = relay
+	c.relay_cap = relay_cap
 	return c

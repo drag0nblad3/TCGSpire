@@ -117,7 +117,11 @@ func upgrade_summary() -> String:
 		var ea: Dictionary = a[match_i]
 		a.remove_at(match_i)
 		for k in eb:
-			if k in ["op", "status", "to", "name", "card", "enemy", "consume"]:
+			if k in ["op", "status", "to", "name", "card", "enemy", "consume", "effect", "mode"]:
+				continue
+			if k in ["effects", "types"]:
+				if eb[k] != ea.get(k):
+					parts.append("Now: " + Effects.describe(eb))
 				continue
 			if k == "rule":
 				if eb[k] != ea.get(k, {}):
@@ -156,7 +160,10 @@ static func _param_name(e: Dictionary, k: String) -> String:
 	if op in ["damage_per_status", "damage_per_ward"]:
 		return {"mult": "Damage per stack", "base": "Base damage"}.get(k, k.capitalize())
 	match op:
-		"damage": return "Damage"
+		"damage", "cooldown": return ("Firewall" if e.get("effect", "damage") == "ward" else "Damage") if k == "amount" else ("Charge per discard" if k == "step" else "Maximum charge")
+		"compile": return "Instruction strength" if k == "amount" else "Instruction slots"
+		"plant": return "Planted Firewall"
+		"relay": return "Starting Relay" if k == "amount" else "Maximum Relay"
 		"ward": return Lexicon.term("ward")
 		"heal": return "Repair"
 		"draw": return "Draw"

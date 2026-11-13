@@ -9,6 +9,13 @@ extends RefCounted
 ## for an enemy, "all_enemies" = the player plus their units.
 
 const OPS := {
+	"handshake": ["card", "effects"],
+	"sequence": ["types", "effects"],
+	"cooldown": ["amount", "step", "cap", "effect", "to"],
+	"compile": ["amount", "cap", "mode"],
+	"plant": ["amount"],
+	"relay": ["amount", "cap"],
+	"relay_cashout": ["mult"],
 	"damage": ["amount", "hits", "to"],
 	"damage_per_ward": ["mult", "to"],
 	"ward": ["amount", "to"],
@@ -46,6 +53,16 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 	var op := str(e.get("op", ""))
 	var n := int(e.get("amount", 0))
 	match op:
+		"plant":
+			if not c.draw_pile.is_empty():
+				var host: CardInstance = c.draw_pile.back()
+				host.payload = maxi(host.payload, n)
+				c.emit("plant", {"card": host.key(), "amount": host.payload})
+		"relay":
+			CardPrograms.pass_relay(c, n, int(e.get("cap", 6)))
+		"handshake", "sequence", "cooldown", "compile", "relay_cashout":
+			# CardPrograms expands these using the physical card and play history.
+			pass
 		"damage":
 			if src == c.player:
 				n += c.rule_sum("attack_bonus")
@@ -231,6 +248,24 @@ static func _describe(e: Dictionary) -> String:
 		"daemon":
 			where = " to your front daemon"
 	match op:
+		"handshake":
+			return "Handshake — if you played %s this turn: %s" % [Lexicon.card_name(str(e.get("card", ""))), " ".join(e.get("effects", []).map(func(fx: Dictionary) -> String: return describe(fx)))]
+		"sequence":
+			return "Sequence — after %s, in order this turn: %s" % [" → ".join(e.get("types", []).map(func(t: String) -> String: return Lexicon.type_name(t))), " ".join(e.get("effects", []).map(func(fx: Dictionary) -> String: return describe(fx)))]
+		"cooldown":
+			var effect := str(e.get("effect", "damage"))
+			var base := _describe({"op": effect, "amount": n, "to": to})
+			return "%s Cooldown: discarded unplayed at turn end, charge +%d %s (max +%d). Playing resets charge." % [base, int(e.get("step", 4)), "Firewall" if effect == "ward" else "damage", int(e.get("cap", 8))]
+		"relay_cashout":
+			return "Consume this card's Relay: deal %d damage per point. Keep its Firewall payout; do not pass it." % int(e.get("mult", 2))
+		"compile":
+			if e.get("mode", "mixed") == "ward":
+				return "Compile up to %d other plays while held: each adds %d Firewall; Rootkits instead draw 1. Execute and clear on play." % [int(e.get("cap", 3)), n]
+			return "Compile up to %d other plays while held: Exploit +%d damage, Script/Daemon +%d Firewall, Rootkit draw 1. Execute and clear on play." % [int(e.get("cap", 3)), n, n]
+		"plant":
+			return "Plant %d Firewall on the top draw-pile card: gain it once when drawn. Replaces weaker payloads." % n
+		"relay":
+			return "Give the leftmost other card in hand Relay %d: on play gain that much Firewall, then pass +1 (max %d). Stronger Relay replaces weaker." % [n, int(e.get("cap", 6))]
 		"damage":
 			var hits := int(e.get("hits", 1))
 			if to == "daemon":
@@ -317,6 +352,29 @@ static func validate(e: Dictionary, where: String) -> Array[String]:
 		errs.append("%s: bad 'to' value '%s'" % [where, e["to"]])
 	if op in ["damage_per_status", "amplify"] and not Statuses.is_known(str(e.get("status", ""))):
 		errs.append("%s: unknown status '%s'" % [where, e.get("status", "")])
+	if op in ["handshake", "sequence"]:
+		for fx in e.get("effects", []):
+			errs.append_array(validate(fx, where))
+			if fx.get("op", "") in ["handshake", "sequence", "cooldown", "compile", "relay_cashout"]:
+				errs.append("%s: nested program condition" % where)
+	if op == "sequence":
+		if e.get("types", []).is_empty():
+			errs.append("%s: empty sequence" % where)
+		for t in e.get("types", []):
+			if t not in CardDef.TYPES:
+				errs.append("%s: bad sequence type" % where)
+	if op in ["cooldown", "compile", "plant", "relay"]:
+		for k in OPS[op]:
+			if k in ["effect", "to", "mode"]:
+				continue
+			if not (e.get(k) is int or e.get(k) is float) or int(e.get(k, 0)) <= 0:
+				errs.append("%s: %s needs positive %s" % [where, op, k])
+	if op == "cooldown" and str(e.get("effect", "damage")) not in ["damage", "ward"]:
+		errs.append("%s: cooldown effect must be damage or ward" % where)
+	if op == "compile" and str(e.get("mode", "mixed")) not in ["mixed", "ward"]:
+		errs.append("%s: unknown compile mode" % where)
+	if op == "relay_cashout" and int(e.get("mult", 0)) <= 0:
+		errs.append("%s: relay cashout needs positive multiplier" % where)
 	if op == "summon":
 		errs.append_array(DaemonRules.validate(e.get("rule", {}), where))
 	if op == "sacrifice" and str(e.get("effect", "damage")) not in SACRIFICE_EFFECTS:
