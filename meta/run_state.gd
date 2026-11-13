@@ -174,6 +174,20 @@ func perk_mod(key: String) -> float:
 	return v
 
 
+## Act-start easing: on the first `act_start_ease.floors` floors of each act, enemy HP
+## and damage get these pcts on top of everything else (multiplied after the clamps).
+func act_start_eased() -> bool:
+	var ease: Dictionary = db.balance.get("act_start_ease", {})
+	var node := current_node()
+	return not node.is_empty() and int(node["row"]) < int(ease.get("floors", 0))
+
+
+func act_start_mult(key: String) -> float:
+	if not act_start_eased():
+		return 1.0
+	return maxf(1.0 + float(db.balance.get("act_start_ease", {}).get(key, 0.0)), 0.0)
+
+
 func combat_opts() -> Dictionary:
 	return {
 		"max_hp": max_hp,
@@ -187,9 +201,9 @@ func combat_opts() -> Dictionary:
 		"start_ward": int(perk_mod("start_ward")),
 		"ward_retention": perk_mod("ward_retention"),
 		"daemon_death_damage": int(perk_mod("daemon_death_damage")),
-		"enemy_hp_mult": maxf(heat_mult("enemy_hp_pct") * (1.0 + perk_mod("enemy_hp_pct")), 0.5),
+		"enemy_hp_mult": maxf(heat_mult("enemy_hp_pct") * (1.0 + perk_mod("enemy_hp_pct")), 0.5) * act_start_mult("enemy_hp_pct"),
 		"enemy_might": int(heat_mod("enemy_might", 0)),
-		"enemy_dmg_mult": maxf(heat_mult("enemy_dmg_pct"), 0.5),
+		"enemy_dmg_mult": maxf(heat_mult("enemy_dmg_pct"), 0.5) * act_start_mult("enemy_dmg_pct"),
 	}
 
 
