@@ -489,7 +489,7 @@ func _play_pack_opening(host: Control) -> void:
 			for row in 7:
 				var y := half.position.y + 24 + row * 28
 				overlay.draw_line(Vector2(half.position.x + 12, y), Vector2(half.end.x - 12, y), Color(Palette.ENERGY, 0.35), 2.0)
-		var scan_y := packet.position.y + progress[0] * packet.size.y
+		var scan_y: float = packet.position.y + progress[0] * packet.size.y
 		overlay.draw_line(Vector2(packet.position.x - 14 - split, scan_y), Vector2(packet.end.x + 14 + split, scan_y), Palette.UPGRADED, 3.0)
 	)
 	var tween := overlay.create_tween()
