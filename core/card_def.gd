@@ -11,17 +11,17 @@ const KEYWORDS := ["exhaust", "retain", "unplayable", "innate", "ethereal", "onc
 ## Rules glossary for keywords (shown by the card inspector and the rules screen).
 const KEYWORD_DESC := {
 	"exhaust": "After it runs, the program is wiped for the rest of this fight.",
-	"retain": "Stays cached in your hand at the end of your turn instead of being discarded.",
-	"unplayable": "Locked: can't be run. It just clogs your hand.",
+	"retain": "Stays in your hand at the end of your turn instead of being discarded.",
+	"unplayable": "Can't be run. It just clogs your hand.",
 	"innate": "Always loaded into your opening hand.",
 	"ethereal": "If it's still in your hand at the end of your turn, it is wiped.",
-	"once_per_turn": "Each copy can be played once per turn, even if you draw it again.",
+	"once_per_turn": "After you run a copy, it can't run again that turn, even if you redraw it.",
 }
 const TYPE_DESC := {
 	"attack": "Exploit: usually deals damage to an enemy.",
 	"skill": "Script: Firewall, draws, statuses and other tricks.",
-	"unit": "Daemon: runs a program that stays on your board. Daemons hit the front enemy at the end of your turn and can be attacked.",
-	"power": "Rootkit: a lasting effect for the rest of the fight. Rootkits are wiped after they run.",
+	"unit": "Daemon: stays on your board, hits the front enemy at the end of your turn and can be attacked.",
+	"power": "Rootkit: its effect lasts for the rest of the fight. The program is wiped after it runs.",
 }
 
 var id := ""

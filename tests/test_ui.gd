@@ -72,6 +72,18 @@ func test_glossary_explains_keywords_and_statuses() -> void:
 	check(found, "no exhaust explanation found")
 
 
+func test_glossaries_show_rule_names_once() -> void:
+	var locked := "Locked: Can't be run. It just clogs your hand."
+	var exposed := "Takes 50% more attack damage. Loses 1 stack at end of turn."
+	check(locked in CardInspector.glossary(db.instance("doubt")), "Locked card glossary")
+	check("Exposed: " + exposed in CardInspector.glossary(db.instance("searing_brand")), "Exposed card glossary")
+	var rules := {}
+	for section in Rules.sections(db):
+		rules[section[0]] = section[1]
+	check("Exposed (harmful): " + exposed in rules["Statuses"], "Exposed in How to Play")
+	check(locked in rules["Programs and keywords"], "Locked in How to Play")
+
+
 func test_every_theme_applies() -> void:
 	for id in Themes.ORDER:
 		Palette.apply(id)
