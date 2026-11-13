@@ -26,7 +26,7 @@ func _initialize() -> void:
 		main.apply_theme(opts["theme"])
 	var screens: Array = SCREENS if opts["screen"] == "all" else [opts["screen"]]
 	for scr in screens:
-		_go(main, scr, int(opts["seed"]))
+		_go(main, scr, int(opts["seed"]), str(opts.get("card", "flare_volley")))
 		for i in 3:
 			await process_frame
 		if scr == "combat" and opts["give"] != "":
@@ -83,7 +83,7 @@ func _idle(cs) -> void:
 			return
 
 
-func _go(main: Control, scr: String, seed_in: int) -> void:
+func _go(main: Control, scr: String, seed_in: int, inspect_card: String = "flare_volley") -> void:
 	var db: CardDB = main.db
 	if scr not in ["hub", "collection", "picker", "pack", "pack_open", "inspect", "rules", "jobs", "rig", "firmware", "resume", "records", "exploits", "tutorial", "coach", "foil"]:
 		var p: Profile = main.profile
@@ -99,7 +99,7 @@ func _go(main: Control, scr: String, seed_in: int) -> void:
 			main._start_tutorial_fight()
 		"inspect":
 			main.show_hub()
-			CardInspector.show_for(main, db.instance("flare_volley"))
+			CardInspector.show_for(main, db.instance(inspect_card))
 		"rules":
 			for n in main.get_tree().root.get_children():
 				if n is CardInspector:

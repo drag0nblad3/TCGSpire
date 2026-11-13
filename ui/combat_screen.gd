@@ -220,6 +220,16 @@ func _rebuild() -> void:
 		_hint.text = "%s\nTap a highlighted enemy" % combat.hand[_selected].display_name()
 	else:
 		_hint.text = ("Incoming %d damage" % inc if inc > 0 else "No attacks incoming") + ("  ·  Firewall %d" % combat.player.ward if combat.player.ward > 0 else "")
+	if combat.hand.any(func(card: CardInstance) -> bool: return card.effects().any(func(e: Dictionary) -> bool: return e.get("op") == "sequence")):
+		var recent: Array = combat.played_types.slice(-2)
+		_hint.text += "\nSequence: " + (" → ".join(recent.map(func(t: String) -> String: return Lexicon.type_name(t))) if not recent.is_empty() else "—")
+	var ready: Array[String] = []
+	for card in combat.hand:
+		for effect in card.effects():
+			if effect.get("op") == "handshake" and effect.get("card") in combat.played_ids and card.display_name() not in ready:
+				ready.append(card.display_name())
+	if not ready.is_empty():
+		_hint.text += "\nHandshake: " + ", ".join(ready)
 	_action_label.text = "Choose a target" if _selected >= 0 else ("Your turn" if combat.phase == Combat.Phase.PLAYER else "Enemy turn")
 	_end_btn.disabled = combat.phase != Combat.Phase.PLAYER or _busy
 

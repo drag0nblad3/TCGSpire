@@ -1,0 +1,91 @@
+{
+  "source": "exec-a209a0ed-b6f5-424d-a40f-f7c0a47e5212.png",
+  "method": "Built-in image generation, 4x4 sprite atlas; fitted without stretching to 448x168 regions with two-pixel gutters.",
+  "prompt": "Field-service cyberpunk hardware, hand-inked ivory mechanical housings and engraved hatching on charcoal; fourteen distinct devices in card order, monochrome Street/Chrome, orange Burner, cyan Flux, lime Wetware, violet Null, magenta Static. No captions.",
+  "source_crops": {
+    "checksum": [
+      3,
+      3,
+      540,
+      178
+    ],
+    "reserve_parcel": [
+      546,
+      3,
+      1083,
+      178
+    ],
+    "heat_sink": [
+      1089,
+      3,
+      1626,
+      178
+    ],
+    "arc_vent": [
+      1632,
+      3,
+      2169,
+      178
+    ],
+    "carrier_wave": [
+      3,
+      184,
+      540,
+      359
+    ],
+    "circuit_breaker": [
+      546,
+      184,
+      1083,
+      359
+    ],
+    "spore_cache": [
+      1089,
+      184,
+      1626,
+      359
+    ],
+    "graft_compiler": [
+      1632,
+      184,
+      2169,
+      359
+    ],
+    "assembly_call": [
+      3,
+      365,
+      540,
+      540
+    ],
+    "queue_forge": [
+      546,
+      365,
+      1083,
+      540
+    ],
+    "ghost_key": [
+      1089,
+      365,
+      1626,
+      540
+    ],
+    "backdoor": [
+      1632,
+      365,
+      2169,
+      540
+    ],
+    "rebroadcast": [
+      3,
+      546,
+      540,
+      721
+    ],
+    "encore_buffer": [
+      546,
+      546,
+      1083,
+      721
+    ]
+  }
+}
