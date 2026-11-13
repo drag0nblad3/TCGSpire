@@ -375,9 +375,25 @@ func _on_end_turn() -> void:
 	_act(func() -> void: combat.end_turn())
 
 
-func _act(f: Callable, hand_idx: int = -1) -> void:
+func cheat_full_heal() -> void:
+	if _busy or combat.is_over():
+		return
+	Effects.resolve(combat, {"op": "heal", "amount": combat.player.max_hp, "to": "self"}, combat.player, combat.player)
+	run.hp = combat.player.hp
+	_event_cursor = combat.events.size()
+	_rebuild()
+
+
+func cheat_win() -> void:
+	if _busy or combat.is_over():
+		return
+	_selected = -1
+	_act(combat.cheat_win, -1, "Winning fight")
+
+
+func _act(f: Callable, hand_idx: int = -1, action: String = "Enemy turn") -> void:
 	_busy = true
-	_action_label.text = "Resolving program" if hand_idx >= 0 else "Enemy turn"
+	_action_label.text = "Resolving program" if hand_idx >= 0 else action
 	_end_btn.disabled = true
 	for v in _views.values():
 		v.freeze()

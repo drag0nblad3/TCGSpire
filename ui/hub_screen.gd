@@ -5,7 +5,7 @@ extends Control
 signal start_pressed(heat: int)
 signal collection_pressed
 signal packs_pressed
-signal settings_pressed
+signal menu_pressed
 signal resume_pressed
 signal abandon_pressed
 signal rig_pressed
@@ -104,7 +104,7 @@ func _ready() -> void:
 	v.add_child(rig_row)
 	var row := UiKit.hbox(12)
 	row.add_child(UiKit.button("How to play", func() -> void: Rules.open(self), Vector2(200, 52), 16))
-	row.add_child(UiKit.button("Settings", func() -> void: settings_pressed.emit(), Vector2(200, 52), 16))
+	row.add_child(UiKit.button("Menu", func() -> void: menu_pressed.emit(), Vector2(200, 52), 16))
 	v.add_child(row)
 
 
