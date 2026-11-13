@@ -134,7 +134,8 @@
   "rows": 12,
   "width": 4,
   "elite_from_row": 4,
-  "walls": {"h_chance": 0.3, "v_chance": 0.2, "two_chance": 0.4},
+  "walls": {"h_min": 2, "h_max": 3, "v_min": 1, "v_max": 2, "max_vaults": 2},
+  "vault": {"gold": [60, 90], "talisman": "rare"},
   "weights": {
    "fight": 46,
    "event": 22,

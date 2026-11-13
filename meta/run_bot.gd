@@ -16,15 +16,11 @@ static func play(db: CardDB, profile: Profile, seed_in: int, heat: int = 0, job:
 		var options := run.available_nodes()
 		if options.is_empty():
 			break
-		# The bot never sidesteps (walls never block every way up).
-		var up: Array = options.filter(func(id: int) -> bool: return id not in run.side_moves())
+		# The bot never jumps (walls never strand a node).
+		var up: Array = options.filter(func(id: int) -> bool: return id not in run.jump_moves())
 		if not up.is_empty():
 			options = up
-		var dest: int = _choose_node(run, options)
-		var side: bool = dest in run.side_moves()
-		var node := run.enter(dest)
-		if side:
-			continue  # a sidestep only moves; that node is not played
+		var node := run.enter(_choose_node(run, options))
 		match node["type"]:
 			"fight", "elite", "boss":
 				var c := run.start_combat(node["encounter"])

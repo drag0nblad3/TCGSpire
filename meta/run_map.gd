@@ -4,19 +4,22 @@ extends RefCounted
 ## ending in a single boss. Generated from a seed; all layout rules come from
 ## balance.json "map".
 ##   node: {"id": int, "row": int, "col": int, "type": String, "next": [ids], "encounter": String}
-## Walls (balance map.walls) make the Stack a little maze-like. Each is short:
-##   {"kind": "h", "links": [[from, to], ...]}  1-2 cut links between two floors
-##   {"kind": "v", "pairs": [[a, b], ...]}      1-2 floors where two row neighbours
-##                                               are split (blocks a sidestep)
-## A horizontal cut only happens if its source keeps another way up and its target
-## another way in, so the boss is always reachable without sidesteps.
+## Walls (balance map.walls) make the Stack a little maze-like. Each is a short
+## segment in map space (x = relative column 0..1, y = row):
+##   {"kind": "h"|"v", "a": [x, y], "b": [x, y], "cut": [[from, to], ...]}
+## Any link a wall crosses is cut. A node left with no way up gets the nearest
+## unwalled diagonal instead, so every node can still climb to the Core. Nodes the
+## walls seal off (unreachable from the bottom) become "vault" nodes: only a jump
+## (perk mod "jumps") gets you in, and they pay out more.
 
-const TYPES := ["fight", "elite", "rest", "shop", "event", "treasure", "boss"]
+const TYPES := ["fight", "elite", "rest", "shop", "event", "treasure", "vault", "boss"]
+const JUMP_REACH := 0.36  # how far sideways (relative width) a jump reaches
 
 var nodes: Array = []
 var rows: Array = []  # row -> [node ids]
 var act := 1
 var walls: Array = []
+var _max_vaults := 2
 
 
 ## targets: crews the job runs against; their faction encounters replace a share
@@ -87,104 +90,147 @@ func _link(rng: GameRng) -> void:
 
 
 func _build_walls(cfg: Dictionary, rng: GameRng) -> void:
-	var h := float(cfg.get("h_chance", 0.0))
-	var v := float(cfg.get("v_chance", 0.0))
-	var long_p := float(cfg.get("two_chance", 0.4))
-	# Horizontal: between floors r and r+1, never into the last rest row or the boss.
-	for r in range(0, rows.size() - 3):
-		if not rng.chance(h):
-			continue
-		var links := _links_by_x(r)
-		var order := range(links.size())
-		rng.shuffle(order)
-		for i in order:
-			if not _can_cut(links[i]):
+	# Walls live in map space: x = relative column position 0..1, y = row.
+	# Gaps between floors 0 .. rows-3 can hold walls (never the rest row or the Core).
+	var last_gap := rows.size() - 3
+	var n_h := rng.range_i(int(cfg.get("h_min", 2)), int(cfg.get("h_max", 3)))
+	var n_v := rng.range_i(int(cfg.get("v_min", 1)), int(cfg.get("v_max", 2)))
+	_max_vaults = int(cfg.get("max_vaults", 2))
+	var tries := 0
+	while (n_h > 0 or n_v > 0) and tries < 60:
+		tries += 1
+		var w := {}
+		if n_h > 0:
+			# Horizontal: across one floor gap, about one or two columns wide.
+			var gap := rng.range_i(1, last_gap - 1)
+			var cx := rng.roll()
+			var half := 0.15 if rng.chance(0.5) else 0.25
+			# Sits low in the gap, clear of the node labels drawn under the floor above.
+			w = {"kind": "h", "a": [clampf(cx - half, 0.02, 0.98), gap + 0.33], "b": [clampf(cx + half, 0.02, 0.98), gap + 0.33]}
+		else:
+			# Vertical: between two columns, one or two floor gaps tall.
+			var gap := rng.range_i(1, last_gap - 1)
+			var x: float = [0.25, 0.333, 0.5, 0.667, 0.75][rng.range_i(0, 4)]
+			if not (_clear_of_nodes(gap, x) and _clear_of_nodes(gap + 1, x)):
 				continue
-			var cut: Array = [links[i]]
-			_cut(links[i])
-			if rng.chance(long_p):
-				for j in [i + 1, i - 1]:
-					if j >= 0 and j < links.size() and _can_cut(links[j]):
-						cut.append(links[j])
-						_cut(links[j])
-						break
-			walls.append({"kind": "h", "links": cut})
-			break
-	# Vertical: splits two neighbours on a floor, sometimes the floor above too.
-	for r in range(0, rows.size() - 1):
-		if rows[r].size() < 2 or not rng.chance(v) or _side_walled_row(r):
-			continue
-		var c := rng.range_i(0, rows[r].size() - 2)
-		var pairs: Array = [[rows[r][c], rows[r][c + 1]]]
-		var x := (_rel(nodes[rows[r][c]]) + _rel(nodes[rows[r][c + 1]])) / 2.0
-		if r + 1 < rows.size() - 1 and rows[r + 1].size() >= 2 and rng.chance(long_p):
-			var above := _pair_near(r + 1, x)
-			if not above.is_empty():
-				pairs.append(above)
-		walls.append({"kind": "v", "pairs": pairs})
+			var tall := gap + 1 < last_gap and rng.chance(0.5) and _clear_of_nodes(gap + 2, x)
+			w = {"kind": "v", "a": [x, gap + 0.2], "b": [x, gap + (1.8 if tall else 0.8)]}
+		if _try_wall(w):
+			if w["kind"] == "h":
+				n_h -= 1
+			else:
+				n_v -= 1
+	_mark_vaults()
 
 
-## Upward links leaving row r, ordered left to right by where the wire crosses.
-func _links_by_x(r: int) -> Array:
-	var links: Array = []
+func _clear_of_nodes(r: int, x: float) -> bool:
 	for id in rows[r]:
-		for to in nodes[id]["next"]:
-			links.append([id, to])
-	links.sort_custom(func(a: Array, b: Array) -> bool:
-		return _rel(nodes[a[0]]) + _rel(nodes[a[1]]) < _rel(nodes[b[0]]) + _rel(nodes[b[1]]))
-	return links
+		if absf(_rel(nodes[id]) - x) < 0.1:
+			return false
+	return true
 
 
-func _can_cut(link: Array) -> bool:
-	var src: Dictionary = nodes[link[0]]
-	if src["next"].size() < 2 or link[1] not in src["next"]:
-		return false
-	for other in rows[src["row"]]:
-		if other != link[0] and link[1] in nodes[other]["next"]:
+## Cuts every link the wall crosses, then reroutes any node left without a way up
+## along a diagonal that crosses no wall. Rejected (nothing changes) if that fails
+## or the wall cuts nothing.
+func _try_wall(w: Dictionary) -> bool:
+	var before := nodes.duplicate(true)
+	var cut: Array = []
+	for n in nodes:
+		for to in n["next"].duplicate():
+			if _crosses(n["id"], to, w):
+				n["next"].erase(to)
+				cut.append([n["id"], to])
+	w["cut"] = cut
+	walls.append(w)
+	var ok := not cut.is_empty()
+	if ok:
+		for n in nodes:
+			if n["type"] != "boss" and n["next"].is_empty() and not _reroute(n["id"]):
+				ok = false
+				break
+	if ok:
+		# Few vaults, and each one a single jump from a node you can walk to.
+		var seen := _reachable()
+		var sealed := 0
+		for n in nodes:
+			if seen.has(n["id"]):
+				continue
+			sealed += 1
+			var row_below: Array = rows[int(n["row"]) - 1]
+			if not row_below.any(func(x: int) -> bool: return seen.has(x) and absf(_rel(nodes[x]) - _rel(n)) <= JUMP_REACH):
+				ok = false
+		if sealed > _max_vaults:
+			ok = false
+	if not ok:
+		walls.pop_back()
+		nodes = before
+	return ok
+
+
+## Adds the nearest diagonal up that crosses no wall.
+func _reroute(id: int) -> bool:
+	var node: Dictionary = nodes[id]
+	var options: Array = rows[node["row"] + 1].duplicate()
+	options.sort_custom(func(a: int, b: int) -> bool: return absf(_rel(nodes[a]) - _rel(node)) < absf(_rel(nodes[b]) - _rel(node)))
+	for to in options:
+		if absf(_rel(nodes[to]) - _rel(node)) > 0.45:
+			break
+		if not _link_walled(id, to):
+			_add_link(node, to)
 			return true
 	return false
 
 
-func _cut(link: Array) -> void:
-	nodes[link[0]]["next"].erase(link[1])
-
-
-func _pair_near(r: int, x: float) -> Array:
-	for c in rows[r].size() - 1:
-		var a: int = rows[r][c]
-		var b: int = rows[r][c + 1]
-		# Only stack a wall when the gap lines up, so it reads as one straight wall.
-		if absf((_rel(nodes[a]) + _rel(nodes[b])) / 2.0 - x) < 0.05:
-			return [a, b]
-	return []
-
-
-func _side_walled_row(r: int) -> bool:
+func _link_walled(a: int, b: int) -> bool:
 	for w in walls:
-		if w["kind"] == "v":
-			for pair in w["pairs"]:
-				if int(nodes[pair[0]]["row"]) == r:
-					return true
+		if _crosses(a, b, w):
+			return true
 	return false
 
 
-## Nodes beside this one on the same floor that no vertical wall splits off.
-func side_nodes(id: int) -> Array:
+func cut_by(a: int, b: int, w: Dictionary) -> bool:
+	return _crosses(a, b, w)
+
+
+func _crosses(a: int, b: int, w: Dictionary) -> bool:
+	var p1 := Vector2(_rel(nodes[a]), float(nodes[a]["row"]))
+	var p2 := Vector2(_rel(nodes[b]), float(nodes[b]["row"]))
+	return Geometry2D.segment_intersects_segment(p1, p2, Vector2(w["a"][0], w["a"][1]), Vector2(w["b"][0], w["b"][1])) != null
+
+
+## Nodes the walls seal off (no way in without a jump) become vaults: richer stops.
+func _mark_vaults() -> void:
+	var seen := _reachable()
+	for n in nodes:
+		if not seen.has(n["id"]):
+			n["type"] = "vault"
+			n["encounter"] = ""
+
+
+func _reachable() -> Dictionary:
+	var seen := {}
+	var frontier: Array = rows[0].duplicate()
+	while not frontier.is_empty():
+		var id: int = frontier.pop_back()
+		if seen.has(id):
+			continue
+		seen[id] = true
+		frontier.append_array(nodes[id]["next"])
+	return seen
+
+
+## Jump targets from a node: nodes on the next floor within a diagonal step that
+## have no normal link from it. A jump goes through walls.
+func jump_targets(id: int) -> Array:
 	var node: Dictionary = nodes[id]
+	if node["row"] + 1 >= rows.size() - 1:
+		return []
 	var out: Array = []
-	for sid in rows[node["row"]]:
-		if absi(int(nodes[sid]["col"]) - int(node["col"])) == 1 and not side_blocked(id, sid):
-			out.append(sid)
+	for to in rows[node["row"] + 1]:
+		if to not in node["next"] and absf(_rel(nodes[to]) - _rel(node)) <= JUMP_REACH:
+			out.append(to)
 	return out
-
-
-func side_blocked(a: int, b: int) -> bool:
-	for w in walls:
-		if w["kind"] == "v":
-			for pair in w["pairs"]:
-				if (int(pair[0]) == a and int(pair[1]) == b) or (int(pair[0]) == b and int(pair[1]) == a):
-					return true
-	return false
 
 
 func _rel(node: Dictionary) -> float:
@@ -256,7 +302,7 @@ func node(id: int) -> Dictionary:
 
 ## Compact text rendering, one row per line (boss at top). Handy for debugging.
 func ascii() -> String:
-	var sym := {"fight": "F", "elite": "E", "rest": "R", "shop": "$", "event": "?", "treasure": "T", "boss": "B"}
+	var sym := {"fight": "F", "elite": "E", "rest": "R", "shop": "$", "event": "?", "treasure": "T", "vault": "V", "boss": "B"}
 	var lines: Array[String] = []
 	for r in range(rows.size() - 1, -1, -1):
 		var parts: Array[String] = []

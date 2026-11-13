@@ -590,11 +590,6 @@ func show_map() -> void:
 
 
 func _enter_node(id: int) -> void:
-	if id in run.side_moves():
-		# A sidestep only repositions: the node beside you is not played.
-		run.enter(id)
-		show_map()
-		return
 	var node := run.enter(id)
 	_save_run({"screen": "node"})
 	_play_node(node)
@@ -610,6 +605,13 @@ func _play_node(node: Dictionary) -> void:
 			_show_shop(run.make_shop())
 		"event":
 			_show_event(run.pick_event())
+		"vault":
+			var v := run.open_vault()
+			var tid: String = v["talisman"]
+			var lines: Array = ["You crack the sealed vault: +%d creds." % v["gold"]]
+			if tid != "":
+				lines.append("Inside: %s." % db.talismans[tid]["name"])
+			_show_message("Sealed vault", lines, [tid] if tid != "" else [])
 		"treasure":
 			var tid := run.roll_talisman("", run.rng.fork("treasure:%d" % run.floor_num))
 			run.add_talisman(tid)

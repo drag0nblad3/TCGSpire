@@ -13,7 +13,8 @@ func _run(seed_in: int = 1, heat: int = 0) -> RunState:
 
 
 func test_map_every_node_reachable_and_ends_in_boss() -> void:
-	# Without any sidesteps: walls never cut the last way up or the last way in.
+	# Without jumps: every node but a sealed vault is reachable, and every node
+	# (vaults included) still has a way up, so there are no dead ends.
 	for s in 20:
 		var m := RunMap.generate(db, GameRng.new(s))
 		var seen := {}
@@ -24,75 +25,80 @@ func test_map_every_node_reachable_and_ends_in_boss() -> void:
 				continue
 			seen[id] = true
 			frontier.append_array(m.node(id)["next"])
-		eq(seen.size(), m.nodes.size(), "seed %d reachable nodes" % s)
+		check(seen.has(m.nodes.back()["id"]), "seed %d boss reachable" % s)
 		eq(m.nodes.back()["type"], "boss", "seed %d last node" % s)
 		for n in m.nodes:
 			if n["type"] != "boss":
 				check(not n["next"].is_empty(), "seed %d node %d dead end" % [s, n["id"]])
+			eq(seen.has(n["id"]), n["type"] != "vault", "seed %d node %d reachable unless a vault" % [s, n["id"]])
 			if n["type"] in ["fight", "elite", "boss"]:
 				check(n["encounter"] != "", "seed %d node %d has no encounter" % [s, n["id"]])
 
 
-func test_map_walls_are_few_and_short() -> void:
-	var h := 0
-	var v := 0
+func test_map_walls_are_short_and_really_cut() -> void:
+	var vaults := 0
+	var walls := 0
 	for s in 20:
 		var m := RunMap.generate(db, GameRng.new(s))
+		walls += m.walls.size()
 		for w in m.walls:
-			if w["kind"] == "h":
-				h += 1
-				check(w["links"].size() in [1, 2], "seed %d horizontal wall spans 1-2 links" % s)
-				for link in w["links"]:
-					check(int(link[1]) not in m.node(int(link[0]))["next"], "seed %d wall link is cut" % s)
-			else:
-				v += 1
-				check(w["pairs"].size() in [1, 2], "seed %d vertical wall spans 1-2 floors" % s)
-				for pair in w["pairs"]:
-					check(int(pair[1]) not in m.side_nodes(int(pair[0])), "seed %d vertical wall blocks the sidestep" % s)
-	check(h >= 20 and h <= 80, "a few horizontal walls per map, got %d in 20 maps" % h)
-	check(v >= 10 and v <= 70, "a few vertical walls per map, got %d in 20 maps" % v)
+			var span := Vector2(w["a"][0], w["a"][1]).distance_to(Vector2(w["b"][0], w["b"][1]))
+			check(span <= (0.51 if w["kind"] == "h" else 1.65), "seed %d wall too long" % s)
+			for n in m.nodes:
+				for to in n["next"]:
+					check(not m.cut_by(n["id"], to, w), "seed %d link %d-%d runs through a wall" % [s, n["id"], to])
+		for n in m.nodes:
+			if n["type"] == "vault":
+				vaults += 1
+				var below: Array = m.rows[int(n["row"]) - 1]
+				check(below.any(func(x: int) -> bool: return m.node(x)["type"] != "vault" and n["id"] in m.jump_targets(x)), "seed %d vault %d is one jump from a walkable node" % [s, n["id"]])
+	check(walls >= 40 and walls <= 100, "about 2-5 walls per map, got %d in 20 maps" % walls)
+	check(vaults >= 3 and vaults <= 40, "vaults are rare, got %d in 20 maps" % vaults)
 
 
-func _run_with_side() -> RunState:
-	# A run whose first start node has an unwalled neighbour.
-	for s in 50:
-		var r := _run(s)
-		var start: int = r.available_nodes()[0]
-		if not r.map.side_nodes(start).is_empty():
-			r.enter(start)
-			return r
-	return null
-
-
-func test_sidestep_needs_the_ability() -> void:
-	var r := _run_with_side()
-	eq(r.sidesteps_left(), 0, "new runs have no sidesteps")
-	eq(r.side_moves(), [], "no sidestep without the ability")
-	r.perks.append("lateral_shunt")
-	eq(r.sidesteps_left(), 2, "Lateral Shunt gives 2 per layer")
-	check(not r.side_moves().is_empty(), "sidestep offered with the ability")
+func test_jumps_need_the_upgrade() -> void:
+	var r := _run()
+	r.enter(r.available_nodes()[0])
+	eq(r.jumps_left(), 0, "new runs have no jumps")
+	eq(r.jump_moves(), [], "no jump without the upgrade")
+	r.perks.append("packet_hop")
+	eq(r.jumps_left(), 2, "Packet Hop gives 2 per layer")
 	r.rig["ghost_routing"] = 2
-	eq(r.sidesteps_left(), 4, "rig ranks add sidesteps")
+	eq(r.jumps_left(), 4, "rig ranks add jumps")
 
 
-func test_sidestep_once_per_floor_and_spends_a_charge() -> void:
-	var r := _run_with_side()
-	r.perks.append("lateral_shunt")
-	var side: Array = r.side_moves()
-	for id in side:
-		check(id in r.available_nodes(), "sidestep offered")
-	r.enter(side[0])
-	eq(r.side_row, 0, "sidestep used on row 0")
-	eq(r.sidesteps_left(), 1, "one charge spent")
-	check(r.was_sidestep(r.path.size() - 1), "sidestep marked as pass-through")
-	check(not r.was_sidestep(0), "start node was played")
-	eq(r.side_moves(), [], "only one sidestep per floor")
-	for id in r.available_nodes():
-		eq(int(r.map.node(id)["row"]), 1, "only upward moves left")
-	var r2 := RunState.from_dict(db, JSON.parse_string(JSON.stringify(r.to_dict())))
-	eq(int(r2.side_row), 0, "side_row saved")
-	eq(r2.sidesteps_left(), 1, "charges saved")
-	eq(r2.map.walls.size(), r.map.walls.size(), "walls saved")
+func test_jump_goes_up_through_walls_and_plays_the_node() -> void:
+	for s in 30:
+		var r := _run(s)
+		r.perks.append("packet_hop")
+		# Walk normal links until a jump is on offer.
+		r.enter(r.available_nodes()[0])
+		while r.jump_moves().is_empty() and not r.map.node(r.node_id)["next"].is_empty() and r.map.node(r.node_id)["row"] < 8:
+			r.enter(r.map.node(r.node_id)["next"][0])
+		if r.jump_moves().is_empty():
+			continue
+		var from := r.node_id
+		var to: int = r.jump_moves()[0]
+		check(to not in r.map.node(from)["next"], "jump targets have no normal link")
+		eq(int(r.map.node(to)["row"]), int(r.map.node(from)["row"]) + 1, "jump goes up one floor")
+		var node := r.enter(to)
+		eq(node["id"], to, "you land on (and play) the jump target")
+		eq(r.jumps_left(), 1, "one jump spent")
+		check(r.was_jump(r.path.size() - 1), "trail marks the jump")
+		var r2 := RunState.from_dict(db, JSON.parse_string(JSON.stringify(r.to_dict())))
+		eq(r2.jumps_left(), 1, "jumps saved")
+		eq(r2.map.walls.size(), r.map.walls.size(), "walls saved")
+		return
+	check(false, "no jump found in 30 runs")
+
+
+func test_vault_pays_a_rare_implant_and_creds() -> void:
+	var r := _run()
+	var gold := r.gold
+	var v := r.open_vault()
+	check(v["talisman"] != "" and v["talisman"] in r.talismans, "vault implant added")
+	eq(str(db.talismans[v["talisman"]]["rarity"]), "rare", "vault implant is rare")
+	eq(r.gold, gold + int(v["gold"]), "vault creds added")
 
 
 func test_map_is_deterministic() -> void:

@@ -16,8 +16,7 @@ var heat := 0
 var talismans: Array = []
 var map: RunMap
 var node_id := -1
-var side_row := -1  # row of this act's last sidestep (one per floor)
-var side_used := 0  # sidestep charges spent this act
+var jumps_used := 0  # jump charges spent this act
 var path: Array = []
 var combats_won := 0
 var elites_won := 0
@@ -197,30 +196,30 @@ func available_nodes() -> Array:
 		return []
 	if node_id < 0:
 		return map.start_nodes()
-	return map.node(node_id)["next"] + side_moves()
+	return map.node(node_id)["next"] + jump_moves()
 
 
-## Sidesteps are an earned ability: subroutines/rig perks with the "sidesteps" mod
-## give charges per layer (act). One charge moves you to an unvisited row
-## neighbour not split off by a vertical wall, at most once per floor (side_row).
-## A sidestep only moves you: the node you land on is not played (no fight, shop,
-## rest or cache), so it can't farm extra stops. was_sidestep() marks them.
-func side_moves() -> Array:
-	if over or node_id < 0 or sidesteps_left() <= 0:
+## Jumps are an earned ability: subroutines/rig perks with the "jumps" mod give
+## charges per layer (act). A jump spends one to go diagonally up to the next
+## floor through walls, onto a node with no normal link (vaults included). You play
+## the node you land on.
+func jump_moves() -> Array:
+	if over or node_id < 0 or jumps_left() <= 0:
 		return []
-	var row := int(map.node(node_id)["row"])
-	if side_row == row:
-		return []
-	return map.side_nodes(node_id).filter(func(id: int) -> bool: return id not in path)
+	return map.jump_targets(node_id)
 
 
-func sidesteps_left() -> int:
-	return maxi(0, int(perk_mod("sidesteps")) - side_used)
+func jumps_total() -> int:
+	return int(perk_mod("jumps"))
 
 
-## True if path[i] was reached by a sidestep (so it was passed through, not played).
-func was_sidestep(i: int) -> bool:
-	return i > 0 and i < path.size() and int(map.node(path[i])["row"]) == int(map.node(path[i - 1])["row"])
+func jumps_left() -> int:
+	return maxi(0, jumps_total() - jumps_used)
+
+
+## True if path[i] was reached by a jump.
+func was_jump(i: int) -> bool:
+	return i > 0 and i < path.size() and int(path[i]) not in map.node(path[i - 1])["next"]
 
 
 func current_node() -> Dictionary:
@@ -231,9 +230,8 @@ func enter(id: int) -> Dictionary:
 	if id not in available_nodes():
 		push_error("Node %d not reachable" % id)
 		return {}
-	if id in side_moves():
-		side_row = int(map.node(id)["row"])
-		side_used += 1
+	if id in jump_moves():
+		jumps_used += 1
 	node_id = id
 	path.append(id)
 	var node := map.node(id)
@@ -295,8 +293,7 @@ func _next_act() -> void:
 	act += 1
 	node_id = -1
 	path = []
-	side_row = -1
-	side_used = 0
+	jumps_used = 0
 	var boss_faction := ""
 	if act == total_acts() and job != "" and float(heat_mod("double_cross", 0.0)) > 0.0 and job not in banned:
 		# The client sells you out: their crew joins the targets, their programs
@@ -469,6 +466,22 @@ static func upgrade_candidates(cards: Array) -> Array:
 
 
 ## {"cards": [{"id", "price"}], "talismans": [{"id", "price"}], "remove": price}
+## A sealed vault (reached only by a jump): a rare implant plus a stack of creds.
+## Returns {"talisman": id or "", "gold": int}.
+func open_vault() -> Dictionary:
+	var cfg: Dictionary = db.balance.get("vault", {})
+	var r := rng.fork("vault:%d" % floor_num)
+	var tid := roll_talisman(str(cfg.get("talisman", "rare")), r)
+	if tid == "":
+		tid = roll_talisman("", r)
+	if tid != "":
+		add_talisman(tid)
+	var g: Array = cfg.get("gold", [60, 90])
+	var gold_won := r.range_i(int(g[0]), int(g[1]))
+	gold += gold_won
+	return {"talisman": tid, "gold": gold_won}
+
+
 func make_shop() -> Dictionary:
 	var cfg: Dictionary = db.balance.get("shop", {})
 	var r := rng.fork("shop:%d" % floor_num)
@@ -571,7 +584,7 @@ func summary() -> String:
 
 ## Plain fields copied as-is by to_dict()/from_dict(). Everything random forks
 ## from seed_value, so restoring these replays the rest of the run exactly.
-const SAVED := ["seed_value", "hp", "max_hp", "gold", "floor_num", "heat", "talismans", "node_id", "path", "side_row", "side_used",
+const SAVED := ["seed_value", "hp", "max_hp", "gold", "floor_num", "heat", "talismans", "node_id", "path", "jumps_used",
 	"combats_won", "elites_won", "boss_won", "act", "acts_cleared", "double_crossed", "over", "card_plays",
 	"remove_cost", "outcome_counter", "locked_talismans", "perks", "rig", "firmware", "firmware_mods",
 	"mods_installed", "job", "banned", "tally", "clauses", "daily"]
