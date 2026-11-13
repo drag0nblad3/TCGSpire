@@ -9,8 +9,12 @@ extends SceneTree
 ## Default deck = base deck + default starter picks.
 
 
+## Default heat per save profile when heat= is not given.
+const DEFAULT_HEAT := {"new": 0, "experienced": 1, "veteran": 3, "max": 5}
+
+
 func _initialize() -> void:
-	var opts := {"n": "", "deck": "", "enc": "", "mode": "fight", "heat": "0", "job": "", "profile": "new", "acts": "0"}
+	var opts := {"n": "", "deck": "", "enc": "", "mode": "fight", "heat": "", "job": "", "profile": "new", "acts": "0"}
 	for a in OS.get_cmdline_user_args():
 		var kv := a.split("=", true, 1)
 		if kv.size() == 2:
@@ -22,7 +26,7 @@ func _initialize() -> void:
 		quit(1)
 		return
 	if opts["mode"] == "run":
-		_sim_runs(db, int(opts["n"]) if opts["n"] != "" else 100, int(opts["heat"]), opts["job"], opts["profile"], opts["acts"] == "1")
+		_sim_runs(db, int(opts["n"]) if opts["n"] != "" else 100, int(opts["heat"]) if opts["heat"] != "" else DEFAULT_HEAT.get(opts["profile"], 0), opts["job"], opts["profile"], opts["acts"] == "1")
 		quit(0)
 		return
 	var deck_ids: Array = []
