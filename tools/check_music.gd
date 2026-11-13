@@ -24,6 +24,19 @@ func _check() -> void:
 	assert(music._voices[music._active].stream_paused)
 	music._notification(Node.NOTIFICATION_APPLICATION_FOCUS_IN)
 	assert(not music._voices[music._active].stream_paused)
+	var previous_track := music._track
+	music._advance(music._rotation_after + 0.1)
+	assert(music._track != previous_track, "Long sessions rotate tracks")
+	var second_track := music._track
+	music._advance(music._rotation_after + 0.1)
+	assert(music._track != second_track and music._track != previous_track)
+	music._advance(music._rotation_after + 0.1)
+	assert(music._track == previous_track, "Playlist wraps after all three tracks")
+	music._notification(Node.NOTIFICATION_APPLICATION_FOCUS_OUT)
+	var elapsed := music._elapsed
+	music._advance(999.0)
+	assert(music._elapsed == elapsed, "Background time does not advance playlist")
+	music._notification(Node.NOTIFICATION_APPLICATION_FOCUS_IN)
 	music.configure({"music_muted": true})
 	for player in music._voices:
 		assert(not player.playing)
@@ -34,5 +47,5 @@ func _check() -> void:
 	await create_timer(0.2).timeout
 	music.free()
 	await create_timer(0.2).timeout
-	print("OK: music playback, crossfade, mute, and background lifecycle")
+	print("OK: music playback, crossfade, mute, and background lifecycle and playlist rotation")
 	quit()
