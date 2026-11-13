@@ -16,6 +16,7 @@ var heat := 0
 var talismans: Array = []
 var map: RunMap
 var node_id := -1
+var jumps_used := 0  # jump charges spent this act
 var path: Array = []
 var combats_won := 0
 var elites_won := 0
@@ -195,7 +196,30 @@ func available_nodes() -> Array:
 		return []
 	if node_id < 0:
 		return map.start_nodes()
-	return map.node(node_id)["next"].duplicate()
+	return map.node(node_id)["next"] + jump_moves()
+
+
+## Jumps are an earned ability: subroutines/rig perks with the "jumps" mod give
+## charges per layer (act). A jump spends one to go diagonally up to the next
+## floor through walls, onto a node with no normal link (vaults included). You play
+## the node you land on.
+func jump_moves() -> Array:
+	if over or node_id < 0 or jumps_left() <= 0:
+		return []
+	return map.jump_targets(node_id)
+
+
+func jumps_total() -> int:
+	return int(perk_mod("jumps"))
+
+
+func jumps_left() -> int:
+	return maxi(0, jumps_total() - jumps_used)
+
+
+## True if path[i] was reached by a jump.
+func was_jump(i: int) -> bool:
+	return i > 0 and i < path.size() and int(path[i]) not in map.node(path[i - 1])["next"]
 
 
 func current_node() -> Dictionary:
@@ -206,6 +230,8 @@ func enter(id: int) -> Dictionary:
 	if id not in available_nodes():
 		push_error("Node %d not reachable" % id)
 		return {}
+	if id in jump_moves():
+		jumps_used += 1
 	node_id = id
 	path.append(id)
 	var node := map.node(id)
@@ -244,6 +270,8 @@ func finish_combat(c: Combat) -> Dictionary:
 	rewards["kind"] = kind
 	if kind == "elite" or (kind == "boss" and act < total_acts()):
 		rewards["perks"] = perk_choices(int(db.balance.get("perk_choices", 3)) + int(perk_mod("perk_choices")), rng.fork("perks:%d" % floor_num))
+	if current_node().get("type", "") == "vault":
+		rewards["vault"] = open_vault()
 	if kind == "elite":
 		elites_won += 1
 		rewards["talisman"] = roll_talisman("", rng.fork("elite_t:%d" % floor_num))
@@ -267,6 +295,7 @@ func _next_act() -> void:
 	act += 1
 	node_id = -1
 	path = []
+	jumps_used = 0
 	var boss_faction := ""
 	if act == total_acts() and job != "" and float(heat_mod("double_cross", 0.0)) > 0.0 and job not in banned:
 		# The client sells you out: their crew joins the targets, their programs
@@ -439,6 +468,23 @@ static func upgrade_candidates(cards: Array) -> Array:
 
 
 ## {"cards": [{"id", "price"}], "talismans": [{"id", "price"}], "remove": price}
+## A sealed vault (reached only by a jump, guarded by an elite): after the fight,
+## a rare implant plus a stack of creds on top of the elite's rewards.
+## Returns {"talisman": id or "", "gold": int}.
+func open_vault() -> Dictionary:
+	var cfg: Dictionary = db.balance.get("vault", {})
+	var r := rng.fork("vault:%d" % floor_num)
+	var tid := roll_talisman(str(cfg.get("talisman", "rare")), r)
+	if tid == "":
+		tid = roll_talisman("", r)
+	if tid != "":
+		add_talisman(tid)
+	var g: Array = cfg.get("gold", [60, 90])
+	var gold_won := r.range_i(int(g[0]), int(g[1]))
+	gold += gold_won
+	return {"talisman": tid, "gold": gold_won}
+
+
 func make_shop() -> Dictionary:
 	var cfg: Dictionary = db.balance.get("shop", {})
 	var r := rng.fork("shop:%d" % floor_num)
@@ -541,7 +587,7 @@ func summary() -> String:
 
 ## Plain fields copied as-is by to_dict()/from_dict(). Everything random forks
 ## from seed_value, so restoring these replays the rest of the run exactly.
-const SAVED := ["seed_value", "hp", "max_hp", "gold", "floor_num", "heat", "talismans", "node_id", "path",
+const SAVED := ["seed_value", "hp", "max_hp", "gold", "floor_num", "heat", "talismans", "node_id", "path", "jumps_used",
 	"combats_won", "elites_won", "boss_won", "act", "acts_cleared", "double_crossed", "over", "card_plays",
 	"remove_cost", "outcome_counter", "locked_talismans", "perks", "rig", "firmware", "firmware_mods",
 	"mods_installed", "job", "banned", "tally", "clauses", "daily"]
@@ -556,7 +602,7 @@ func to_dict() -> Dictionary:
 	for c: CardInstance in deck:
 		cards.append({"id": c.def.id, "up": c.upgraded, "fw": c.fw, "foil": c.foil, "mod": str(c.mod.get("id", ""))})
 	d["deck"] = cards
-	d["map"] = {"nodes": map.nodes.duplicate(true), "rows": map.rows.duplicate(true), "act": map.act}
+	d["map"] = {"nodes": map.nodes.duplicate(true), "rows": map.rows.duplicate(true), "act": map.act, "walls": map.walls.duplicate(true)}
 	return d
 
 
@@ -581,5 +627,6 @@ static func from_dict(db_in: CardDB, d: Dictionary) -> RunState:
 	m.nodes = d["map"]["nodes"].duplicate(true)
 	m.rows = d["map"]["rows"].duplicate(true)
 	m.act = int(d["map"]["act"])
+	m.walls = d["map"].get("walls", []).duplicate(true)
 	r.map = m
 	return r

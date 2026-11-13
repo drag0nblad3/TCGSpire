@@ -13,6 +13,8 @@ func _run(seed_in: int = 1, heat: int = 0) -> RunState:
 
 
 func test_map_every_node_reachable_and_ends_in_boss() -> void:
+	# Without jumps: every node but a sealed vault is reachable, and every node
+	# (vaults included) still has a way up, so there are no dead ends.
 	for s in 20:
 		var m := RunMap.generate(db, GameRng.new(s))
 		var seen := {}
@@ -23,13 +25,111 @@ func test_map_every_node_reachable_and_ends_in_boss() -> void:
 				continue
 			seen[id] = true
 			frontier.append_array(m.node(id)["next"])
-		eq(seen.size(), m.nodes.size(), "seed %d reachable nodes" % s)
+		check(seen.has(m.nodes.back()["id"]), "seed %d boss reachable" % s)
 		eq(m.nodes.back()["type"], "boss", "seed %d last node" % s)
 		for n in m.nodes:
 			if n["type"] != "boss":
 				check(not n["next"].is_empty(), "seed %d node %d dead end" % [s, n["id"]])
-			if n["type"] in ["fight", "elite", "boss"]:
+			eq(seen.has(n["id"]), n["type"] != "vault", "seed %d node %d reachable unless a vault" % [s, n["id"]])
+			if n["type"] in ["fight", "elite", "boss", "vault"]:
 				check(n["encounter"] != "", "seed %d node %d has no encounter" % [s, n["id"]])
+			if n["type"] == "vault":
+				eq(str(db.encounters[n["encounter"]]["kind"]), "elite", "seed %d vault %d guarded by an elite" % [s, n["id"]])
+
+
+func test_map_walls_are_short_and_really_cut() -> void:
+	var vaults := 0
+	var walls := 0
+	for s in 20:
+		var m := RunMap.generate(db, GameRng.new(s))
+		walls += m.walls.size()
+		for w in m.walls:
+			var span := Vector2(w["a"][0], w["a"][1]).distance_to(Vector2(w["b"][0], w["b"][1]))
+			check(span <= (0.51 if w["kind"] == "h" else 1.65), "seed %d wall too long" % s)
+			for n in m.nodes:
+				for to in n["next"]:
+					check(not m.cut_by(n["id"], to, w), "seed %d link %d-%d runs through a wall" % [s, n["id"], to])
+			# Centred: the wall's midpoint sits on the middle of the links it cut.
+			var hits: Array = []
+			var a := Vector2(w["a"][0], w["a"][1])
+			var b := Vector2(w["b"][0], w["b"][1])
+			for link in w["cut"]:
+				var p1 := Vector2(m._rel(m.node(link[0])), float(m.node(link[0])["row"]))
+				var p2 := Vector2(m._rel(m.node(link[1])), float(m.node(link[1])["row"]))
+				hits.append(Geometry2D.segment_intersects_segment(p1, p2, a, b))
+			check(hits.size() in [1, 2], "seed %d wall cuts 1-2 links" % s)
+			var centre: Vector2 = (hits[0] + hits[-1]) / 2.0
+			check(centre.distance_to((a + b) / 2.0) < 0.01, "seed %d wall centred on its cuts" % s)
+		for n in m.nodes:
+			if n["type"] == "vault":
+				vaults += 1
+				var below: Array = m.rows[int(n["row"]) - 1]
+				check(below.any(func(x: int) -> bool: return m.node(x)["type"] != "vault" and n["id"] in m.jump_targets(x)), "seed %d vault %d is one jump from a walkable node" % [s, n["id"]])
+	check(walls >= 40 and walls <= 100, "about 2-5 walls per map, got %d in 20 maps" % walls)
+	check(vaults >= 3 and vaults <= 40, "vaults are rare, got %d in 20 maps" % vaults)
+
+
+func test_jumps_need_the_upgrade() -> void:
+	var r := _run()
+	r.enter(r.available_nodes()[0])
+	eq(r.jumps_left(), 0, "new runs have no jumps")
+	eq(r.jump_moves(), [], "no jump without the upgrade")
+	r.perks.append("packet_hop")
+	eq(r.jumps_left(), 2, "Packet Hop gives 2 per layer")
+	r.rig["ghost_routing"] = 2
+	eq(r.jumps_left(), 4, "rig ranks add jumps")
+
+
+func test_jump_goes_up_through_walls_and_plays_the_node() -> void:
+	for s in 30:
+		var r := _run(s)
+		r.perks.append("packet_hop")
+		# Walk normal links until a jump is on offer.
+		r.enter(r.available_nodes()[0])
+		while r.jump_moves().is_empty() and not r.map.node(r.node_id)["next"].is_empty() and r.map.node(r.node_id)["row"] < 8:
+			r.enter(r.map.node(r.node_id)["next"][0])
+		if r.jump_moves().is_empty():
+			continue
+		var from := r.node_id
+		var to: int = r.jump_moves()[0]
+		check(to not in r.map.node(from)["next"], "jump targets have no normal link")
+		eq(int(r.map.node(to)["row"]), int(r.map.node(from)["row"]) + 1, "jump goes up one floor")
+		var node := r.enter(to)
+		eq(node["id"], to, "you land on (and play) the jump target")
+		eq(r.jumps_left(), 1, "one jump spent")
+		check(r.was_jump(r.path.size() - 1), "trail marks the jump")
+		var r2 := RunState.from_dict(db, JSON.parse_string(JSON.stringify(r.to_dict())))
+		eq(r2.jumps_left(), 1, "jumps saved")
+		eq(r2.map.walls.size(), r.map.walls.size(), "walls saved")
+		return
+	check(false, "no jump found in 30 runs")
+
+
+func test_vault_elite_win_also_pays_the_vault() -> void:
+	for s in 20:
+		var r := _run(s)
+		for n in r.map.nodes:
+			if n["type"] == "vault":
+				r.node_id = n["id"]
+				var c := r.start_combat(n["encounter"])
+				c.start()
+				for e in c.enemies:
+					e.hp = 0
+				c._check_end()
+				var rew := r.finish_combat(c)
+				eq(rew["kind"], "elite", "vault fight is an elite")
+				check(rew.has("vault") and rew["vault"]["gold"] > 0, "vault loot on top")
+				return
+	check(false, "no vault in 20 runs")
+
+
+func test_vault_pays_a_rare_implant_and_creds() -> void:
+	var r := _run()
+	var gold := r.gold
+	var v := r.open_vault()
+	check(v["talisman"] != "" and v["talisman"] in r.talismans, "vault implant added")
+	eq(str(db.talismans[v["talisman"]]["rarity"]), "rare", "vault implant is rare")
+	eq(r.gold, gold + int(v["gold"]), "vault creds added")
 
 
 func test_map_is_deterministic() -> void:

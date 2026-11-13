@@ -115,14 +115,8 @@ func finish_run(db: CardDB, run: RunState) -> Array:
 			max_heat = run.heat + 1
 			lines.append("Heat %d unlocked" % max_heat)
 	var cfg: Dictionary = db.balance.get("run_rewards", {})
-	var gained_xp := run.floor_num * int(cfg.get("xp_per_floor", 5)) + run.elites_won * int(cfg.get("xp_per_elite", 15)) \
-		+ run.acts_cleared * int(cfg.get("xp_per_act", 40))
-	if run.boss_won:
-		gained_xp += int(cfg.get("xp_boss", 60))
-	gained_xp = int(gained_xp * (1.0 + 0.1 * run.heat) * float(cfg.get("xp_mult", 1.0)))
-	var packs := run.acts_cleared * int(cfg.get("packs_per_boss", 1))
-	if run.boss_won:
-		packs += int(cfg.get("packs_full_run", 0))
+	var gained_xp := run_xp(db, run)
+	var packs := run_packs(db, run)
 	packs_unopened += packs
 	lines.append("+%d XP, +%d pack%s" % [gained_xp, packs, "" if packs == 1 else "s"])
 	lines.append_array(add_shards(db, run.elites_won * int(cfg.get("shards_per_elite", 0))))
@@ -135,6 +129,34 @@ func finish_run(db: CardDB, run: RunState) -> Array:
 	lines.append_array(Records.finish_run(db, self, run))
 	lines.append_array(Records.check_exploits(db, self))
 	return lines
+
+
+## XP a run pays when it ends (before level-ups). Also used by Jobs.payout_preview.
+static func run_xp(db: CardDB, run: RunState) -> int:
+	var cfg: Dictionary = db.balance.get("run_rewards", {})
+	var n := run.floor_num * int(cfg.get("xp_per_floor", 5)) + run.elites_won * int(cfg.get("xp_per_elite", 15)) \
+		+ run.acts_cleared * int(cfg.get("xp_per_act", 40))
+	if run.boss_won:
+		n += int(cfg.get("xp_boss", 60))
+	return int(n * (1.0 + 0.1 * run.heat) * float(cfg.get("xp_mult", 1.0)))
+
+
+## Packs a run pays when it ends: one per Core breached, plus one for the final Core.
+static func run_packs(db: CardDB, run: RunState) -> int:
+	var cfg: Dictionary = db.balance.get("run_rewards", {})
+	var n := run.acts_cleared * int(cfg.get("packs_per_boss", 1))
+	if run.boss_won:
+		n += int(cfg.get("packs_full_run", 0))
+	return n
+
+
+## What the next level-up pays: {"level", "packs", "dust"} (empty at the level cap).
+func next_level_reward(db: CardDB) -> Dictionary:
+	var lvl := level() + 1
+	if lvl > LEVEL_CAP:
+		return {}
+	var rewards: Dictionary = db.balance.get("levels", {})
+	return {"level": lvl, "packs": int(rewards.get("packs", 1)), "dust": int(rewards.get("dust_per_level", 0)) * lvl}
 
 
 func add_xp(db: CardDB, amount: int) -> Array:

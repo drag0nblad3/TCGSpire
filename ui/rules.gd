@@ -43,6 +43,31 @@ static func sections(db: CardDB) -> Array:
 		["Win the run", "Breach the Core at the top of %s." % ("both layers" if acts == 2 else "all %d layers" % acts)],
 		["Your deck", "Your deck is your rig's program library. Each card is a program you run by paying its RAM."],
 	]])
+	out.append(["Plain words", "In a fight", [
+		"The game uses hacker slang. Here is what each word means.",
+		["Program", "A card. Running a program means playing a card."],
+		["RAM", "Energy. You spend it to play cards and it refills every turn."],
+		["Firewall", "Block. It soaks damage before your HP."],
+		["Sentry", "An enemy. Black sentries are elites and Cores are bosses."],
+		["Exploit, Script, Daemon, Rootkit", "Card types: attack, skill, a short-lived helper on your board, and a power that lasts the fight."],
+		["Wiped", "Removed for the rest of this fight (it comes back next fight)."],
+		["Malware", "Junk cards enemies put in your deck."],
+		["The Stack", "The map of one run. Each node is a stop on it, and each layer (act) ends at a Core."],
+		["Job", "A run. Every run is done for one crew (faction), which pays you rep."],
+		[Palette.w("rest"), "Rest stop: heal or upgrade a card."],
+		[Palette.w("shop"), "The shop."],
+		["Signal", "A random event with choices."],
+		["Implant", "A passive item that triggers on its own."],
+		["Subroutine", "A perk that lasts for the rest of the run."],
+		["Recompile", "Upgrade a card for the rest of this run."],
+		["Firmware", "A permanent upgrade to a card, for every future run."],
+		["Rig upgrades", "Permanent bonuses bought with rep."],
+		["Creds", "Gold for this run. Spend it at the %s." % Palette.w("shop")],
+		[Palette.w("packs"), "Card packs."],
+		[Palette.w("dust"), "Crafting currency from scrapped cards."],
+		["Heat", "Difficulty level. Higher Heat makes enemies tougher."],
+		["Flatlined", "Your HP hit 0 and the run is over."],
+	]])
 	out.append(["Turn flow", "In a fight", [
 		["#", "Start of your turn: Firewall clears (unless kept), RAM refills to %d, each daemon loses 1 HP, then you draw %d programs." % [ram, hand]],
 		["#", "Run programs in any order while you have RAM. The cost is the chip in a program's top-left corner."],
@@ -83,15 +108,15 @@ static func sections(db: CardDB) -> Array:
 
 	# --- The run ----------------------------------------------------------------
 	out.append(["The Stack", "The run", [
-		"Hack node by node up the network map. Each layer ends with a Core guarded by a boss.",
+		"The Stack is the run's map. Move up it one node (stop) at a time. Each layer (act) ends with a Core: the boss fight.",
 		["HP", "Your HP is your rig's integrity and carries over between fights. Safehouses, some signals and implants repair it."],
-		["Rewards", "After a fight you rip one program from the sentries into your deck (or skip). A lean deck runs its best programs more often."],
+		["Rewards", "After a fight you pick one new program (card) to add to your deck, or skip. A lean deck draws its best cards more often."],
 		["Sentry", "A normal fight."],
-		["Black sentry (X)", "A tougher fight that drops an implant. Implants are passive cyberware that trigger on their own."],
-		["%s (H)" % Palette.w("rest"), "Reboot to repair HP, or recompile (upgrade) a program, or tinker a mod in."],
-		["%s ($)" % Palette.w("shop"), "Buy programs, implants and mods, or delete a program."],
-		["Signal (?)", "A choice with risks."],
-		["Cache (C)", "Holds an implant."],
+		["Black sentry (X)", "An elite: a tougher fight that drops an implant. Implants are passive items that trigger on their own."],
+		["%s (H)" % Palette.w("rest"), "A rest stop. Reboot to heal, recompile (upgrade) a card, or tinker a mod onto one."],
+		["%s ($)" % Palette.w("shop"), "The shop. Spend creds on programs, implants and mods, or remove a card from your deck."],
+		["Signal (?)", "A random event: pick a choice, some with risks."],
+		["Cache (C)", "Loot: holds an implant."],
 	]])
 	var share := int(float(db.balance.get("jobs", {}).get("client_share", 0.5)) * 100)
 	var rivals: Array = []
@@ -99,13 +124,14 @@ static func sections(db: CardDB) -> Array:
 		rivals.append([Lexicon.faction(f), "bans " + " and ".join(Jobs.banned(db, f).map(func(x: String) -> String: return Lexicon.faction(x)))])
 	var extra := _first_heat(db, "extra_targets")
 	var job_lines: Array = [
-		["Client", "Every run is a job for one crew. At least %d%% of the programs you load must be theirs." % share],
+		["Client", "Every run is a job for one crew (faction). Taking a job on the hub starts a new run. At least %d%% of the programs you load must be theirs." % share],
 		["Rivals", "Their rivals' programs are banned: you can't load them and nobody offers them during the job."],
 	]
 	job_lines.append_array(rivals)
 	job_lines.append(["Targets", "A job runs against its targets: their crew's own enforcers guard most fights and black sentries, and usually the Core itself." + ((" From Heat %d, jobs run against extra crews too (still one client), and each extra target pays %d%% more rep." % [extra, int(float(db.balance.get("jobs", {}).get("rep_per_extra_target", 0.25)) * 100)]) if extra > 0 else "")])
 	job_lines.append(["Rep", "A job pays the client's rep when it ends, more the further you climb. Rep buys that crew's rig upgrades and flashes its programs to firmware."])
 	job_lines.append(["Crews", "Burner (viruses and overclocking), Flux (data flow and firewalls), Wetware (bio-daemons and patches), Null (glitches, buffers and loops), Chrome (drone swarms and plating), Static (jamming and broadcasts), plus Street programs that fit any rig."])
+	job_lines.append(["Daily breach", "A daily challenge run with a fixed job, Heat and map for that date. One try per day, scored."])
 	out.append(["Jobs and rep", "The run", job_lines])
 	var mods: Array = [
 		["Recompile (+)", "At a safehouse: upgrade one program for this run."],
@@ -113,7 +139,7 @@ static func sections(db: CardDB) -> Array:
 	]
 	for id in db.mods:
 		mods.append([str(db.mods[id]["name"]), CardMods.describe(db.mods[id])])
-	mods.append(["Subroutines", "After black sentries and the first Core, load one of %d subroutines. They run for the rest of the job." % int(db.balance.get("perk_choices", 3))])
+	mods.append(["Subroutines", "Perks for this run. After elites (black sentries) and the first Core, pick one of %d. They last for the rest of the job." % int(db.balance.get("perk_choices", 3))])
 	out.append(["Upgrades and perks", "The run", mods])
 
 	# --- Between runs -----------------------------------------------------------
@@ -122,7 +148,7 @@ static func sections(db: CardDB) -> Array:
 	var limit := Profile.deck_limit(db)
 	out.append(["Collecting", "Between runs", [
 		["Library", "Your deck is built from programs you own. Before each run you load extra programs from your library, up to %d copies of each." % limit],
-		[Palette.w("packs"), "Earned by play only: one per Core breached, one more for a finished job, one per level, one for jacking into the daily breach. Black sentries drop shards (%d make a %s)." % [Profile.shards_per_pack(db), Palette.w("pack").to_lower()]],
+		[Palette.w("packs"), "Earned by play only: one per Core breached, one more for a finished job, one per level, one for playing the daily breach. Black sentries drop shards (%d make a %s)." % [Profile.shards_per_pack(db), Palette.w("pack").to_lower()]],
 		["Hot slot", "Every %s has a hot slot (uncommon or better). A rare is guaranteed at least every %d %s and a mythic every %d." % [Palette.w("pack").to_lower(), int(db.balance["pack"].get("pity", {}).get("rare", 0)), packs, int(db.balance["pack"].get("pity", {}).get("mythic", 0))]],
 		["Rarity", "Rarer programs add complexity, not raw power."],
 		[Palette.w("dust"), "Scrap copies you no longer need for %s, and compile the ones you want." % dust],
@@ -139,7 +165,7 @@ static func sections(db: CardDB) -> Array:
 		["Rig upgrades", "Bought at the hideout with a crew's rep. They apply to every run."],
 	]])
 	out.append(["Heat", "Between runs", [
-		"Breach the final Core to unlock the next Heat. Each level adds a modifier, and enemy HP and damage boosts compound with each level.",
+		"Heat is the difficulty level, picked on the hub before you take a job. Breach the final Core to unlock the next Heat. Each level adds a modifier, and enemy HP and damage boosts compound with each level.",
 	]])
 	return out
 

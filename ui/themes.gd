@@ -32,7 +32,7 @@ const ALL := {
 			"button": "#0f1a36", "button_text": "#eafcff", "upgraded": "#39ff9e",
 		},
 		"faction": FACTIONS_DARK,
-		"node": {"fight": "#b8c4d6", "elite": "#ff2b6a", "rest": "#39ff9e", "shop": "#ffd23a", "event": "#2ef2ff", "treasure": "#ffd23a", "boss": "#ff2bd6"},
+		"node": {"fight": "#b8c4d6", "elite": "#ff2b6a", "rest": "#39ff9e", "shop": "#ffd23a", "event": "#2ef2ff", "treasure": "#ffd23a", "vault": "#ff8a3d", "boss": "#ff2bd6"},
 	},
 	"starforge": {
 		"name": "Star-Forge",
@@ -64,7 +64,7 @@ const ALL := {
 		},
 		"faction": FACTIONS_LIGHT,
 		"rarity": {"starter": "#8a7a66", "common": "#6e5a43", "uncommon": "#2f7a3a", "rare": "#b8860b", "mythic": "#8c1f6a"},
-		"node": {"fight": "#3a2a1c", "elite": "#a2391f", "rest": "#3f7a2a", "shop": "#b8860b", "event": "#1f5f8f", "treasure": "#b8860b", "boss": "#5b3c8c"},
+		"node": {"fight": "#3a2a1c", "elite": "#a2391f", "rest": "#3f7a2a", "shop": "#b8860b", "event": "#1f5f8f", "treasure": "#b8860b", "vault": "#b5541c", "boss": "#5b3c8c"},
 	},
 	"cathedral": {
 		"name": "Cathedral Glass",
