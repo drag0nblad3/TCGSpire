@@ -26,7 +26,6 @@ const STATUS := {
 	"fortify": "Hardened",
 	"frail": "Fragmented",
 	"charge": "Buffer",
-	"echo": "Loop",
 	"stall": "Lagged",
 }
 
@@ -37,6 +36,7 @@ const KEYWORD := {
 	"innate": "Preload",
 	"ethereal": "Volatile",
 	"once_per_turn": "Once per turn",
+	"loop": "Loop",
 }
 
 const FACTION := {"neutral": "Street", "ember": "Burner", "tide": "Flux", "bloom": "Wetware", "void": "Null", "chrome": "Chrome", "noise": "Static"}

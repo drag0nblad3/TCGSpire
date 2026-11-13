@@ -554,8 +554,8 @@ func _play_events(played: CardView) -> int:
 			"talisman":
 				_float_text(_player_view, str(combat.db.talismans.get(e["id"], combat.db.perks.get(e["id"], {})).get("name", "")), Palette.RARITY["rare"], -30)
 				await _wait(0.18)
-			"echo":
-				_float_text(_player_view, "Echo!", Palette.faction("void"), -30)
+			"loop":
+				_float_text(_player_view, "Loop +%d" % int(e["loops"]), Palette.faction("void"), -30)
 			"reshuffle":
 				_float_text(_player_view, "Discard shuffled into draw pile", Palette.TEXT_DIM, -60)
 			"draw":

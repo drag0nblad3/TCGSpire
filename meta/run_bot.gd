@@ -133,6 +133,8 @@ static func card_value(c: CardDef, upgraded: bool = false) -> float:
 	for e in c.get_effects(upgraded):
 		var n := float(e.get("amount", 0))
 		var aoe := 1.7 if str(e.get("to", "")) == "all_enemies" else 1.0
+		if e.has("loop"):
+			v += float(e["loop"]) * 2.0 * aoe
 		match str(e.get("op", "")):
 			"damage":
 				v += n * float(e.get("hits", 1)) * aoe
@@ -149,7 +151,7 @@ static func card_value(c: CardDef, upgraded: bool = false) -> float:
 			"apply":
 				var st := str(e.get("status", ""))
 				var k := float(e.get("stacks", 1))
-				v += k * ({"burn": 2.2, "brittle": 2.5, "weaken": 2.0, "might": 3.0, "regen": 2.0, "thorns": 1.8, "fortify": 8.0, "echo": 6.0, "charge": 1.6, "frail": 0.8, "overcharge": -3.0, "stall": 6.0}.get(st, 1.5)) * aoe
+				v += k * ({"burn": 2.2, "brittle": 2.5, "weaken": 2.0, "might": 3.0, "regen": 2.0, "thorns": 1.8, "fortify": 8.0, "charge": 1.6, "frail": 0.8, "overcharge": -3.0, "stall": 6.0}.get(st, 1.5)) * aoe
 			"draw":
 				v += n * 3.5
 			"energy":

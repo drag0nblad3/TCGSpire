@@ -62,19 +62,20 @@ static func score(c: Combat, card: CardInstance, t: int = -1) -> float:
 		var alive := c.living(c.enemies)
 		target = alive[0] if not alive.is_empty() else null
 	var v := 0.0
-	var loops := 2 if c.player.status("echo") > 0 and card.def.type != "power" else 1
 	var ward := c.player.ward
 	var effects := card.effects()
-	for repeat in loops:
-		for e in effects:
-			# The bot plays "ally" programs on itself (target -1), so value them that way.
-			var ev: Dictionary = e
-			if c.needs_ally(card) and not e.has("to"):
-				ev = e.duplicate()
-				ev["to"] = "self"
-			v += _effect_value(c, ev, target, ward)
-			if e.get("op", "") == "ward" and c.player in Effects.targets(c, e, c.player, target, "self"):
-				ward += Effects.ward_gain(c.player, int(e.get("amount", 0)))
+	for e in effects:
+		# The bot plays "ally" programs on itself (target -1), so value them that way.
+		var ev: Dictionary = e
+		if c.needs_ally(card) and not e.has("to"):
+			ev = e.duplicate()
+			ev["to"] = "self"
+		v += _effect_value(c, ev, target, ward)
+		if e.get("op", "") == "ward" and c.player in Effects.targets(c, e, c.player, target, "self"):
+			ward += Effects.ward_gain(c.player, int(e.get("amount", 0)))
+	# Loop programs get better every run this fight, so running one early pays later.
+	if card.has_loop():
+		v *= 1.2
 	# Free cards are always worth it; otherwise prefer value per RAM.
 	return v / maxf(card.cost(), 0.6) + 0.01
 
@@ -258,8 +259,6 @@ static func _self_status_value(c: Combat, st: String, stacks: float) -> float:
 			return 7.0 if c.player.status("fortify") == 0 else 0.5
 		"charge":
 			return stacks * 1.8
-		"echo":
-			return 6.0 * stacks
 		"overcharge":
 			return -3.0 * stacks
 	return stacks * 1.5

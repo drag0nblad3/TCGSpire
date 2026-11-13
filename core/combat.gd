@@ -86,6 +86,8 @@ static func create(db_in: CardDB, deck: Array, encounter_id: String, rng_in: Gam
 	for eid in enc.get("enemies", []):
 		c.enemies.append(c._make_enemy(str(eid)))
 	c.draw_pile = deck.duplicate()
+	for card in c.draw_pile:
+		card.loops = 0
 	return c
 
 
@@ -202,18 +204,15 @@ func play_card(hand_idx: int, target_idx: int = -1) -> bool:
 	if card.has_keyword("once_per_turn"):
 		_played_once_per_turn.append(card)
 	emit("play", {"card": card.key(), "target": target.id if target != null else ""})
-	var repeats := 1
-	if player.status("echo") > 0 and card.def.type != "power":
-		repeats = 2
-		player.add_status("echo", -1)
-		emit("echo", {"card": card.key()})
-	for r in repeats:
-		for e in card.effects():
-			if is_over():
-				break
-			if target != null and target.is_dead():
-				target = _first_living(enemies) if needs_target(card) else target
-			Effects.resolve(self, e, player, target)
+	for e in card.effects():
+		if is_over():
+			break
+		if target != null and target.is_dead():
+			target = _first_living(enemies) if needs_target(card) else target
+		Effects.resolve(self, e, player, target)
+	if card.has_loop():
+		card.loops += 1 + rule_sum("loop_bonus")
+		emit("loop", {"card": card.key(), "loops": card.loops})
 	if card.def.type == "power" or card.has_keyword("exhaust"):
 		exhaust_pile.append(card)
 	else:
