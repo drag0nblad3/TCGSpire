@@ -24,8 +24,9 @@ Original design only: don't copy cards, names, characters or look from existing 
 - `meta/` between-run state: `profile.gd` (versioned save, `_migrate`), `collection.gd`
   (counts, dust, craft/disenchant), `packs.gd`, `run_state.gd` (deck/HP/gold/talismans/heat,
   rest, shop, events; `to_dict`/`from_dict`), `run_save.gd` (run in progress, saved at every run screen change by
-  `main._save_run`, resumed from the hub; a fight restarts from turn 1), `run_map.gd` (seeded branching map; `break_chance` cuts all uplinks of ~2 nodes per map, only where a row neighbour climbs on;
-  the run may sidestep to a row neighbour once per floor, `RunState.side_moves`/`side_row`; a sidestep only moves, the node isn't played), `run_outcomes.gd` (run-level ops for
+  `main._save_run`, resumed from the hub; a fight restarts from turn 1), `run_map.gd` (seeded branching map; short `walls`: horizontal ones cut 1-2 uplinks (never a node's last way up/in),
+  vertical ones split row neighbours; sidesteps are an earned ability, perk mod `sidesteps` = charges per act, once per floor,
+  pass-through: `RunState.side_moves`), `run_outcomes.gd` (run-level ops for
   events/pickups), `run_bot.gd` (plays whole runs for sims), `profile_bot.gd` (builds experienced/veteran/maxed saves for sims). Progression: XP levels, card mastery, heat.
   `jobs.gd`: every run is a job for one client faction (data/factions.json, 6 crews in 3 rival pairs) run
   against targets (the rival, plus heat mod "extra_targets"): >= half the picks the client's, targets banned

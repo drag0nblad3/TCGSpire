@@ -4,15 +4,19 @@ extends RefCounted
 ## ending in a single boss. Generated from a seed; all layout rules come from
 ## balance.json "map".
 ##   node: {"id": int, "row": int, "col": int, "type": String, "next": [ids], "encounter": String}
-## A few nodes are dead ends ("next" empty, balance map.break_chance per row): the
-## run can always sidestep from one to a neighbour on the same row that climbs on
-## (see side_nodes and RunState.available_nodes).
+## Walls (balance map.walls) make the Stack a little maze-like. Each is short:
+##   {"kind": "h", "links": [[from, to], ...]}  1-2 cut links between two floors
+##   {"kind": "v", "pairs": [[a, b], ...]}      1-2 floors where two row neighbours
+##                                               are split (blocks a sidestep)
+## A horizontal cut only happens if its source keeps another way up and its target
+## another way in, so the boss is always reachable without sidesteps.
 
 const TYPES := ["fight", "elite", "rest", "shop", "event", "treasure", "boss"]
 
 var nodes: Array = []
 var rows: Array = []  # row -> [node ids]
 var act := 1
+var walls: Array = []
 
 
 ## targets: crews the job runs against; their faction encounters replace a share
@@ -38,7 +42,7 @@ static func generate(db: CardDB, rng: GameRng, act: int = 1, targets: Array = []
 	m.nodes.append(boss)
 	m.rows.append([boss["id"]])
 	m._link(rng)
-	m._break_links(cfg, rng.fork("breaks"))
+	m._build_walls(cfg.get("walls", {}), rng.fork("walls"))
 	m.act = act
 	m._assign_encounters(db, rng, targets, boss_faction)
 	return m
@@ -82,54 +86,105 @@ func _link(rng: GameRng) -> void:
 				_add_link(nodes[src_id], nid)
 
 
-## Cuts every upward link of at most one node per middle row, so climbing from it
-## needs a sidestep. Only cuts when a row neighbour still climbs and no node in
-## the next row loses its last incoming link, so the map stays winnable.
-func _break_links(cfg: Dictionary, rng: GameRng) -> void:
-	var p := float(cfg.get("break_chance", 0.0))
-	for r in range(1, rows.size() - 2):
-		if rows[r].size() < 2 or not rng.chance(p):
+func _build_walls(cfg: Dictionary, rng: GameRng) -> void:
+	var h := float(cfg.get("h_chance", 0.0))
+	var v := float(cfg.get("v_chance", 0.0))
+	var long_p := float(cfg.get("two_chance", 0.4))
+	# Horizontal: between floors r and r+1, never into the last rest row or the boss.
+	for r in range(0, rows.size() - 3):
+		if not rng.chance(h):
 			continue
-		var order: Array = rows[r].duplicate()
+		var links := _links_by_x(r)
+		var order := range(links.size())
 		rng.shuffle(order)
-		for id in order:
-			if _can_break(id):
-				nodes[id]["next"] = []
-				break
+		for i in order:
+			if not _can_cut(links[i]):
+				continue
+			var cut: Array = [links[i]]
+			_cut(links[i])
+			if rng.chance(long_p):
+				for j in [i + 1, i - 1]:
+					if j >= 0 and j < links.size() and _can_cut(links[j]):
+						cut.append(links[j])
+						_cut(links[j])
+						break
+			walls.append({"kind": "h", "links": cut})
+			break
+	# Vertical: splits two neighbours on a floor, sometimes the floor above too.
+	for r in range(0, rows.size() - 1):
+		if rows[r].size() < 2 or not rng.chance(v) or _side_walled_row(r):
+			continue
+		var c := rng.range_i(0, rows[r].size() - 2)
+		var pairs: Array = [[rows[r][c], rows[r][c + 1]]]
+		var x := (_rel(nodes[rows[r][c]]) + _rel(nodes[rows[r][c + 1]])) / 2.0
+		if r + 1 < rows.size() - 1 and rows[r + 1].size() >= 2 and rng.chance(long_p):
+			var above := _pair_near(r + 1, x)
+			if not above.is_empty():
+				pairs.append(above)
+		walls.append({"kind": "v", "pairs": pairs})
 
 
-func _can_break(id: int) -> bool:
-	var node: Dictionary = nodes[id]
-	if node["next"].is_empty():
+## Upward links leaving row r, ordered left to right by where the wire crosses.
+func _links_by_x(r: int) -> Array:
+	var links: Array = []
+	for id in rows[r]:
+		for to in nodes[id]["next"]:
+			links.append([id, to])
+	links.sort_custom(func(a: Array, b: Array) -> bool:
+		return _rel(nodes[a[0]]) + _rel(nodes[a[1]]) < _rel(nodes[b[0]]) + _rel(nodes[b[1]]))
+	return links
+
+
+func _can_cut(link: Array) -> bool:
+	var src: Dictionary = nodes[link[0]]
+	if src["next"].size() < 2 or link[1] not in src["next"]:
 		return false
-	var climbs := false
-	for sid in side_nodes(id):
-		if not nodes[sid]["next"].is_empty():
-			climbs = true
-	if not climbs:
-		return false
-	for to_id in node["next"]:
-		var other := false
-		for src in rows[node["row"]]:
-			if src != id and to_id in nodes[src]["next"]:
-				other = true
-		if not other:
-			return false
-	return true
+	for other in rows[src["row"]]:
+		if other != link[0] and link[1] in nodes[other]["next"]:
+			return true
+	return false
 
 
-## Nodes beside this one on the same row (one column left/right).
+func _cut(link: Array) -> void:
+	nodes[link[0]]["next"].erase(link[1])
+
+
+func _pair_near(r: int, x: float) -> Array:
+	for c in rows[r].size() - 1:
+		var a: int = rows[r][c]
+		var b: int = rows[r][c + 1]
+		# Only stack a wall when the gap lines up, so it reads as one straight wall.
+		if absf((_rel(nodes[a]) + _rel(nodes[b])) / 2.0 - x) < 0.05:
+			return [a, b]
+	return []
+
+
+func _side_walled_row(r: int) -> bool:
+	for w in walls:
+		if w["kind"] == "v":
+			for pair in w["pairs"]:
+				if int(nodes[pair[0]]["row"]) == r:
+					return true
+	return false
+
+
+## Nodes beside this one on the same floor that no vertical wall splits off.
 func side_nodes(id: int) -> Array:
 	var node: Dictionary = nodes[id]
 	var out: Array = []
 	for sid in rows[node["row"]]:
-		if absi(int(nodes[sid]["col"]) - int(node["col"])) == 1:
+		if absi(int(nodes[sid]["col"]) - int(node["col"])) == 1 and not side_blocked(id, sid):
 			out.append(sid)
 	return out
 
 
-func is_dead_end(id: int) -> bool:
-	return nodes[id]["type"] != "boss" and nodes[id]["next"].is_empty()
+func side_blocked(a: int, b: int) -> bool:
+	for w in walls:
+		if w["kind"] == "v":
+			for pair in w["pairs"]:
+				if (int(pair[0]) == a and int(pair[1]) == b) or (int(pair[0]) == b and int(pair[1]) == a):
+					return true
+	return false
 
 
 func _rel(node: Dictionary) -> float:
@@ -206,7 +261,6 @@ func ascii() -> String:
 	for r in range(rows.size() - 1, -1, -1):
 		var parts: Array[String] = []
 		for id in rows[r]:
-			var nx: String = ",".join(nodes[id]["next"].map(func(x: int) -> String: return str(x)))
-			parts.append("%s%s" % [sym[nodes[id]["type"]], nx if not is_dead_end(id) else "x"])
+			parts.append("%s%s" % [sym[nodes[id]["type"]], ",".join(nodes[id]["next"].map(func(x: int) -> String: return str(x)))])
 		lines.append("%2d: %s" % [r, "  ".join(parts)])
 	return "\n".join(lines)

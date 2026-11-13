@@ -17,6 +17,7 @@ var talismans: Array = []
 var map: RunMap
 var node_id := -1
 var side_row := -1  # row of this act's last sidestep (one per floor)
+var side_used := 0  # sidestep charges spent this act
 var path: Array = []
 var combats_won := 0
 var elites_won := 0
@@ -199,17 +200,22 @@ func available_nodes() -> Array:
 	return map.node(node_id)["next"] + side_moves()
 
 
-## Sidesteps open from the current node: a row neighbour not yet visited that
-## climbs on, at most one sidestep per floor (side_row remembers the last one).
+## Sidesteps are an earned ability: subroutines/rig perks with the "sidesteps" mod
+## give charges per layer (act). One charge moves you to an unvisited row
+## neighbour not split off by a vertical wall, at most once per floor (side_row).
 ## A sidestep only moves you: the node you land on is not played (no fight, shop,
-## rest or cache), so sidesteps can't farm extra stops. was_sidestep() marks them.
+## rest or cache), so it can't farm extra stops. was_sidestep() marks them.
 func side_moves() -> Array:
-	if over or node_id < 0:
+	if over or node_id < 0 or sidesteps_left() <= 0:
 		return []
 	var row := int(map.node(node_id)["row"])
 	if side_row == row:
 		return []
-	return map.side_nodes(node_id).filter(func(id: int) -> bool: return id not in path and not map.is_dead_end(id))
+	return map.side_nodes(node_id).filter(func(id: int) -> bool: return id not in path)
+
+
+func sidesteps_left() -> int:
+	return maxi(0, int(perk_mod("sidesteps")) - side_used)
 
 
 ## True if path[i] was reached by a sidestep (so it was passed through, not played).
@@ -227,6 +233,7 @@ func enter(id: int) -> Dictionary:
 		return {}
 	if id in side_moves():
 		side_row = int(map.node(id)["row"])
+		side_used += 1
 	node_id = id
 	path.append(id)
 	var node := map.node(id)
@@ -289,6 +296,7 @@ func _next_act() -> void:
 	node_id = -1
 	path = []
 	side_row = -1
+	side_used = 0
 	var boss_faction := ""
 	if act == total_acts() and job != "" and float(heat_mod("double_cross", 0.0)) > 0.0 and job not in banned:
 		# The client sells you out: their crew joins the targets, their programs
@@ -563,7 +571,7 @@ func summary() -> String:
 
 ## Plain fields copied as-is by to_dict()/from_dict(). Everything random forks
 ## from seed_value, so restoring these replays the rest of the run exactly.
-const SAVED := ["seed_value", "hp", "max_hp", "gold", "floor_num", "heat", "talismans", "node_id", "path", "side_row",
+const SAVED := ["seed_value", "hp", "max_hp", "gold", "floor_num", "heat", "talismans", "node_id", "path", "side_row", "side_used",
 	"combats_won", "elites_won", "boss_won", "act", "acts_cleared", "double_crossed", "over", "card_plays",
 	"remove_cost", "outcome_counter", "locked_talismans", "perks", "rig", "firmware", "firmware_mods",
 	"mods_installed", "job", "banned", "tally", "clauses", "daily"]
@@ -578,7 +586,7 @@ func to_dict() -> Dictionary:
 	for c: CardInstance in deck:
 		cards.append({"id": c.def.id, "up": c.upgraded, "fw": c.fw, "foil": c.foil, "mod": str(c.mod.get("id", ""))})
 	d["deck"] = cards
-	d["map"] = {"nodes": map.nodes.duplicate(true), "rows": map.rows.duplicate(true), "act": map.act}
+	d["map"] = {"nodes": map.nodes.duplicate(true), "rows": map.rows.duplicate(true), "act": map.act, "walls": map.walls.duplicate(true)}
 	return d
 
 
@@ -603,5 +611,6 @@ static func from_dict(db_in: CardDB, d: Dictionary) -> RunState:
 	m.nodes = d["map"]["nodes"].duplicate(true)
 	m.rows = d["map"]["rows"].duplicate(true)
 	m.act = int(d["map"]["act"])
+	m.walls = d["map"].get("walls", []).duplicate(true)
 	r.map = m
 	return r

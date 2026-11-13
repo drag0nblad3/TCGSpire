@@ -5,7 +5,7 @@ extends SceneTree
 ##                   [out=/tmp/shot.png] [frames=30] [plays=2] [seed=1] [theme=archive] [end_turn=1] [give=sparring_dummy,drone_swarm]
 ## Under --headless it still runs (smoke test for script errors) but writes no image.
 
-const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "pack_open", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume", "records", "exploits", "daily", "tutorial", "coach", "map_side", "map_dead"]
+const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "pack_open", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume", "records", "exploits", "daily", "tutorial", "coach", "map_side", "map_walls"]
 
 
 func _initialize() -> void:
@@ -135,28 +135,26 @@ func _go(main: Control, scr: String, seed_in: int) -> void:
 		"map":
 			main.show_map()
 		"map_side":
-			# Two floors in after a sidestep on floor 1: the trail shows it, floor 2 offers a new one.
-			main.run.enter(main.run.available_nodes()[0])
+			# Lateral Shunt owned: one sidestep taken on floor 1, floor 2 offers another.
+			main.run.perks.append("lateral_shunt")
+			for start in main.run.available_nodes():
+				if not main.run.map.side_nodes(start).is_empty():
+					main.run.enter(start)
+					break
 			main.run.enter(main.run.side_moves()[0])
 			main.run.enter(main.run.map.node(main.run.node_id)["next"][0])
 			main.show_map()
-		"map_dead":
-			# Standing on a dead end, with the route that led there.
-			var m: RunMap = main.run.map
-			var dead := -1
-			for n in m.nodes:
-				if m.is_dead_end(n["id"]) and dead < 0:
-					dead = n["id"]
-			var chain: Array = [dead]
-			while dead >= 0 and int(m.node(chain[0])["row"]) > 0:
-				var below: int = chain[0]
-				for src in m.rows[int(m.node(below)["row"]) - 1]:
-					if below in m.node(src)["next"]:
-						chain.push_front(src)
-						break
-			main.run.path = chain
-			main.run.node_id = chain.back()
-			main.run.floor_num = chain.size()
+		"map_walls":
+			# A map with both kinds of walls, before the first move.
+			for s in range(seed_in, seed_in + 50):
+				var m := RunMap.generate(main.db, GameRng.new(s))
+				var kinds := {}
+				for w in m.walls:
+					if int(m.node(int((w["links"] if w["kind"] == "h" else w["pairs"])[0][0]))["row"]) < 6:
+						kinds[w["kind"]] = true
+				if kinds.size() == 2:
+					main.run.map = m
+					break
 			main.show_map()
 		"menu":
 			main._start_combat({"type": "fight", "encounter": "wisp_court"})

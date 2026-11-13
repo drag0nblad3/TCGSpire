@@ -52,14 +52,14 @@ func _ready() -> void:
 	_scroll.scroll_vertical = int(_node_pos(0, 1, row).y - _scroll.size.y * 0.6)
 
 
-## Tells the player when a sidestep is open, and when it is the only way on.
+## Mentions sidesteps only when the run has earned some (Lateral Shunt, Ghost Routing).
 func _hint() -> String:
-	var side := run.side_moves()
-	if run.node_id >= 0 and run.map.is_dead_end(run.node_id):
-		return "Dead end: sidestep to a node beside you to keep climbing"
-	if not side.is_empty():
-		return "Climb to a lit node, or sidestep once along this floor (you pass through, no stop)"
-	return "Choose a lit node · One pass-through sidestep per floor · Scroll up toward the Core"
+	var left := run.sidesteps_left()
+	if not run.side_moves().is_empty():
+		return "Climb, or sidestep along this floor (no stop) · %d sidestep%s left" % [left, "" if left == 1 else "s"]
+	if left > 0:
+		return "Choose a lit node · %d sidestep%s left this layer" % [left, "" if left == 1 else "s"]
+	return "Choose a lit node · Walls block some routes · Scroll up toward the Core"
 
 
 func _process(_dt: float) -> void:
@@ -115,15 +115,7 @@ func _draw_map() -> void:
 			_canvas.draw_polyline(wire, col, 5 if on_path else 3, true)
 			if not on_path:
 				_route_pulse(wire, fposmod(t * 0.24 + phase, 1.0), Color(Palette.ENERGY, 0.65 if next_step else 0.38))
-	# Severed uplinks: a dead end shows a cut wire, so the maze reads ahead of time.
-	for n in run.map.nodes:
-		if run.map.is_dead_end(n["id"]):
-			var a := _pos(n["id"])
-			var top := a + Vector2(0, -ROW_H * 0.33)
-			_canvas.draw_line(a, top, Color(Palette.CARD_BG, 0.95), 8, true)
-			_canvas.draw_line(a, top, Color(Palette.HP, 0.75), 3, true)
-			for d in [Vector2(-7, -7), Vector2(7, -7)]:
-				_canvas.draw_line(top - d, top + d, Palette.HP, 3, true)
+	_draw_walls()
 	# Sidesteps already taken stay drawn as solid sideways links on the trail.
 	for i in range(1, run.path.size()):
 		var pa: Dictionary = run.map.node(run.path[i - 1])
@@ -167,6 +159,42 @@ func _draw_map() -> void:
 			_canvas.draw_polyline(PackedVector2Array([c + Vector2(-4, 0), c + Vector2(-1, 3), c + Vector2(4, -3)]), Palette.CARD_BG, 2, true)
 		if current:
 			_canvas.draw_arc(p, r + 7, PI * 0.1, PI * 0.9, 24, Palette.ENERGY, 3, true)
+
+
+## Short firewall walls. Horizontal: a ghost of each cut wire with a bar across it.
+## Vertical: a bar standing between two neighbours on a floor (or two floors).
+func _draw_walls() -> void:
+	for w in run.map.walls:
+		if w["kind"] == "h":
+			var xs: Array = []
+			var y := 0.0
+			for link in w["links"]:
+				var a := _pos(int(link[0]))
+				var b := _pos(int(link[1]))
+				y = (a.y + b.y) / 2.0
+				var ghost := PackedVector2Array([a, Vector2(a.x, y + 10), Vector2(b.x, y - 10), b])
+				for i in range(ghost.size() - 1):
+					_canvas.draw_dashed_line(ghost[i], ghost[i + 1], Color(Palette.TEXT_DIM, 0.42), 2, 6, true)
+				xs.append((a.x + b.x) / 2.0)
+			_wall_line([Vector2(xs.min() - 26, y), Vector2(xs.max() + 26, y)])
+		else:
+			var x := 0.0
+			var ys: Array = []
+			for pair in w["pairs"]:
+				var a := _pos(int(pair[0]))
+				var b := _pos(int(pair[1]))
+				x += (a.x + b.x) / 2.0 / w["pairs"].size()
+				ys.append(a.y)
+			_wall_line([Vector2(x, ys.max() + 34), Vector2(x, ys.min() - 34)])
+
+
+func _wall_line(pts: Array) -> void:
+	var line := PackedVector2Array(pts)
+	_canvas.draw_polyline(line, Color(Palette.CARD_BG, 0.95), 12, true)
+	_canvas.draw_polyline(line, Color(Palette.ENEMY, 0.9), 7, true)
+	_canvas.draw_polyline(line, Color(Palette.TEXT, 0.55), 2, true)
+	for p in [line[0], line[line.size() - 1]]:
+		_canvas.draw_circle(p, 5, Palette.ENEMY)
 
 
 ## A short packet of light travels along the actual elbowed wire, bottom to top.

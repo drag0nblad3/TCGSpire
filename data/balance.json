@@ -134,7 +134,7 @@
   "rows": 12,
   "width": 4,
   "elite_from_row": 4,
-  "break_chance": 0.3,
+  "walls": {"h_chance": 0.3, "v_chance": 0.2, "two_chance": 0.4},
   "weights": {
    "fight": 46,
    "event": 22,
