@@ -246,15 +246,17 @@ func test_rig_start_mods_and_perks() -> void:
 
 # --- firmware --------------------------------------------------------------------
 
-func test_firmware_needs_mastery_and_rep() -> void:
-	check(profile.firmware_block(db, "kindle").begins_with("Run it"), "mastery gate")
-	profile.mastery["kindle"] = 10
+func test_firmware_needs_copies_and_rep() -> void:
+	var ladder := Profile.copy_ladder(db, "kindle")
+	profile.collection.counts["kindle"] = int(ladder[0]) - 1
+	check(profile.firmware_block(db, "kindle").begins_with("Collect %d copies" % int(ladder[0])), "copies gate")
+	profile.collection.add("kindle")
 	check(profile.firmware_block(db, "kindle") != "", "rep gate")
 	profile.rep["ember"] = int(profile.firmware_price(db, "kindle")["amount"])
 	check(profile.flash_firmware(db, "kindle"), "flash")
 	eq(profile.rep_of("ember"), 0)
 	profile.collection.dust = int(profile.firmware_price(db, "jab")["amount"])
-	check(profile.flash_firmware(db, "jab"), "starters cost dust, no mastery")
+	check(profile.flash_firmware(db, "jab"), "starters cost dust, no copies")
 	eq(profile.collection.dust, 0)
 	var r := RunState.start(db, profile, ["kindle"], 1)
 	check(r.deck.filter(func(c: CardInstance) -> bool: return c.def.id in ["kindle", "jab"]).all(func(c: CardInstance) -> bool: return c.fw == 1), "firmware copies flashed")
@@ -263,15 +265,19 @@ func test_firmware_needs_mastery_and_rep() -> void:
 	var jab: CardInstance = r.deck.filter(func(c: CardInstance) -> bool: return c.def.id == "jab")[0]
 	eq(int(jab.effects()[0]["amount"]), roundi(6 * 1.25), "v1 scales damage")
 	check(not jab.upgraded, "recompile still available in the run")
-	# Level 2: 50 plays, twice the price.
+	# Level 2: more copies, twice the price.
 	var base := int(db.balance["firmware"]["rep_cost"][db.card("kindle").rarity])
 	eq(int(profile.firmware_price(db, "kindle")["amount"]), base * 2, "v2 costs double")
 	profile.rep["ember"] = base * 2
-	check(profile.firmware_block(db, "kindle").begins_with("Run it 50"), "v2 needs 50 plays")
-	profile.mastery["kindle"] = 50
+	check(profile.firmware_block(db, "kindle").begins_with("Collect %d" % int(ladder[1])), "v2 needs more copies")
+	check(not profile.disenchant(db, "kindle"), "v1 copies are locked in")
+	profile.collection.counts["kindle"] = int(ladder[1])
 	check(profile.flash_firmware(db, "kindle"), "flash v2")
 	eq(profile.firmware_level(db.card("kindle").id), 2)
 	check(profile.firmware_block(db, "kindle") == "Firmware maxed.", "max two levels")
+	check(profile.disenchant(db, "kindle") == false and profile.copies_complete(db, "kindle"), "v2 copies locked, ladder complete")
+	profile.collection.add("kindle")
+	check(profile.disenchant(db, "kindle"), "copies past the ladder are spare")
 	var k := db.instance("kindle", false, 2)
 	eq(int(k.effects()[0]["amount"]), roundi(float(db.card("kindle").effects[0]["amount"]) * 1.5), "v2 scales by 1.5")
 

@@ -5,7 +5,7 @@ extends SceneTree
 ##                   [out=/tmp/shot.png] [frames=30] [plays=2] [seed=1] [theme=archive] [end_turn=1] [give=sparring_dummy,drone_swarm]
 ## Under --headless it still runs (smoke test for script errors) but writes no image.
 
-const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume", "records", "exploits", "daily"]
+const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "pack_open", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume", "records", "exploits", "daily"]
 
 
 func _initialize() -> void:
@@ -75,7 +75,7 @@ func _idle(cs) -> void:
 
 func _go(main: Control, scr: String, seed_in: int) -> void:
 	var db: CardDB = main.db
-	if scr not in ["hub", "collection", "picker", "pack", "inspect", "rules", "jobs", "rig", "firmware", "resume", "records", "exploits"]:
+	if scr not in ["hub", "collection", "picker", "pack", "pack_open", "inspect", "rules", "jobs", "rig", "firmware", "resume", "records", "exploits"]:
 		var p: Profile = main.profile
 		main.run = RunState.start(db, p, RunState.default_picks(db, p), seed_in)
 		main.run.add_talisman("oak_token")
@@ -113,6 +113,12 @@ func _go(main: Control, scr: String, seed_in: int) -> void:
 			main.run.install_mod(main.run.mod_targets("hardened_payload")[0], "hardened_payload")
 			main._pick_mod_target("cached", func(_i: int) -> void: pass)
 		"pack":
+			main._show_pack()
+		"pack_open":
+			# Two copies of every common, so pulls show copy progress and unlocks.
+			for id in main.db.ids_where(func(c: CardDef) -> bool: return c.rarity == "common"):
+				main.profile.collection.add(id, maxi(0, 2 - main.profile.collection.count(id)))
+			main.reveal_packs_now = true
 			main._show_pack()
 		"map":
 			main.show_map()

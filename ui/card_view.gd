@@ -36,6 +36,9 @@ var face_down := false:
 			_holo.visible = not v
 		queue_redraw()
 
+## Pack hot slot: the back glows in the rare color and says so.
+var hot := false
+
 var reveal_progress := 1.0:
 	set(v):
 		reveal_progress = v
@@ -249,6 +252,17 @@ func _draw_back() -> void:
 		for i in 8:
 			var y := fmod(t * 40.0 + i * SIZE.y / 8.0, SIZE.y)
 			draw_line(Vector2(8, y), Vector2(SIZE.x - 8, y), Color(Palette.HP, 0.25), 2)
+	if hot:
+		var glow := Palette.rarity("rare")
+		var pulse := 0.55 + 0.45 * sin(t * 4.0)
+		var hb := StyleBoxFlat.new()
+		hb.bg_color = Color(0, 0, 0, 0)
+		hb.border_color = Color(glow, pulse)
+		hb.set_border_width_all(Palette.BORDER + 2)
+		hb.set_corner_radius_all(Palette.RADIUS)
+		draw_style_box(hb, rect.grow(2))
+		draw_string(Palette.display(), Vector2(0, 22), "HOT SLOT", HORIZONTAL_ALIGNMENT_CENTER, SIZE.x, 12, glow)
+		queue_redraw()
 	draw_string(Palette.display(), Vector2(0, SIZE.y - 16), Palette.w("title"), HORIZONTAL_ALIGNMENT_CENTER, SIZE.x, 11, Palette.BUTTON_TEXT)
 
 

@@ -289,36 +289,86 @@ func _start_daily() -> void:
 	show_map()
 
 
+## Screenshots: show pack cards face up straight away.
+var reveal_packs_now := false
+
+
 func _show_pack() -> void:
 	if profile.packs_unopened <= 0:
 		show_hub()
 		return
 	var pulled := profile.open_pack(db, GameRng.new(int(Time.get_ticks_usec())))
 	_save()
-	var parts := UiKit.screen(24)
+	var parts := UiKit.screen(18)
 	var v: VBoxContainer = parts[1]
 	v.add_child(UiKit.label("%s: tap cards to reveal" % Palette.w("pack"), 24))
+	v.add_child(UiKit.label("The last card is the hot slot: uncommon or better.", 14, Palette.TEXT_DIM, true))
 	var grid := UiKit.flow(12)
 	var views: Array = []
+	var summary := UiKit.label("", 16, Palette.UPGRADED, true)
+	var revealed := [0]
+	var on_reveal := func(view: CardView, p: Dictionary) -> void:
+		view.badge = _pack_badge(p)
+		revealed[0] += 1
+		if revealed[0] >= pulled.size():
+			summary.text = _pack_summary(pulled)
 	for p in pulled:
 		var inst := db.instance(p["id"])
 		inst.foil = p["foil"]
 		var cv := CardView.new().setup(inst)
 		cv.face_down = true
+		cv.hot = p.get("hot", false)
 		cv.pressed.connect(func(view: CardView) -> void:
 			if view.face_down:
-				view.flip_reveal())
+				view.flip_reveal()
+				on_reveal.call(view, p))
 		views.append(cv)
 		grid.add_child(cv)
 	v.add_child(grid)
+	v.add_child(summary)
+	v.add_child(UiKit.label("Rare guaranteed within %d %s · mythic within %d" % [Packs.pity_left(db, profile, "rare"),
+		Palette.w("packs").to_lower(), Packs.pity_left(db, profile, "mythic")], 14, Palette.TEXT_DIM, true))
 	v.add_child(UiKit.button("Reveal all", func() -> void:
-		for cv in views:
-			if cv.face_down:
-				cv.flip_reveal()))
+		for k in views.size():
+			if views[k].face_down:
+				views[k].flip_reveal()
+				on_reveal.call(views[k], pulled[k])))
 	var left := profile.packs_unopened
-	v.add_child(UiKit.button("Next pack (%d left)" % left if left > 0 else "Done", func() -> void:
+	v.add_child(UiKit.button("Next %s (%d left)" % [Palette.w("pack").to_lower(), left] if left > 0 else "Done", func() -> void:
 		_show_pack() if profile.packs_unopened > 0 else show_hub()))
 	_show(parts[0])
+	if reveal_packs_now:
+		for k in views.size():
+			views[k].face_down = false
+			on_reveal.call(views[k], pulled[k])
+
+
+## Collector pill on a revealed pack card: NEW, an unlocked firmware level, or copy progress.
+func _pack_badge(p: Dictionary) -> String:
+	if p.get("new", false):
+		return "NEW"
+	if p.get("unlocked", false):
+		return "v%d unlocked!" % (profile.firmware_level(p["id"]) + 1)
+	return profile.copy_badge(db, p["id"])
+
+
+## One line under a fully revealed pack: what it did for the collection.
+func _pack_summary(pulled: Array) -> String:
+	var bits: Array[String] = []
+	var fresh := pulled.filter(func(p: Dictionary) -> bool: return p.get("new", false)).size()
+	var unlocked := pulled.filter(func(p: Dictionary) -> bool: return p.get("unlocked", false)).size()
+	if fresh > 0:
+		bits.append("%d new program%s" % [fresh, "" if fresh == 1 else "s"])
+	if unlocked > 0:
+		bits.append("%d firmware upgrade%s unlocked" % [unlocked, "" if unlocked == 1 else "s"])
+	var foils := pulled.filter(func(p: Dictionary) -> bool: return p["foil"]).size()
+	if foils > 0:
+		bits.append("%d glitch foil%s" % [foils, "" if foils == 1 else "s"])
+	bits.append("Library %d / %d" % CollectionScreen.library_progress(db, profile))
+	var ready := profile.ready_to_flash(db).size()
+	if ready > 0:
+		bits.append("%d ready to flash" % ready)
+	return "   ·   ".join(bits)
 
 
 # --- map ------------------------------------------------------------------------

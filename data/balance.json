@@ -50,7 +50,17 @@
    "rare": 5.5,
    "mythic": 0.5
   },
-  "foil_chance": 0.05
+  "foil_chance": 0.05,
+  "hot_slot": {
+   "uncommon": 74,
+   "rare": 23,
+   "mythic": 3
+  },
+  "pity": {
+   "rare": 5,
+   "mythic": 25
+  },
+  "reroll_complete": true
  },
  "reward": {
   "choices": 3,
@@ -190,7 +200,9 @@
   "xp_boss": 60,
   "xp_per_act": 40,
   "packs_per_boss": 1,
-  "xp_mult": 0.75
+  "xp_mult": 0.75,
+  "shards_per_elite": 1,
+  "shards_per_pack": 3
  },
  "levels": {
   "packs": 1,
@@ -271,10 +283,6 @@
    "uncommon": 225,
    "rare": 375
   },
-  "plays": [
-   10,
-   50
-  ],
   "scale": [
    1.25,
    1.5
@@ -282,7 +290,25 @@
   "level_cost_mult": [
    1,
    2
-  ]
+  ],
+  "copies": {
+   "common": [
+    3,
+    6
+   ],
+   "uncommon": [
+    3,
+    5
+   ],
+   "rare": [
+    2,
+    4
+   ],
+   "mythic": [
+    2,
+    3
+   ]
+  }
  },
  "jobs": {
   "client_share": 0.5,
@@ -318,6 +344,7 @@
   }
  },
  "daily": {
-  "heat": 1
+  "heat": 1,
+  "packs": 1
  }
 }

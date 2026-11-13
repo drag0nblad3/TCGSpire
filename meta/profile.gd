@@ -6,10 +6,11 @@ extends RefCounted
 ## Long-term progression:
 ##   xp/level  -> each level grants packs and unlocks (balance.levels)
 ##   mastery   -> playing a card N times grants dust, then a foil copy
+##   copies    -> collecting copies (packs, crafting) unlocks firmware levels
 ##   max_heat  -> beating the boss at heat N unlocks heat N+1
 ##   rep       -> each run is a faction job (Jobs) that pays that faction's rep
 ##   rig       -> rep buys ranks of that faction's rig upgrades (permanent perks)
-##   firmware  -> rep (dust for Street/starter cards) permanently upgrades a card
+##   firmware  -> enough copies + rep (dust for Street/starter cards) permanently upgrades a card
 
 const SAVE_VERSION := 8
 const DEFAULT_PATH := "user://profile.json"
@@ -18,6 +19,10 @@ var collection := Collection.new()
 var unlocks: Dictionary = {}
 var stats: Dictionary = {"runs": 0, "wins": 0, "packs_opened": 0, "best_floor": 0}
 var packs_unopened := 0
+## Pack shards from elites (balance.run_rewards.shards_per_pack make a pack).
+var pack_shards := 0
+## Packs opened since the last rare+ / mythic pull (balance.pack.pity).
+var pack_pity: Dictionary = {"rare": 0, "mythic": 0}
 var xp := 0
 var mastery: Dictionary = {}  # card id -> total plays
 var max_heat := 0
@@ -115,6 +120,7 @@ func finish_run(db: CardDB, run: RunState) -> Array:
 	var packs := run.acts_cleared * int(cfg.get("packs_per_boss", 1))
 	packs_unopened += packs
 	lines.append("+%d XP, +%d pack%s" % [gained_xp, packs, "" if packs == 1 else "s"])
+	lines.append_array(add_shards(db, run.elites_won * int(cfg.get("shards_per_elite", 0))))
 	var rep_gain := Jobs.rep_reward(db, run)
 	if rep_gain > 0:
 		rep[run.job] = rep_of(run.job) + rep_gain
@@ -148,6 +154,25 @@ func add_xp(db: CardDB, amount: int) -> Array:
 			unlocks["swap_picks"] = int(unlocks.get("swap_picks", 0)) + 1
 			lines.append("  A basic program in your starting deck becomes a pick")
 	return lines
+
+
+## Elite kills drop pack shards; every shards_per_pack of them becomes a pack.
+func add_shards(db: CardDB, n: int) -> Array:
+	if n <= 0:
+		return []
+	var per := shards_per_pack(db)
+	pack_shards += n
+	var made := pack_shards / per
+	pack_shards %= per
+	packs_unopened += made
+	var line := "+%d pack shard%s (%d/%d)" % [n, "" if n == 1 else "s", pack_shards, per]
+	if made > 0:
+		line += ", shards fused into %d pack%s" % [made, "" if made == 1 else "s"]
+	return [line]
+
+
+static func shards_per_pack(db: CardDB) -> int:
+	return maxi(1, int(db.balance.get("run_rewards", {}).get("shards_per_pack", 3)))
 
 
 ## Mastery tiers from balance.mastery: [{"plays": 10, "dust": 20}, ..., {"plays": 60, "foil": true}]
@@ -258,14 +283,63 @@ func firmware_level(id: String) -> int:
 
 
 static func firmware_max(db: CardDB) -> int:
-	return db.balance.get("firmware", {}).get("plays", [10, 50]).size()
+	return db.balance.get("firmware", {}).get("scale", [1.25, 1.5]).size()
 
 
-## Plays needed for the next firmware level of id (0 once maxed).
-func firmware_plays_needed(db: CardDB, id: String) -> int:
-	var plays: Array = db.balance.get("firmware", {}).get("plays", [10, 50])
+## Copies you must own for each firmware level ([] for base/starter cards, which only cost dust).
+static func copy_ladder(db: CardDB, id: String) -> Array:
+	var c := db.card(id)
+	if c == null or c.rarity in ["starter", "curse"]:
+		return []
+	return db.balance.get("firmware", {}).get("copies", {}).get(c.rarity, [])
+
+
+## Copies needed for the next firmware level of id (0 once maxed or for starters).
+func firmware_copies_needed(db: CardDB, id: String) -> int:
+	var ladder := copy_ladder(db, id)
 	var lvl := firmware_level(id)
-	return int(plays[lvl]) if lvl < plays.size() else 0
+	return int(ladder[lvl]) if lvl < ladder.size() else 0
+
+
+## Copies that are "spare": beyond the top of the firmware ladder (only dust is left for them).
+func copies_complete(db: CardDB, id: String) -> bool:
+	var ladder := copy_ladder(db, id)
+	return not ladder.is_empty() and collection.count(id) >= int(ladder[-1])
+
+
+## Copies you can't disenchant: the last one, and the ones your firmware level stands on.
+func keep_copies(db: CardDB, id: String) -> int:
+	var ladder := copy_ladder(db, id)
+	var lvl := mini(firmware_level(id), ladder.size())
+	return maxi(1, int(ladder[lvl - 1]) if lvl > 0 else 1)
+
+
+func disenchant(db: CardDB, id: String) -> bool:
+	return collection.disenchant(id, db, keep_copies(db, id))
+
+
+func disenchant_foil(db: CardDB, id: String) -> bool:
+	return collection.disenchant_foil(id, db, keep_copies(db, id))
+
+
+## Non-starter cards whose next firmware level is ready to flash right now.
+func ready_to_flash(db: CardDB) -> Array:
+	return collection.owned_ids().filter(func(id: String) -> bool:
+		return db.card(id) != null and db.card(id).rarity != "starter" and firmware_block(db, id) == "")
+
+
+## Short collection status for a card: "x2/3 v1", "v1 ready", "v2 max" ...
+func copy_badge(db: CardDB, id: String) -> String:
+	var n := collection.count(id)
+	var lvl := firmware_level(id)
+	var need := firmware_copies_needed(db, id)
+	if n <= 0:
+		return "x0"
+	if need <= 0:
+		return "x%d v%d max" % [n, lvl] if lvl > 0 else "x%d" % n
+	if n >= need:
+		return "x%d v%d ready" % [n, lvl + 1] if firmware_block(db, id) == "" else "x%d/%d v%d" % [n, need, lvl + 1]
+	return "x%d/%d v%d" % [n, need, lvl + 1]
 
 
 ## "" if it can be flashed, else the reason why not.
@@ -277,9 +351,9 @@ func firmware_block(db: CardDB, id: String) -> String:
 		return "Firmware maxed."
 	if not collection.owns(id) and c.rarity != "starter":
 		return "Own a copy first."
-	var need := firmware_plays_needed(db, id)
-	if c.rarity != "starter" and int(mastery.get(id, 0)) < need:
-		return "Run it %d times first (%d so far)." % [need, int(mastery.get(id, 0))]
+	var need := firmware_copies_needed(db, id)
+	if c.rarity != "starter" and collection.count(id) < need:
+		return "Collect %d copies first (%d owned)." % [need, collection.count(id)]
 	var price := firmware_price(db, id)
 	var have := collection.dust if price["faction"] == "" else rep_of(price["faction"])
 	if have < int(price["amount"]):
@@ -345,9 +419,14 @@ func open_pack(db: CardDB, rng: GameRng) -> Array:
 		return []
 	packs_unopened -= 1
 	stats["packs_opened"] = int(stats.get("packs_opened", 0)) + 1
-	var cards := Packs.open(db, rng)
+	var cards := Packs.open(db, rng, self)
 	for c in cards:
+		c["new"] = not collection.owns(c["id"])
+		var before := firmware_copies_needed(db, c["id"]) > 0 and collection.count(c["id"]) >= firmware_copies_needed(db, c["id"])
 		collection.add(c["id"], 1, c["foil"])
+		c["count"] = collection.count(c["id"])
+		# Copies just reached the next firmware level (rep/dust may still be needed).
+		c["unlocked"] = not before and firmware_copies_needed(db, c["id"]) > 0 and collection.count(c["id"]) >= firmware_copies_needed(db, c["id"])
 	return cards
 
 
@@ -389,6 +468,8 @@ func to_dict() -> Dictionary:
 		"unlocks": unlocks,
 		"stats": stats,
 		"packs_unopened": packs_unopened,
+		"pack_shards": pack_shards,
+		"pack_pity": pack_pity,
 		"xp": xp,
 		"mastery": mastery,
 		"max_heat": max_heat,
@@ -414,6 +495,9 @@ static func from_dict(d: Dictionary, db: CardDB = null) -> Profile:
 	for k in d.get("stats", {}):
 		p.stats[k] = int(d["stats"][k])
 	p.packs_unopened = int(d.get("packs_unopened", 0))
+	p.pack_shards = int(d.get("pack_shards", 0))
+	var pity: Dictionary = d.get("pack_pity", {})
+	p.pack_pity = {"rare": int(pity.get("rare", 0)), "mythic": int(pity.get("mythic", 0))}
 	p.xp = int(d.get("xp", 0))
 	for k in d.get("mastery", {}):
 		p.mastery[k] = int(d["mastery"][k])

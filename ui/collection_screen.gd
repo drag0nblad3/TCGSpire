@@ -6,7 +6,7 @@ extends Control
 signal closed
 signal picks_confirmed(picks: Array)
 
-const FILTERS := ["all", "neutral", "ember", "tide", "bloom", "void", "chrome", "noise"]
+const FILTERS := ["all", "upgradable", "neutral", "ember", "tide", "bloom", "void", "chrome", "noise"]
 
 var db: CardDB
 var profile: Profile
@@ -59,8 +59,12 @@ func _ready() -> void:
 	for f in FILTERS:
 		if pick_mode and f in targets:
 			continue
-		var filter := UiKit.button("All" if f == "all" else Lexicon.faction(f), func() -> void: _set_filter(f), Vector2(76, 44), 13)
-		if f != "all":
+		if pick_mode and f == "upgradable":
+			continue
+		var filter := UiKit.button({"all": "All", "upgradable": "Upgrades"}.get(f, Lexicon.faction(f)), func() -> void: _set_filter(f), Vector2(76, 44), 13)
+		if f == "upgradable":
+			filter.tooltip_text = "Programs with enough copies for their next firmware level."
+		elif f != "all":
 			filter.icon = Symbols.texture(f)
 			filter.add_theme_constant_override("icon_max_width", 14)
 			var accent := Palette.faction(f)
@@ -132,7 +136,7 @@ func _set_filter(f: String) -> void:
 
 func _ids() -> Array:
 	var ids := db.ids_where(func(c: CardDef) -> bool:
-		return c.rarity not in ["starter", "curse"] and (_filter == "all" or c.faction == _filter) \
+		return c.rarity not in ["starter", "curse"] and (_filter == "all" or c.faction == _filter or (_filter == "upgradable" and _copies_ready(c.id))) \
 			and (not pick_mode or (profile.collection.owns(c.id) and c.faction not in targets)))
 	var order := CardDef.RARITIES
 	ids.sort_custom(func(a: String, b: String) -> bool:
@@ -142,10 +146,24 @@ func _ids() -> Array:
 	return ids
 
 
+## Owns enough copies for the next firmware level (rep/dust may still be short).
+func _copies_ready(id: String) -> bool:
+	var need := profile.firmware_copies_needed(db, id)
+	return need > 0 and profile.collection.count(id) >= need
+
+
+## [owned, total] collectible programs (no base programs or malware).
+static func library_progress(db_in: CardDB, p: Profile) -> Array:
+	var total := db_in.ids_where(func(c: CardDef) -> bool: return c.rarity not in ["starter", "curse"]).size()
+	var owned := p.collection.owned_ids().filter(func(id: String) -> bool: return db_in.card(id) != null and db_in.card(id).rarity not in ["starter", "curse"]).size()
+	return [owned, total]
+
+
 func _refresh() -> void:
 	var col := profile.collection
-	var total := db.ids_where(func(c: CardDef) -> bool: return c.rarity not in ["starter", "curse"]).size()
-	var owned := col.owned_ids().filter(func(id: String) -> bool: return db.card(id) != null and db.card(id).rarity not in ["starter", "curse"]).size()
+	var lib := library_progress(db, profile)
+	var owned: int = lib[0]
+	var total: int = lib[1]
 	if pick_mode:
 		_header.text = "Pick your starting cards: %d / %d" % [picks.size(), profile.starter_picks(db)]
 		var problem := Jobs.check(db, job, picks, profile.starter_picks(db), targets)
@@ -153,7 +171,8 @@ func _refresh() -> void:
 		if _begin != null:
 			_begin.disabled = problem != ""
 	else:
-		_header.text = "Library %d / %d   ·   %s %d" % [owned, total, Palette.w("dust"), col.dust]
+		var ready := profile.ready_to_flash(db).size()
+		_header.text = "Library %d / %d   ·   %s %d%s" % [owned, total, Palette.w("dust"), col.dust, ("   ·   %d ready to flash" % ready) if ready > 0 else ""]
 	for n in _grid.get_children():
 		n.queue_free()
 	for id in _ids():
@@ -169,7 +188,7 @@ func _refresh() -> void:
 			cv.badge = "%d/%d" % [chosen, n]
 			cv.selected = chosen > 0
 		else:
-			cv.badge = ("x%d" % n if n > 0 else "new") + (" " + stars if stars != "" else "") + ((" FW%d" % profile.firmware_level(id)) if profile.firmware_level(id) > 0 else "")
+			cv.badge = profile.copy_badge(db, id) + (" " + stars if stars != "" else "")
 			cv.playable = n > 0
 		cv.pressed.connect(func(_v: CardView) -> void: _on_card(id))
 		_grid.add_child(cv)
@@ -271,6 +290,14 @@ func _show_detail(id: String) -> void:
 			break
 	if next_t != "":
 		v.add_child(UiKit.label(next_t, 14, Palette.ENERGY))
+	var need := profile.firmware_copies_needed(db, id)
+	if need > 0:
+		var short := need - col.count(id)
+		var copies := UiKit.label(("Copies %d / %d for firmware v%d" % [col.count(id), need, profile.firmware_level(id) + 1]) + \
+			(": compile %d more to unlock it" % short if short > 0 else ": unlocked, flash it below"), 16, Palette.UPGRADED if short <= 0 else Palette.ENERGY, true)
+		v.add_child(copies)
+	elif profile.copies_complete(db, id):
+		v.add_child(UiKit.label("Every copy firmware can use is collected. Spare copies are %s." % Palette.w("dust").to_lower(), 14, Palette.TEXT_DIM, true))
 	var row := UiKit.hbox(14)
 	var craft_cost := col.craft_cost(id, db)
 	var craft := UiKit.button("Craft (%d dust)" % craft_cost, func() -> void:
@@ -283,23 +310,23 @@ func _show_detail(id: String) -> void:
 	row.add_child(craft)
 	var value := int(db.balance.get("dust", {}).get("disenchant", {}).get(c.rarity, 0))
 	var dis := UiKit.button("Disenchant (+%d)" % value, func() -> void:
-		if col.disenchant(id, db):
+		if profile.disenchant(db, id):
 			profile.save()
 			overlay.queue_free()
 			_refresh()
 			_show_detail(id), Vector2(220, 60))
-	dis.disabled = col.count(id) <= 1
+	dis.disabled = col.count(id) <= profile.keep_copies(db, id)
 	row.add_child(dis)
 	if int(col.foils.get(id, 0)) > 0:
 		var fdis := UiKit.button("Disenchant foil (+%d)" % Collection.foil_value(id, db), func() -> void:
-			if col.disenchant_foil(id, db):
+			if profile.disenchant_foil(db, id):
 				profile.save()
 				overlay.queue_free()
 				_refresh()
 				_show_detail(id), Vector2(240, 60))
-		fdis.disabled = col.count(id) <= 1
+		fdis.disabled = col.count(id) <= profile.keep_copies(db, id)
 		row.add_child(fdis)
 	v.add_child(row)
-	v.add_child(UiKit.label("Your last copy can't be disenchanted.", 12, Palette.TEXT_DIM))
+	v.add_child(UiKit.label("Your last copy, and the copies your firmware level stands on, can't be disenchanted.", 12, Palette.TEXT_DIM, true))
 	v.add_child(_firmware_row(id, overlay))
 	v.add_child(UiKit.button("Close", func() -> void: overlay.queue_free()))

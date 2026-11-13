@@ -257,6 +257,10 @@ static func finish_run(db: CardDB, p: Profile, run: RunState) -> Array:
 		p.daily["scores"] = best
 		p.daily["best"] = maxi(int(p.daily.get("best", 0)), s)
 		lines.append("Daily breach score: %d (best ever %d)" % [s, int(p.daily["best"])])
+		var packs := int(db.balance.get("daily", {}).get("packs", 0))
+		if packs > 0:
+			p.packs_unopened += packs
+			lines.append("Daily breach pay: +%d pack%s" % [packs, "" if packs == 1 else "s"])
 	return lines
 
 

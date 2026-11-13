@@ -51,6 +51,13 @@ static func spend(db: CardDB, p: Profile) -> void:
 					bought = true
 					break
 		if not bought:
+			# Compile the copies its favourite programs need for their next firmware level.
+			for id in played.slice(0, 8):
+				var need := p.firmware_copies_needed(db, id)
+				if need > 0 and p.collection.count(id) < need and need - p.collection.count(id) <= 1 and p.collection.craft(id, db):
+					bought = true
+					break
+		if not bought:
 			for id in ["jab", "brace"]:
 				if p.flash_firmware(db, id):
 					bought = true
@@ -74,7 +81,7 @@ static func maxed(db: CardDB) -> Profile:
 		if c.rarity == "curse":
 			continue
 		if c.rarity != "starter":
-			p.collection.add(id, maxi(3 - p.collection.count(id), 0))
+			p.collection.add(id, maxi(maxi(3, int(Profile.copy_ladder(db, id).back())) - p.collection.count(id), 0))
 		p.mastery[id] = 100
 		p.firmware[id] = Profile.firmware_max(db)
 		var m := best_mod(db, id)
