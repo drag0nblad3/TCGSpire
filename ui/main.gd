@@ -314,6 +314,7 @@ func show_hub() -> void:
 			["No", null]], "It counts as a loss. You keep the XP and rewards earned so far.")))
 	hub.start_pressed.connect(_show_jobs)
 	hub.daily_pressed.connect(_start_daily)
+	hub.tutorial_pressed.connect(start_tutorial)
 	hub.records_pressed.connect(func() -> void:
 		var rs := RecordsScreen.new().setup(db, profile)
 		rs.changed.connect(_save)
@@ -335,6 +336,58 @@ func show_hub() -> void:
 	if not news.is_empty():
 		_save()
 		UiKit.toast(self, "\n".join(news), 5.0)
+
+
+# --- tutorial -------------------------------------------------------------------
+
+## Briefing pages, a coached practice fight (see Tutorial), then the debrief.
+## No run exists, so nothing but settings.tutorial_done is saved.
+func start_tutorial() -> void:
+	_show_pages(Tutorial.briefing(db), 0, _start_tutorial_fight)
+
+
+func _start_tutorial_fight() -> void:
+	_tint()
+	_combat = Tutorial.make_combat(db)
+	var s := CombatScreen.new().setup(_combat, null)
+	s.step_scale = anim_speed()
+	s.finished.connect(_finish_tutorial)
+	_show(s)
+	var coach := Tutorial.new().setup(s)
+	coach.skipped.connect(_finish_tutorial.bind(false, true))
+	s.add_child(coach)
+
+
+func _finish_tutorial(won: bool, skipped: bool = false) -> void:
+	profile.settings["tutorial_done"] = true
+	_save()
+	if skipped:
+		show_hub()
+		return
+	_show_pages(Tutorial.debrief(db, won), 0, show_hub, "Take a job", func() -> void: _show_jobs(0))
+
+
+## One page at a time: title, lines, Next (or `done_text` on the last page) and Skip.
+## `alt` (optional) is a second button on the last page.
+func _show_pages(pages: Array, i: int, on_done: Callable, alt_text: String = "", alt: Callable = Callable()) -> void:
+	var parts := UiKit.screen(20)
+	var v: VBoxContainer = parts[1]
+	if pages.size() > 1:
+		v.add_child(UiKit.label("%d / %d" % [i + 1, pages.size()], 14, Palette.TEXT_DIM))
+	v.add_child(UiKit.label(pages[i][0], 30, Palette.ENERGY, true))
+	for l in pages[i][1]:
+		v.add_child(UiKit.label(str(l), 18, Palette.TEXT, true))
+	var last := i == pages.size() - 1
+	if last and alt.is_valid():
+		v.add_child(UiKit.button(alt_text, alt, Vector2(300, 64), 20))
+		v.add_child(UiKit.button("Back to hub", on_done, Vector2(300, 56), 17))
+	else:
+		v.add_child(UiKit.button("Start practice fight" if last else "Next", on_done if last else _show_pages.bind(pages, i + 1, on_done, alt_text, alt), Vector2(300, 64), 20))
+		v.add_child(UiKit.button("Skip tutorial", func() -> void:
+			profile.settings["tutorial_done"] = true
+			_save()
+			show_hub(), Vector2(300, 52), 16))
+	_show(parts[0])
 
 
 ## Job board: every run is a job for one faction (see Jobs).

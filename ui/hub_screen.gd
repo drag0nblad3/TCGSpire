@@ -11,6 +11,7 @@ signal abandon_pressed
 signal rig_pressed
 signal daily_pressed
 signal records_pressed
+signal tutorial_pressed
 
 var db: CardDB
 var profile: Profile
@@ -88,6 +89,10 @@ func _ready() -> void:
 		v.add_child(UiKit.button("Resume run\n%s" % saved_run, func() -> void: resume_pressed.emit(), Vector2(300, 84), 20))
 		v.add_child(UiKit.button("Abandon run", func() -> void: abandon_pressed.emit(), Vector2(300, 48), 16))
 	else:
+		if first_time():
+			var tut := UiKit.button("New here? Play the tutorial", func() -> void: tutorial_pressed.emit(), Vector2(300, 64), 18)
+			tut.add_theme_color_override("font_color", Palette.UPGRADED)
+			v.add_child(tut)
 		v.add_child(UiKit.button("Take a job", func() -> void: start_pressed.emit(heat), Vector2(300, 72), 24))
 	if saved_run == "":
 		var d := Records.daily(db, Records.today())
@@ -103,9 +108,15 @@ func _ready() -> void:
 	rig_row.add_child(UiKit.button("Records", func() -> void: records_pressed.emit(), Vector2(200, 60)))
 	v.add_child(rig_row)
 	var row := UiKit.hbox(12)
-	row.add_child(UiKit.button("How to play", func() -> void: Rules.open(self), Vector2(200, 52), 16))
-	row.add_child(UiKit.button("Menu", func() -> void: menu_pressed.emit(), Vector2(200, 52), 16))
+	row.add_child(UiKit.button("Tutorial", func() -> void: tutorial_pressed.emit(), Vector2(130, 52), 16))
+	row.add_child(UiKit.button("Rules", func() -> void: Rules.open(self), Vector2(130, 52), 16))
+	row.add_child(UiKit.button("Menu", func() -> void: menu_pressed.emit(), Vector2(130, 52), 16))
 	v.add_child(row)
+
+
+## No finished tutorial and no runs yet: the hub offers the tutorial first.
+func first_time() -> bool:
+	return not bool(profile.settings.get("tutorial_done", false)) and int(profile.stats.get("runs", 0)) == 0
 
 
 ## Collecting front and center: packs, shards, library progress, upgrades waiting, the next binder.

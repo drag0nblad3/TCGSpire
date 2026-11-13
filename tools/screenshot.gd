@@ -5,7 +5,7 @@ extends SceneTree
 ##                   [out=/tmp/shot.png] [frames=30] [plays=2] [seed=1] [theme=archive] [end_turn=1] [give=sparring_dummy,drone_swarm]
 ## Under --headless it still runs (smoke test for script errors) but writes no image.
 
-const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "pack_open", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume", "records", "exploits", "daily"]
+const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "pack_open", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume", "records", "exploits", "daily", "tutorial", "coach"]
 
 
 func _initialize() -> void:
@@ -75,7 +75,7 @@ func _idle(cs) -> void:
 
 func _go(main: Control, scr: String, seed_in: int) -> void:
 	var db: CardDB = main.db
-	if scr not in ["hub", "collection", "picker", "pack", "pack_open", "inspect", "rules", "jobs", "rig", "firmware", "resume", "records", "exploits"]:
+	if scr not in ["hub", "collection", "picker", "pack", "pack_open", "inspect", "rules", "jobs", "rig", "firmware", "resume", "records", "exploits", "tutorial", "coach"]:
 		var p: Profile = main.profile
 		main.run = RunState.start(db, p, RunState.default_picks(db, p), seed_in)
 		main.run.add_talisman("oak_token")
@@ -83,6 +83,10 @@ func _go(main: Control, scr: String, seed_in: int) -> void:
 	match scr:
 		"hub":
 			main.show_hub()
+		"tutorial":
+			main.start_tutorial()
+		"coach":
+			main._start_tutorial_fight()
 		"inspect":
 			main.show_hub()
 			CardInspector.show_for(main, db.instance("flare_volley"))
