@@ -31,6 +31,8 @@ const MODS := {
 	"board_slots": "Daemon slots",
 	"daemon_hp": "Daemon HP",
 	"jumps": "Jumps per layer",
+	"run_scrap": "Scrap when the run ends",
+	"bonus_packs": "Extra data caches after breaching a Core",
 }
 const SCOPES := ["run", "rig"]
 const PCT := ["gold_pct", "rest_heal_pct", "shop_discount_pct"]
@@ -86,15 +88,19 @@ static func describe_mod(k: String, v: float) -> String:
 		"max_energy":
 			return "+%d %s every turn." % [int(v), Lexicon.term("energy")]
 		"hand_size":
-			return "Draw %d more program%s each turn." % [int(v), "" if int(v) == 1 else "s"]
+			return "Draw %d %s program%s each turn." % [absi(int(v)), "fewer" if v < 0 else "more", "" if absi(int(v)) == 1 else "s"]
 		"board_slots":
-			return "+%d daemon slot%s." % [int(v), "" if int(v) == 1 else "s"]
+			return "%+d daemon slot%s." % [int(v), "" if absi(int(v)) == 1 else "s"]
 		"daemon_hp":
 			return "Your daemons have +%d HP." % int(v)
 		"perk_choices":
 			return "+%d subroutine choice%s." % [int(v), "" if int(v) == 1 else "s"]
 		"remove_discount":
 			return "Deleting a program at the Fixer costs %d less." % int(v)
+		"run_scrap":
+			return "When the run ends, gain %d Scrap." % int(v)
+		"bonus_packs":
+			return "If you breach at least one Core, the run pays %d more Data cache%s." % [int(v), "" if int(v) == 1 else "s"]
 		"enemy_hp_pct":
 			return "Enemies have %d%% %s HP." % [absi(roundi(v * 100)), "less" if v < 0 else "more"]
 	return "?"

@@ -323,3 +323,76 @@ func test_run_save_round_trip() -> void:
 	RunSave.clear(path)
 	check(not RunSave.exists(path), "cleared")
 	eq(RunSave.load_run(db, path), {}, "no save = empty")
+
+
+func _fight(tals: Array) -> Combat:
+	var c := Combat.create(db, [], "mites", GameRng.new(1), -1, {"talismans": tals})
+	for e in c.enemies:
+		e.hp = 99
+	return c
+
+
+func test_implant_flags_are_always_on_rules() -> void:
+	var c := _fight(["recursion_core", "ring_buffer", "grafted_host"])
+	eq(c.rule_sum("loop_bonus"), 1, "implant flag counts with no daemon up")
+	eq(c.rule_sum("keep_ward"), 1)
+	eq(c.rule_sum("guard"), 0, "while-daemon flag is off with an empty board")
+	c.summon("A", 3)
+	eq(c.rule_sum("guard"), 1, "and on once a daemon runs")
+
+
+func test_implant_daemon_hp_mult_scales_base_hp() -> void:
+	var c := _fight(["lease_extender", "ceramic_casing"])
+	c.summon("A", 3)
+	eq(c.units[0].hp, 6, "3 x 1.5 rounded up, then +1")
+	var d := _fight(["server_farm"])
+	d.summon("A", 3)
+	eq(d.units[0].hp, 6, "double base HP")
+
+
+func test_implant_daemon_closed_and_reshuffle_triggers() -> void:
+	var c := _fight(["heartbeat_monitor", "crash_reporter", "swap_file"])
+	c.player.hp = 20
+	c.draw_pile = db.make_deck(["jab"])
+	c.summon("A", 3)
+	c.crash_daemon(c.units[0])
+	eq(c.player.hp, 23, "repair when a daemon shuts down")
+	eq(c.hand.size(), 1, "and draw")
+	c.discard_pile = db.make_deck(["jab"])
+	c.energy = 0
+	c.draw(1)
+	eq(c.energy, 1, "RAM on reshuffle")
+
+
+func test_implant_mods_feed_run_numbers() -> void:
+	var r := _run()
+	eq(r.jumps_total(), 0)
+	r.add_talisman("ghost_route")
+	eq(r.jumps_total(), 1, "implant grants a jump")
+	r.add_talisman("server_farm")
+	eq(int(r.combat_opts()["extra_slots"]), -1, "one fewer daemon slot")
+	r.add_talisman("collectors_rig")
+	r.acts_cleared = 0
+	var base := Profile.run_packs(db, r)
+	r.acts_cleared = 1
+	eq(Profile.run_packs(db, r), base + 2, "bonus cache needs a Core")
+
+
+func test_implant_run_triggers_on_vault_and_jump() -> void:
+	var r := _run()
+	r.add_talisman("skeleton_key")
+	var v := r.open_vault()
+	check(not v["lines"].is_empty(), "vault trigger logged")
+	check(r.deck.any(func(c: CardInstance) -> bool: return c.fw > 0), "vault upgraded programs")
+	r.add_talisman("skip_tracer")
+	var gold := r.gold
+	eq(Talismans.fire_run(r, "jump").size(), 2, "jump pays")
+	eq(r.gold, gold + 20)
+
+
+func test_crew_implants_stay_out_of_jobs_against_that_crew() -> void:
+	var r := _run()
+	r.banned = ["void"]
+	for s in 40:
+		var id := r.roll_talisman("rare", GameRng.new(s))
+		check(str(db.talismans[id].get("faction", "")) != "void", "no %s on a job against Null" % id)

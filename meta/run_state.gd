@@ -17,6 +17,8 @@ var talismans: Array = []
 var map: RunMap
 var node_id := -1
 var jumps_used := 0  # jump charges spent this act
+## What implants did on the last jump (shown by the UI, not saved).
+var jump_lines: Array = []
 var path: Array = []
 var combats_won := 0
 var elites_won := 0
@@ -167,6 +169,8 @@ func perk_mod(key: String) -> float:
 		v += float(db.perks.get(pid, {}).get("mods", {}).get(key, 0.0))
 	for pid in rig:
 		v += float(db.perks.get(pid, {}).get("mods", {}).get(key, 0.0)) * int(rig[pid])
+	for tid in talismans:
+		v += float(db.talismans.get(tid, {}).get("mods", {}).get(key, 0.0))
 	return v
 
 
@@ -230,12 +234,14 @@ func enter(id: int) -> Dictionary:
 	if id not in available_nodes():
 		push_error("Node %d not reachable" % id)
 		return {}
-	if id in jump_moves():
+	var jumped: bool = id in jump_moves()
+	if jumped:
 		jumps_used += 1
 	node_id = id
 	path.append(id)
 	var node := map.node(id)
 	floor_num = (act - 1) * map.rows.size() + int(node["row"]) + 1
+	jump_lines = Talismans.fire_run(self, "jump") if jumped else []
 	return node
 
 
@@ -419,7 +425,7 @@ func roll_talisman(rarity: String, r: GameRng) -> String:
 	var pool: Array = []
 	for id in db.talismans:
 		var t: Dictionary = db.talismans[id]
-		if t.get("rarity", "") == rarity and id not in talismans and id not in locked_talismans:
+		if t.get("rarity", "") == rarity and id not in talismans and id not in locked_talismans and str(t.get("faction", "")) not in banned:
 			pool.append(id)
 	pool.sort()
 	if pool.is_empty() and rarity != "common":
@@ -470,7 +476,7 @@ static func upgrade_candidates(cards: Array) -> Array:
 ## {"cards": [{"id", "price"}], "talismans": [{"id", "price"}], "remove": price}
 ## A sealed vault (reached only by a jump, guarded by an elite): after the fight,
 ## a rare implant plus a stack of creds on top of the elite's rewards.
-## Returns {"talisman": id or "", "gold": int}.
+## Returns {"talisman": id or "", "gold": int, "lines": implant log lines}.
 func open_vault() -> Dictionary:
 	var cfg: Dictionary = db.balance.get("vault", {})
 	var r := rng.fork("vault:%d" % floor_num)
@@ -482,7 +488,7 @@ func open_vault() -> Dictionary:
 	var g: Array = cfg.get("gold", [60, 90])
 	var gold_won := r.range_i(int(g[0]), int(g[1]))
 	gold += gold_won
-	return {"talisman": tid, "gold": gold_won}
+	return {"talisman": tid, "gold": gold_won, "lines": Talismans.fire_run(self, "vault")}
 
 
 func make_shop() -> Dictionary:

@@ -80,7 +80,9 @@ Original design only: don't copy cards, names, characters or look from existing 
 - Keep `core/` free of Node/scene code so it stays testable headless and deterministic.
   All randomness goes through `GameRng`; events hold ids/numbers only.
 - New talisman/event/mod/perk = JSON only (`mods.json`, `perks.json`; perk mod keys in `Perks.MODS`). Talisman triggers: combat_start, turn_start, turn_end,
-  card_played (filters card_type, every), kill. Event outcomes use `RunOutcomes.OPS`.
+  card_played (filters card_type, keyword, every), kill, daemon_closed, loop, reshuffle. Implants can also carry `mods` (perk mod keys in `Talismans.MOD_KEYS`,
+  incl. `jumps`, `run_scrap`, `bonus_packs`), `flags` (always-on `DaemonRules.FLAGS`, `flags_while_daemon`), `daemon` {hp, hp_mult}, `run` triggers
+  (jump, vault -> run outcomes) and a `faction` (never rolls when that crew is a target). Event outcomes use `RunOutcomes.OPS`.
 - Balance check after content changes: `scripts/sim.sh mode=run n=400 job=all` (~20 s). Bot baseline at heat 0
   on jobs (new profile, 3 acts): ~30% clear act 1, ~5% win; experienced (10 runs) ~37% win at heat 1, ~5% at heat 2; veteran (25 runs, now 39) ~47% at heat 2,
   ~15% at heat 3; max ~89% at heat 3, ~33% at heat 6 (Tyler is fine with lower rates since Act 3). Heat `enemy_hp_pct`/`enemy_dmg_pct` compound per level (`RunState.heat_mult`), the main lever.

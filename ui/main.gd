@@ -630,6 +630,8 @@ func _enter_node(id: int) -> void:
 	GameAudio.play("travel")
 	var node := run.enter(id)
 	_save_run({"screen": "node"})
+	if not run.jump_lines.is_empty():
+		UiKit.toast(self, "\n".join(run.jump_lines))
 	_play_node(node)
 
 
@@ -692,6 +694,7 @@ func _on_combat_finished(_won: bool) -> void:
 		if str(v["talisman"]) != "":
 			lines.append("Vault implant: %s" % db.talismans[v["talisman"]]["name"])
 			tals.append(v["talisman"])
+		lines.append_array(v.get("lines", []))
 	_show_reward(lines, tals, rewards["cards"], rewards.get("perks", []), rewards["kind"])
 
 
