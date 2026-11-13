@@ -460,10 +460,44 @@ func _show_pack() -> void:
 	v.add_child(UiKit.button("Next %s (%d left)" % [Palette.w("pack").to_lower(), left] if left > 0 else "Done", func() -> void:
 		_show_pack() if profile.packs_unopened > 0 else show_hub()))
 	_show(parts[0])
+	if not reveal_packs_now:
+		_play_pack_opening(parts[0])
 	if reveal_packs_now:
 		for k in views.size():
 			views[k].face_down = false
 			on_reveal.call(views[k], pulled[k])
+
+
+## A short encrypted-packet break, owned by the pack screen so navigation cancels it.
+func _play_pack_opening(host: Control) -> void:
+	var overlay := Control.new()
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.z_index = 10
+	host.add_child(overlay)
+	var progress := [0.0]
+	overlay.draw.connect(func() -> void:
+		var center := overlay.size * 0.5
+		var packet := Rect2(center - Vector2(90, 120), Vector2(180, 240))
+		overlay.draw_rect(Rect2(Vector2.ZERO, overlay.size), Color(Palette.PANEL_BG, 0.96))
+		var split := maxf(0.0, progress[0] - 0.45) * 180.0
+		for side in [-1, 1]:
+			var half := Rect2(packet.position + Vector2(90 if side == 1 else 0, 0), Vector2(90, 240))
+			half.position.x += side * split
+			overlay.draw_rect(half, Palette.PANEL_BG)
+			overlay.draw_rect(half, Palette.ENERGY, false, 2.0)
+			for row in 7:
+				var y := half.position.y + 24 + row * 28
+				overlay.draw_line(Vector2(half.position.x + 12, y), Vector2(half.end.x - 12, y), Color(Palette.ENERGY, 0.35), 2.0)
+		var scan_y := packet.position.y + progress[0] * packet.size.y
+		overlay.draw_line(Vector2(packet.position.x - 14 - split, scan_y), Vector2(packet.end.x + 14 + split, scan_y), Palette.UPGRADED, 3.0)
+	)
+	var tween := overlay.create_tween()
+	tween.tween_method(func(value: float) -> void:
+		progress[0] = value
+		overlay.queue_redraw(), 0.0, 1.0, 0.5)
+	tween.tween_property(overlay, "modulate:a", 0.0, 0.15)
+	tween.tween_callback(overlay.queue_free)
 
 
 ## Collector pill on a revealed pack card: an unlocked firmware level or its level (NEW is a ribbon, copies are pips).

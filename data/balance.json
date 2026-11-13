@@ -8,6 +8,7 @@
  "enemy_hp_mult_by_act": {
   "1": 0.85
  },
+ "starter_packs": 3,
  "start_gold": 50,
  "start_talisman": "",
  "base_deck": [

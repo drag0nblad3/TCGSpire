@@ -53,6 +53,7 @@ var loadouts: Dictionary = {}
 
 static func new_player(db: CardDB) -> Profile:
 	var p := Profile.new()
+	p.packs_unopened = int(db.balance.get("starter_packs", 3))
 	var start: Dictionary = db.balance.get("starter_collection", {})
 	for id in start:
 		p.collection.add(id, int(start[id]))
