@@ -307,6 +307,11 @@ func finish_combat(c: Combat) -> Dictionary:
 	return rewards
 
 
+## The crew whose packs this run's Cores pay: the client hiring you (Street when freelance).
+func client_crew() -> String:
+	return job if Lexicon.FACTION.has(job) else "neutral"
+
+
 func total_acts() -> int:
 	return int(db.balance.get("acts", 1))
 

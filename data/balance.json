@@ -68,6 +68,27 @@
   },
   "reroll_complete": true
  },
+ "pack_types": {
+  "normal": {"name": "Data cache"},
+  "crew": {"name": "%s cache", "pool": "crew"},
+  "premium": {
+   "name": "Zero-day cache",
+   "weights": {
+    "common": 50,
+    "uncommon": 36,
+    "rare": 12,
+    "mythic": 2
+   },
+   "hot_slot": {
+    "rare": 85,
+    "mythic": 15
+   },
+   "foil_chance": 0.2,
+   "pity": {
+    "mythic": 6
+   }
+  }
+ },
  "reward": {
   "choices": 3,
   "shop_count": 5,

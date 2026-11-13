@@ -11,7 +11,7 @@ Original design only: don't copy cards, names, characters or look from existing 
   top killers; `acts=1` adds per-act death share and turns per normal/elite/boss fight. `profile=experienced`/`veteran` = save after 10/39 bot runs with likely spending, `max` = everything owned/bought (`meta/profile_bot.gd`). Default heat per profile: new 0, experienced 1, veteran 3, max 6.
 - `scripts/sim_matrix.sh` — the standard balance check Tyler wants: 150 runs per cell, new heat 0-1, experienced 1-3, veteran 2-5, max 4-6.
 - `scripts/shot.sh screen=<name|all> out=/tmp/x.png [plays=2] [end_turn=1] [theme=archive]` — real render to PNG (xvfb).
-  Screens: hub map combat reward rest shop event collection picker pack pack_open end inspect rules jobs rig perk tinker crew firmware recompile menu settings resume tutorial coach foil. Uses a throwaway profile.
+  Screens: hub map combat reward rest shop event collection picker pack pack_open pack_shelf pack_premium pack_crew end inspect rules jobs rig perk tinker crew firmware recompile menu settings resume tutorial coach foil. Uses a throwaway profile.
 - Godot binary: `godot` on PATH, or set `GODOT=/path/to/godot`. Cloud sessions: download
   `Godot_v4.4.1-stable_linux.x86_64.zip` from the godotengine GitHub releases.
 
@@ -22,7 +22,9 @@ Original design only: don't copy cards, names, characters or look from existing 
   `talismans.gd` (passive items: trigger hooks fired by Combat, effects use Effects ops),
   `card_mods.gd` (one mod per CardInstance: cost/keyword/effect changes, restrictions).
 - `meta/` between-run state: `profile.gd` (versioned save, `_migrate`), `collection.gd`
-  (counts, dust, craft/disenchant), `packs.gd`, `run_state.gd` (deck/HP/gold/talismans/heat,
+  (counts, dust, craft/disenchant), `packs.gd` (pack kinds: "normal", "premium" (Zero-day cache), "crew:<faction>" for all 7 crews;
+  `balance.pack_types` overrides `balance.pack` per type; `Profile.packs` counts by kind, `Profile.pack_pity` keeps mercy timers per kind;
+  each Core breached pays a crew pack of the client crew (`RunState.client_crew`, Street when freelance), a finished job pays premium, everything else is normal; `ui/pack_art.gd` draws each kind), `run_state.gd` (deck/HP/gold/talismans/heat,
   rest, shop, events; `to_dict`/`from_dict`), `run_save.gd` (run in progress, saved at every run screen change by
   `main._save_run`, resumed from the hub; a fight restarts from turn 1), `run_map.gd` (seeded branching map; short `walls` = segments in map space that cut every link they cross,
   a stranded node gets an unwalled diagonal; walls are centred on the 1-2 links they cut; nodes sealed off become "vault" (elite guard, then rare implant + creds); jumps are an earned
