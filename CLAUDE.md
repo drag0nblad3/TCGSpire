@@ -96,7 +96,8 @@ Original design only: don't copy cards, names, characters or look from existing 
 ## Android builds (only when Tyler asks for one)
 - `scripts/build_apk.sh` -> `build/tcgspire.apk` (debug, arm64). Needs Godot 4.4.1 export templates
   in `~/.local/share/godot/export_templates/4.4.1.stable/`, a JDK and an Android SDK with build-tools.
-- GitHub: Actions tab -> "android-apk" -> Run workflow (manual only, never on push). APK is the artifact.
+- GitHub: Actions tab -> "android-apk" -> Run workflow (manual only, never on push; optional `ref` input picks the commit). It publishes the APK
+  as a prerelease (tag `build-<run>-<sha>`) with a direct download link, and also keeps it as the run artifact.
 - Signing: `signing/debug.keystore` (pass "android") is committed on purpose so every APK has the same signature
   and installs over the last one. Never regenerate it, or phones must uninstall (losing the save).
 - `export_presets.cfg` includes `data/**/*.json` (data files aren't resources); keep that filter.
