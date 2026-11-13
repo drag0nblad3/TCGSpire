@@ -26,6 +26,7 @@ var _units_row: HBoxContainer
 var _player_view: FighterView
 var _energy: Control
 var _hint: Label
+var _action_label: Label
 var _hand_row: HBoxContainer
 var _end_btn: Button
 var _fx: Control
@@ -46,8 +47,8 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var col := VBoxContainer.new()
 	col.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	col.offset_left = 6
-	col.offset_right = -6
+	col.offset_left = 10
+	col.offset_right = -10
 	col.offset_top = 20
 	col.offset_bottom = -20
 	col.add_theme_constant_override("separation", 10)
@@ -69,30 +70,46 @@ func _ready() -> void:
 			tv.pressed.connect(func(id: String) -> void: UiKit.toast(self, TalismanView.text(combat.db, id)))
 			trow.add_child(tv)
 		col.add_child(trow)
-	var top_gap := _spacer()
-	top_gap.size_flags_stretch_ratio = 0.7
-	col.add_child(top_gap)
-	_enemies_row = _row(10)
-	col.add_child(_enemies_row)
-	col.add_child(_spacer())
-	_units_row = _row(12)
-	_units_row.custom_minimum_size.y = 130
-	col.add_child(_units_row)
+	var board := PanelContainer.new()
+	board.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	board.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var glass := StyleBoxFlat.new()
+	glass.bg_color = Color(Palette.PANEL_BG, 0.34)
+	glass.border_color = Color(Palette.ENERGY, 0.35)
+	glass.set_border_width_all(1)
+	glass.set_corner_radius_all(maxi(Palette.RADIUS, 8))
+	for side in [SIDE_LEFT, SIDE_RIGHT, SIDE_TOP, SIDE_BOTTOM]:
+		glass.set_content_margin(side, 8)
+	board.add_theme_stylebox_override("panel", glass)
+	col.add_child(board)
+
+	var field := UiKit.vbox(8)
+	field.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	board.add_child(field)
+	_action_label = UiKit.label("", 16, Palette.ENERGY)
+	field.add_child(_action_label)
+	field.add_child(_spacer())
+	_enemies_row = _row(8)
+	field.add_child(_enemies_row)
+	field.add_child(_spacer())
+	_units_row = _row(8)
+	field.add_child(_units_row)
 	_player_view = FighterView.new().setup(combat.player, combat, "player")
-	_player_view.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_player_view.inspected.connect(_inspect_fighter)
 	_player_view.pressed.connect(_on_ally_pressed)
-	col.add_child(_player_view)
+	field.add_child(_player_view)
 
 	var bar := HBoxContainer.new()
 	bar.alignment = BoxContainer.ALIGNMENT_CENTER
 	bar.add_theme_constant_override("separation", 18)
 	_energy = Control.new()
 	_energy.custom_minimum_size = Vector2(64, 64)
+	_energy.tooltip_text = "RAM"
 	_energy.draw.connect(_draw_energy)
 	bar.add_child(_energy)
 	_hint = UiKit.label("", 15, Palette.TEXT_DIM)
 	_hint.custom_minimum_size.x = 250
+	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	bar.add_child(_hint)
 	_end_btn = Button.new()
 	_end_btn.text = "End turn"
@@ -139,7 +156,7 @@ func _rebuild() -> void:
 		_hand_row.add_child(cv)
 	# Overlap cards just enough that the whole hand fits on screen (every card stays tappable).
 	var n := combat.hand.size()
-	var avail := get_viewport_rect().size.x - 12
+	var avail := _layout_width() - 20
 	var sep := 6 if n <= 1 else mini(6, int((avail - n * CardView.SIZE.x * zoom) / (n - 1)))
 	_hand_row.add_theme_constant_override("separation", sep)
 	_energy.queue_redraw()
@@ -151,16 +168,21 @@ func _rebuild() -> void:
 	var inc := combat.incoming_damage()
 	_player_view.targetable = _ally_mode()
 	if _ally_mode():
-		_hint.text = "Tap yourself or a daemon\n(tap the card again to cancel)"
+		_hint.text = "%s\nTap yourself or a daemon" % combat.hand[_selected].display_name()
 	elif _selected >= 0:
-		_hint.text = "Tap an enemy to target\n(tap the card again to cancel)"
+		_hint.text = "%s\nTap a highlighted enemy" % combat.hand[_selected].display_name()
 	else:
 		_hint.text = ("Incoming %d damage" % inc if inc > 0 else "No attacks incoming") + ("  ·  Firewall %d" % combat.player.ward if combat.player.ward > 0 else "")
+	_action_label.text = "Choose a target" if _selected >= 0 else ("Your turn" if combat.phase == Combat.Phase.PLAYER else "Enemy turn")
 	_end_btn.disabled = combat.phase != Combat.Phase.PLAYER or _busy
 
 
+func _layout_width() -> float:
+	return get_viewport_rect().size.x if is_inside_tree() else float(ProjectSettings.get("display/window/size/viewport_width"))
+
+
 func _hand_zoom(n: int) -> float:
-	var avail := get_viewport_rect().size.x - 12
+	var avail := _layout_width() - 20
 	if n <= 0:
 		return HAND_ZOOM
 	return clampf((avail + (n - 1) * HAND_OVERLAP) / (n * CardView.SIZE.x), 0.85, HAND_ZOOM)
@@ -173,7 +195,27 @@ func _add_enemy_view(e: Fighter, i: int) -> FighterView:
 	v.inspected.connect(_inspect_fighter)
 	_enemies_row.add_child(v)
 	_views[e.id] = v
+	# Reinforcements can take the row up to five enemies. Keep every tile on-screen.
+	var enemy_count := _enemies_row.get_child_count()
+	var width := minf(250.0, (_layout_width() - 38 - 8 * (enemy_count - 1)) / enemy_count)
+	for tile in _enemies_row.get_children():
+		var solo_boss: bool = not tile.boss_profile.is_empty() and enemy_count == 1
+		tile.set_enemy_width(minf(432.0, _layout_width() - 38.0) if solo_boss else width)
 	return v
+
+
+## Reveal the opening boss portrait and report its accent to the shared backdrop.
+func reveal_boss() -> Color:
+	for portrait: FighterView in _enemies_row.get_children():
+		if portrait.boss_profile.is_empty():
+			continue
+		portrait.modulate.a = 0.20
+		portrait.offset.y = -22.0
+		var reveal := portrait.create_tween().set_parallel()
+		reveal.tween_property(portrait, "modulate:a", 1.0, 0.45)
+		reveal.tween_property(portrait, "offset", Vector2.ZERO, 0.55).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		return portrait.boss_accent
+	return Color.TRANSPARENT
 
 
 func _add_unit_view(u: Fighter) -> FighterView:
@@ -188,10 +230,12 @@ func _add_unit_view(u: Fighter) -> FighterView:
 
 func _draw_energy() -> void:
 	var c := _energy.size / 2
-	var col := Palette.ENERGY if combat.energy > 0 else Color(Palette.ENERGY, 0.35)
-	_energy.draw_circle(c, 30, Color(col, 0.25))
-	_energy.draw_circle(c, 24, col)
-	_energy.draw_string(Palette.display(), c + Vector2(-30, 8), "%d/%d" % [combat.energy, combat.max_energy], HORIZONTAL_ALIGNMENT_CENTER, 60, 20, Palette.CARD_BG)
+	var col := Palette.ENERGY if combat.energy > 0 else Color(Palette.ENERGY, 0.55)
+	_energy.draw_circle(c, 30, Color(col, 0.26))
+	_energy.draw_circle(c, 26, Palette.CARD_BG)
+	_energy.draw_arc(c, 26, 0, TAU, 32, col, 2, true)
+	_energy.draw_string(Palette.display(), c + Vector2(-30, 1), "%d/%d" % [combat.energy, combat.max_energy], HORIZONTAL_ALIGNMENT_CENTER, 60, 19, col)
+	_energy.draw_string(Palette.font(), c + Vector2(-30, 16), "RAM", HORIZONTAL_ALIGNMENT_CENTER, 60, 12, Palette.TEXT)
 
 
 func _all_cards() -> Array:
@@ -240,6 +284,8 @@ func _on_card_pressed(_view: CardView, idx: int) -> void:
 		var c: CardInstance = combat.hand[idx]
 		if c.has_keyword("unplayable"):
 			UiKit.toast(self, "%s can't be played." % c.display_name())
+		elif combat.was_played_this_turn(c):
+			UiKit.toast(self, "%s can be played again next turn." % c.display_name())
 		elif c.cost() > combat.energy:
 			UiKit.toast(self, "Not enough RAM (%d needed)." % c.cost())
 		return
@@ -288,12 +334,15 @@ func _on_end_turn() -> void:
 
 func _act(f: Callable, hand_idx: int = -1) -> void:
 	_busy = true
+	_action_label.text = "Resolving program" if hand_idx >= 0 else "Enemy turn"
 	_end_btn.disabled = true
 	for v in _views.values():
 		v.freeze()
 		v.targetable = false
 	var played: CardView = _hand_row.get_child(hand_idx) if hand_idx >= 0 and hand_idx < _hand_row.get_child_count() else null
+	_hint.text = played.card.display_name() if played != null else ""
 	f.call()
+	_energy.queue_redraw()
 	var draws := await _play_events(played)
 	_busy = false
 	_rebuild()
@@ -332,17 +381,23 @@ func _play_events(played: CardView) -> int:
 					played = null
 					await _wait(0.22)
 			"damage":
+				var damage := int(e["amount"])
+				var blocked := int(e.get("blocked", 0))
 				if v != null:
-					v.shown_hp = int(e.get("hp", v.fighter.hp))
+					# The event amount can include overkill. Report the HP actually lost.
+					var remaining := int(e.get("hp", v.fighter.hp))
+					damage = maxi(0, v.hp() - remaining)
+					v.shown_hp = remaining
 					if e.get("kind", "") != "lose_hp":
 						v.shown_ward = int(e.get("ward", v.fighter.ward))
-					v.flash = 1.0 if e["amount"] > 0 else 0.4
-					_recoil(v, e["amount"])
-				var txt := "-%d" % e["amount"] if e["amount"] > 0 else "Blocked"
-				if e["amount"] > 0 and e["blocked"] > 0:
-					txt += "  (%d blocked)" % e["blocked"]
-				_float_text(v, txt, Palette.HP if e["amount"] > 0 else Palette.WARD)
-				if v == _player_view and e["amount"] > 0:
+					v.flash = 1.0 if damage > 0 else 0.0
+					v.firewall_flash = 1.0 if blocked > 0 else 0.0
+					_recoil(v, damage)
+				if blocked > 0:
+					_float_text(v, "%d Firewall absorbed" % blocked, Palette.WARD, -24 if damage > 0 else 0, true)
+				if damage > 0:
+					_float_text(v, "−%d HP" % damage, Palette.HP, 10 if blocked > 0 else 0, true)
+				if v == _player_view and damage > 0:
 					_shake(6.0)
 				await _wait(0.16)
 			"ward":
@@ -383,10 +438,15 @@ func _play_events(played: CardView) -> int:
 				await _wait(0.12)
 			"death":
 				if v != null:
+					if v.kind == "unit":
+						v.offline = true
+						_float_text(v, "Daemon crashed", Palette.HP, 8, true)
 					var tw := v.create_tween()
 					tw.tween_property(v, "modulate", Color(Palette.HP, 0.0), 0.35)
-					v.flash = 1.0
 				await _wait(0.3)
+			"daemon_explosion":
+				_float_text(v, "Detonate", Palette.HP)
+				await _wait(0.12)
 			"enemy_phase":
 				for cv in _hand_row.get_children():
 					cv.create_tween().tween_property(cv, "modulate:a", 0.0, 0.2)
@@ -403,20 +463,26 @@ func _play_events(played: CardView) -> int:
 					tw.tween_property(src, "offset", Vector2.ZERO, 0.2 * step_scale)
 				await _wait(0.2)
 			"turn_start":
-				if combat.player.status("fortify") <= 0 and combat.rule_sum("keep_ward") <= 0:
-					_player_view.shown_ward = 0
+				_player_view.shown_ward = int(e["ward"])
 				if int(e["turn"]) > 1:
 					await _banner("Your turn", Palette.ENERGY)
 			"summon":
 				var u: Fighter = _find(combat.units, str(e["target"]))
-				if u != null:
-					_pop_in(_add_unit_view(u))
+				if u == null:
+					# A daemon can be summoned and destroyed before this action is replayed.
+					u = Fighter.make(str(e["target"]), str(e["name"]), int(e["hp"]))
+				var nv := _add_unit_view(u)
+				nv.shown_hp = int(e["hp"])
+				nv.shown_ward = 0
+				_pop_in(nv)
 				await _wait(0.2)
 			"spawn":
 				var en: Fighter = _find(combat.enemies, str(e["target"]))
 				if en != null:
 					var nv := _add_enemy_view(en, combat.enemies.find(en))
 					nv.freeze()
+					nv.shown_hp = en.max_hp
+					nv.shown_ward = 0
 					_pop_in(nv)
 				await _wait(0.25)
 			"talisman":
@@ -510,17 +576,27 @@ func _banner(text: String, col: Color) -> void:
 	await _wait(0.45)
 
 
-func _float_text(v: Control, text: String, col: Color, dy: float = 0.0) -> void:
+func _float_text(v: Control, text: String, col: Color, dy: float = 0.0, chip: bool = false) -> void:
 	if v == null or not is_instance_valid(v):
 		return
 	var l := UiKit.label(text, 22, col)
 	l.add_theme_font_override("font", Palette.display())
 	l.add_theme_color_override("font_outline_color", Palette.CARD_BG)
 	l.add_theme_constant_override("outline_size", 6)
+	if chip:
+		var panel := StyleBoxFlat.new()
+		panel.bg_color = Color(Palette.CARD_BG, 0.97)
+		panel.border_color = col
+		panel.set_border_width_all(1)
+		panel.set_corner_radius_all(6)
+		panel.content_margin_left = 8
+		panel.content_margin_right = 8
+		l.add_theme_stylebox_override("normal", panel)
 	l.z_index = 10
 	_fx.add_child(l)
-	l.size = Vector2(v.size.x + 80, 30)
-	l.global_position = v.global_position + Vector2(-40, v.size.y * 0.35 + dy)
+	l.size = l.get_combined_minimum_size() if chip else Vector2(v.size.x + 80, 30)
+	var left := clampf(v.global_position.x + (v.size.x - l.size.x) * 0.5, 4.0, maxf(4.0, size.x - l.size.x - 4.0))
+	l.global_position = Vector2(left, v.global_position.y + v.size.y * 0.35 + dy)
 	l.modulate.a = 0.0
 	var tw := l.create_tween()
 	tw.tween_property(l, "modulate:a", 1.0, 0.05)

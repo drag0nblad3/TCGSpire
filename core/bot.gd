@@ -62,15 +62,24 @@ static func score(c: Combat, card: CardInstance, t: int = -1) -> float:
 		var alive := c.living(c.enemies)
 		target = alive[0] if not alive.is_empty() else null
 	var v := 0.0
-	var loops := 2 if c.player.status("echo") > 0 else 1
-	for e in card.effects():
-		v += _effect_value(c, card, e, target)
-	v *= loops
+	var loops := 2 if c.player.status("echo") > 0 and card.def.type != "power" else 1
+	var ward := c.player.ward
+	var effects := card.effects()
+	for repeat in loops:
+		for e in effects:
+			# The bot plays "ally" programs on itself (target -1), so value them that way.
+			var ev: Dictionary = e
+			if c.needs_ally(card) and not e.has("to"):
+				ev = e.duplicate()
+				ev["to"] = "self"
+			v += _effect_value(c, ev, target, ward)
+			if e.get("op", "") == "ward" and c.player in Effects.targets(c, e, c.player, target, "self"):
+				ward += Effects.ward_gain(c.player, int(e.get("amount", 0)))
 	# Free cards are always worth it; otherwise prefer value per RAM.
 	return v / maxf(card.cost(), 0.6) + 0.01
 
 
-static func _effect_value(c: Combat, card: CardInstance, e: Dictionary, target: Fighter) -> float:
+static func _effect_value(c: Combat, e: Dictionary, target: Fighter, ward: int) -> float:
 	var n := float(e.get("amount", 0))
 	var to := str(e.get("to", ""))
 	var foes := c.living(c.enemies)
@@ -84,7 +93,12 @@ static func _effect_value(c: Combat, card: CardInstance, e: Dictionary, target: 
 				return s
 			return _hit_value(c, target, int(n), hits) if target != null else 0.0
 		"damage_per_ward":
-			var amt := int(c.player.ward * float(e.get("mult", 1.0)))
+			var amt := int(ward * float(e.get("mult", 1.0)))
+			if to == "all_enemies":
+				var s := 0.0
+				for f in foes:
+					s += _hit_value(c, f, amt, 1)
+				return s
 			return _hit_value(c, target, amt, 1) if target != null else 0.0
 		"damage_per_status":
 			var amt := int(float(e.get("base", 0)) + c.player.status(str(e.get("status", ""))) * float(e.get("mult", 1.0)))
@@ -95,14 +109,16 @@ static func _effect_value(c: Combat, card: CardInstance, e: Dictionary, target: 
 				s -= c.player.status(str(e.get("status", ""))) * 0.8
 			return s
 		"ward":
-			var gain := n * (0.75 if c.player.status("frail") > 0 else 1.0)
-			var need := maxf(c.incoming_damage() - c.player.ward, 0.0)
-			var keeps := c.player.status("fortify") > 0 or c.rule_sum("keep_ward") > 0
-			return minf(gain, need) * 1.15 + maxf(gain - need, 0.0) * (0.45 if keeps else 0.08)
+			var gain := Effects.ward_gain(c.player, int(n) + c.rule_sum("ward_bonus"))
+			var need := maxf(c.incoming_damage() - ward, 0.0)
+			var retention := c.ward_retention
+			if c.player.status("fortify") > 0 or c.rule_sum("keep_ward") > 0:
+				retention = 1.0
+			return minf(gain, need) * 1.15 + maxf(gain - need, 0.0) * lerpf(0.08, 0.45, retention)
 		"apply":
 			var st := str(e.get("status", ""))
 			var stacks := float(e.get("stacks", 1))
-			if to == "self" or card.def.target == "ally":
+			if to == "self":
 				return _self_status_value(c, st, stacks)
 			if to == "all_enemies":
 				var s := 0.0

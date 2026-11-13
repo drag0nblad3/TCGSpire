@@ -14,8 +14,12 @@ const MODS := {
 	"rest_heal_pct": "Safehouse repair",
 	"shop_discount_pct": "Fixer discount",
 	"reward_choices": "Program choices after fights",
+	"reward_rerolls": "Program reward rerolls per run",
+	"event_rerolls": "Signal rerolls per run",
 	"combat_heal": "Repair after each fight",
 	"start_ward": "Firewall when you jack in",
+	"ward_retention": "Firewall kept between turns",
+	"daemon_death_damage": "Damage when a daemon is destroyed",
 	"start_mods": "Random mods at run start",
 	"start_perks": "Random subroutines at run start",
 	"enemy_hp_pct": "Enemy HP",
@@ -58,10 +62,18 @@ static func describe_mod(k: String, v: float) -> String:
 			return "Fixer prices %d%% lower." % roundi(v * 100)
 		"reward_choices":
 			return "+%d program choice%s after fights." % [int(v), "" if int(v) == 1 else "s"]
+		"reward_rerolls":
+			return "Reroll program rewards after fights %d time%s per run." % [int(v), "" if int(v) == 1 else "s"]
+		"event_rerolls":
+			return "Reroll a Signal before choosing %d time%s per run." % [int(v), "" if int(v) == 1 else "s"]
 		"combat_heal":
 			return "Repair %d HP after each fight you win." % int(v)
 		"start_ward":
 			return "Jack in with %d %s." % [int(v), Lexicon.term("ward")]
+		"ward_retention":
+			return "Keep %d%% of remaining Firewall at the start of your turn, rounded up." % roundi(v * 100)
+		"daemon_death_damage":
+			return "When one of your daemons is destroyed, it explodes for %d damage to all enemies." % int(v)
 		"start_mods":
 			return "Start runs with %d random mod%s installed." % [int(v), "" if int(v) == 1 else "s"]
 		"start_perks":

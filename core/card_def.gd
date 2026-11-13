@@ -7,7 +7,7 @@ const TYPES := ["attack", "skill", "unit", "power"]
 ## "ally": you or one of your daemons (hand-picked when a daemon is running).
 const TARGETS := ["enemy", "ally", "none"]
 const RARITIES := ["starter", "common", "uncommon", "rare", "mythic", "curse"]
-const KEYWORDS := ["exhaust", "retain", "unplayable", "innate", "ethereal"]
+const KEYWORDS := ["exhaust", "retain", "unplayable", "innate", "ethereal", "once_per_turn"]
 ## Rules glossary for keywords (shown by the card inspector and the rules screen).
 const KEYWORD_DESC := {
 	"exhaust": "After it runs, the program is wiped for the rest of this fight.",
@@ -15,6 +15,7 @@ const KEYWORD_DESC := {
 	"unplayable": "Locked: can't be run. It just clogs your hand.",
 	"innate": "Always loaded into your opening hand.",
 	"ethereal": "If it's still in your hand at the end of your turn, it is wiped.",
+	"once_per_turn": "Each copy can be played once per turn, even if you draw it again.",
 }
 const TYPE_DESC := {
 	"attack": "Exploit: usually deals damage to an enemy.",

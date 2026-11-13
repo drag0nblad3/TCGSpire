@@ -28,6 +28,8 @@ var over := false
 var card_plays: Dictionary = {}
 var remove_cost := 0
 var outcome_counter := 0
+var reward_rerolls_left := 0
+var event_rerolls_left := 0
 ## Talisman ids this player hasn't unlocked yet (excluded from rolls).
 var locked_talismans: Array = []
 ## Subroutines (run perks) loaded this run, in order.
@@ -57,6 +59,8 @@ static func start(db_in: CardDB, profile: Profile, picks: Array, seed_in: int, h
 	r.job = job_in
 	r.banned = targets.duplicate() if not targets.is_empty() else Jobs.banned(db_in, job_in)
 	r.rig = profile.rig.duplicate()
+	r.reward_rerolls_left = int(r.perk_mod("reward_rerolls"))
+	r.event_rerolls_left = int(r.perk_mod("event_rerolls"))
 	r.firmware = profile.firmware.duplicate()
 	r.firmware_mods = profile.firmware_mods.duplicate()
 	r.max_hp = int(db_in.balance.get("player", {}).get("max_hp", 60)) + int(r.heat_mod("max_hp", 0)) + int(r.perk_mod("max_hp"))
@@ -171,6 +175,8 @@ func combat_opts() -> Dictionary:
 		"extra_slots": int(perk_mod("board_slots")),
 		"daemon_hp": int(perk_mod("daemon_hp")),
 		"start_ward": int(perk_mod("start_ward")),
+		"ward_retention": perk_mod("ward_retention"),
+		"daemon_death_damage": int(perk_mod("daemon_death_damage")),
 		"enemy_hp_mult": maxf(heat_mult("enemy_hp_pct") * (1.0 + perk_mod("enemy_hp_pct")), 0.5),
 		"enemy_might": int(heat_mod("enemy_might", 0)),
 		"enemy_dmg_mult": maxf(heat_mult("enemy_dmg_pct"), 0.5),
@@ -229,6 +235,7 @@ func finish_combat(c: Combat) -> Dictionary:
 		hp = mini(max_hp, hp + mend)
 		rewards["healed"] = hp - before_hp
 	rewards["cards"] = reward_choices(kind)
+	rewards["kind"] = kind
 	if kind == "elite" or (kind == "boss" and act < total_acts()):
 		rewards["perks"] = perk_choices(int(db.balance.get("perk_choices", 3)) + int(perk_mod("perk_choices")), rng.fork("perks:%d" % floor_num))
 	if kind == "elite":
@@ -270,6 +277,17 @@ func _next_act() -> void:
 
 func reward_choices(kind: String = "normal") -> Array:
 	return Packs.reward_choices(db, rng.fork("reward:%d" % floor_num), kind, int(perk_mod("reward_choices")) if kind != "shop" else 0, banned)
+
+
+func reroll_reward(kind: String, current: Array) -> Array:
+	if over or reward_rerolls_left <= 0 or kind not in ["normal", "elite", "boss"] or current.is_empty():
+		return []
+	var roll := rng.fork("reward_reroll:%d:%d" % [floor_num, reward_rerolls_left])
+	var choices := Packs.reward_choices(db, roll, kind, int(perk_mod("reward_choices")), banned, current)
+	if choices.size() != current.size():
+		return []
+	reward_rerolls_left -= 1
+	return choices
 
 
 ## New card for this run's deck (firmware cards arrive with their firmware level).
@@ -481,6 +499,17 @@ func pick_event() -> Dictionary:
 	return db.events[id]
 
 
+func reroll_event(current_id: String) -> Dictionary:
+	if over or event_rerolls_left <= 0 or not db.events.has(current_id) or db.events.size() <= 1:
+		return {}
+	var ids := db.events.keys()
+	ids.erase(current_id)
+	ids.sort()
+	var id: String = rng.fork("event_reroll:%d:%d" % [floor_num, event_rerolls_left]).pick(ids)
+	event_rerolls_left -= 1
+	return db.events[id]
+
+
 func can_choose(choice: Dictionary) -> bool:
 	var req: Dictionary = choice.get("requires", {})
 	return gold >= int(req.get("gold", 0)) and hp > int(req.get("hp", 0))
@@ -500,3 +529,51 @@ func choose(choice: Dictionary) -> Array:
 
 func summary() -> String:
 	return "act %d floor %d hp %d/%d gold %d deck %d talismans %s perks %s" % [act, floor_num, hp, max_hp, gold, deck.size(), ",".join(talismans), ",".join(perks)]
+
+
+# --- save / resume --------------------------------------------------------------
+
+## Plain fields copied as-is by to_dict()/from_dict(). Everything random forks
+## from seed_value, so restoring these replays the rest of the run exactly.
+const SAVED := ["seed_value", "hp", "max_hp", "gold", "floor_num", "heat", "talismans", "node_id", "path",
+	"combats_won", "elites_won", "boss_won", "act", "acts_cleared", "double_crossed", "over", "card_plays",
+	"remove_cost", "outcome_counter", "locked_talismans", "perks", "rig", "firmware", "firmware_mods",
+	"mods_installed", "job", "banned"]
+
+
+func to_dict() -> Dictionary:
+	var d := {}
+	for k in SAVED:
+		var v: Variant = get(k)
+		d[k] = v.duplicate(true) if v is Array or v is Dictionary else v
+	var cards: Array = []
+	for c: CardInstance in deck:
+		cards.append({"id": c.def.id, "up": c.upgraded, "fw": c.fw, "foil": c.foil, "mod": str(c.mod.get("id", ""))})
+	d["deck"] = cards
+	d["map"] = {"nodes": map.nodes.duplicate(true), "rows": map.rows.duplicate(true), "act": map.act}
+	return d
+
+
+static func from_dict(db_in: CardDB, d: Dictionary) -> RunState:
+	var r := RunState.new()
+	r.db = db_in
+	for k in SAVED:
+		if d.has(k):
+			var v: Variant = d[k]
+			r.set(k, v.duplicate(true) if v is Array or v is Dictionary else v)
+	r.rng = GameRng.new(r.seed_value)
+	for c in d.get("deck", []):
+		var inst := db_in.instance(str(c["id"]), bool(c.get("up", false)), int(c.get("fw", 0)))
+		if inst == null:
+			continue
+		inst.fw_scale = db_in.firmware_scale()
+		inst.foil = bool(c.get("foil", false))
+		if str(c.get("mod", "")) != "":
+			inst.mod = db_in.mod(str(c["mod"]))
+		r.deck.append(inst)
+	var m := RunMap.new()
+	m.nodes = d["map"]["nodes"].duplicate(true)
+	m.rows = d["map"]["rows"].duplicate(true)
+	m.act = int(d["map"]["act"])
+	r.map = m
+	return r

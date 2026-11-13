@@ -3,6 +3,9 @@ shader_type canvas_item;
 // style 0 = drifting nebula, 1 = paper grain, 2 = neon grid, 3 = glass shards,
 // 4 = glassnet: cracked holo-glass panes with neon data pulses in the cracks.
 uniform int style = 0;
+uniform float glass_intensity : hint_range(1.0, 2.0) = 1.0;
+uniform float boss_entrance = -1.0;
+uniform vec4 boss_color : source_color = vec4(1.0, 0.5, 0.18, 1.0);
 uniform vec4 top_color : source_color = vec4(0.09, 0.07, 0.15, 1.0);
 uniform vec4 bottom_color : source_color = vec4(0.02, 0.02, 0.05, 1.0);
 uniform vec4 glow_color : source_color = vec4(0.55, 0.28, 0.85, 1.0);
@@ -70,18 +73,22 @@ void fragment() {
 		// Panes: dark glass faintly tinted cyan or magenta, with a diagonal sheen.
 		vec3 tint = mix(glow_color.rgb, glow2_color.rgb, step(0.62, id));
 		float sheen = smoothstep(0.0, 1.0, sin((uv.x + uv.y * 0.6) * 7.0 + id * 9.0 + TIME * 0.15) * 0.5 + 0.5);
-		vec3 pane = mix(col, tint, 0.03 + 0.05 * id + 0.03 * sheen);
+		vec3 pane = mix(col, tint, (0.03 + 0.05 * id + 0.03 * sheen) * glass_intensity);
 		// Digital rain inside a few panes.
 		vec2 rg = vec2(floor(uv.x * 90.0), floor(uv.y * 64.0 - TIME * (3.0 + 4.0 * hash(vec2(floor(uv.x * 90.0), 1.0)))));
 		float rain = step(0.93, hash(rg)) * step(0.7, id) * 0.5;
-		pane += tint * rain * 0.18;
+		pane += tint * rain * 0.18 * glass_intensity;
 		// Cracks: heavy dark leading with a thin glowing core; pulses travel along it.
 		float lead = 1.0 - smoothstep(0.0, 0.07, gap);
 		float core = 1.0 - smoothstep(0.0, 0.018, gap);
 		float pulse = pow(0.5 + 0.5 * sin(TIME * 1.6 - (uv.y * 14.0 + uv.x * 6.0) + id * 6.28), 6.0);
 		vec3 neon = mix(glow_color.rgb, glow2_color.rgb, 0.5 + 0.5 * sin(uv.y * 3.0 + TIME * 0.3));
 		col = mix(pane, vec3(0.0), lead * 0.85);
-		col += neon * core * (0.25 + 0.9 * pulse);
+		col += neon * core * (0.25 + 0.9 * pulse) * glass_intensity;
+		if (boss_entrance > -0.5) {
+			float entrance_wave = 1.0 - smoothstep(0.0, 0.18, abs(uv.y - boss_entrance));
+			col += boss_color.rgb * entrance_wave * (core * 0.88 + lead * 0.14 + 0.035);
+		}
 		// Scanlines.
 		col *= 0.93 + 0.07 * sin(FRAGCOORD.y * 2.1);
 	} else {

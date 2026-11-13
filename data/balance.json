@@ -5,6 +5,9 @@
   "hand_size": 5
  },
  "board_slots": 3,
+ "enemy_hp_mult_by_act": {
+  "1": 0.85
+ },
  "start_gold": 50,
  "start_talisman": "",
  "base_deck": [
@@ -251,16 +254,16 @@
    "mythic": 500
   },
   "rep_cost": {
-   "common": 40,
-   "uncommon": 70,
-   "rare": 120,
-   "mythic": 200
+   "common": 30,
+   "uncommon": 55,
+   "rare": 100,
+   "mythic": 175
   },
   "mod_mastery_tier": 2,
   "mod_rep_cost": {
-   "common": 60,
-   "uncommon": 105,
-   "rare": 180
+   "common": 45,
+   "uncommon": 85,
+   "rare": 160
   },
   "mod_dust_cost": {
    "common": 120,

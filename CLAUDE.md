@@ -11,7 +11,7 @@ Original design only: don't copy cards, names, characters or look from existing 
   top killers. `profile=experienced`/`veteran` = save after 10/39 bot runs with likely spending, `max` = everything owned/bought (`meta/profile_bot.gd`).
 - `scripts/sim_matrix.sh` — the standard balance check Tyler wants: 150 runs per cell, new heat 0-1, experienced 1-3, veteran 2-5, max 4-6.
 - `scripts/shot.sh screen=<name|all> out=/tmp/x.png [plays=2] [end_turn=1] [theme=archive]` — real render to PNG (xvfb).
-  Screens: hub map combat reward rest shop event collection picker pack end inspect rules jobs rig perk tinker crew firmware recompile. Uses a throwaway profile.
+  Screens: hub map combat reward rest shop event collection picker pack end inspect rules jobs rig perk tinker crew firmware recompile menu settings resume. Uses a throwaway profile.
 - Godot binary: `godot` on PATH, or set `GODOT=/path/to/godot`. Cloud sessions: download
   `Godot_v4.4.1-stable_linux.x86_64.zip` from the godotengine GitHub releases.
 
@@ -23,7 +23,8 @@ Original design only: don't copy cards, names, characters or look from existing 
   `card_mods.gd` (one mod per CardInstance: cost/keyword/effect changes, restrictions).
 - `meta/` between-run state: `profile.gd` (versioned save, `_migrate`), `collection.gd`
   (counts, dust, craft/disenchant), `packs.gd`, `run_state.gd` (deck/HP/gold/talismans/heat,
-  rest, shop, events), `run_map.gd` (seeded branching map), `run_outcomes.gd` (run-level ops for
+  rest, shop, events; `to_dict`/`from_dict`), `run_save.gd` (run in progress, saved at every run screen change by
+  `main._save_run`, resumed from the hub; a fight restarts from turn 1), `run_map.gd` (seeded branching map), `run_outcomes.gd` (run-level ops for
   events/pickups), `run_bot.gd` (plays whole runs for sims), `profile_bot.gd` (builds experienced/veteran/maxed saves for sims). Progression: XP levels, card mastery, heat.
   `jobs.gd`: every run is a job for one client faction (data/factions.json, 6 crews in 3 rival pairs) run
   against targets (the rival, plus heat mod "extra_targets"): >= half the picks the client's, targets banned
@@ -35,7 +36,7 @@ Original design only: don't copy cards, names, characters or look from existing 
   (`Profile.flash_firmware`) permanently upgrades a card id: rep for faction cards, dust for Street/starter.
 - `ui/` presentation only, built in code (no .tscn besides main). `main.gd` is the screen flow;
   `ui_kit.gd` has label/button/flow/scroll/toast helpers. Reads `combat.events` to animate.
-  All art is code: `sigil.gd` (procedural glyphs), `intent_icon.gd`, `palette.gd` (all colors), `shaders/`.
+  Card illustrations use `assets/cards/field_service.webp` via `ui/card_art.gd` and `data/card_art.json`. Other art uses `sigil.gd` (procedural glyphs), `intent_icon.gd`, `palette.gd` (UI colors), and `shaders/`.
 - Setting: cyberpunk hacking sim ("Neon Undercity"). Player = Ghost, cards = programs, energy = RAM,
   Ward = Firewall, units = daemons, talismans = implants, map = the Stack. Ids in JSON/code keep the old
   generic names (burn, ward, exhaust...) so saves and tests stay stable; player-facing names live in
@@ -81,6 +82,8 @@ Original design only: don't copy cards, names, characters or look from existing 
 - `scripts/build_apk.sh` -> `build/tcgspire.apk` (debug, arm64). Needs Godot 4.4.1 export templates
   in `~/.local/share/godot/export_templates/4.4.1.stable/`, a JDK and an Android SDK with build-tools.
 - GitHub: Actions tab -> "android-apk" -> Run workflow (manual only, never on push). APK is the artifact.
+- Signing: `signing/debug.keystore` (pass "android") is committed on purpose so every APK has the same signature
+  and installs over the last one. Never regenerate it, or phones must uninstall (losing the save).
 - `export_presets.cfg` includes `data/**/*.json` (data files aren't resources); keep that filter.
 - Cloud sessions can't reach dl.google.com, so there's no real SDK there. A stand-in apksigner can be
   built from `com.android.tools.build:apksig` on Maven Central (v2 signing only, Android 7+).

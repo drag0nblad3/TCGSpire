@@ -44,7 +44,10 @@ func _refresh() -> void:
 	for f in Jobs.board(db):
 		var head := UiKit.label("%s  ·  %s  ·  %d %s" % [Lexicon.faction(f), Jobs.info(db, f).get("client", f), profile.rep_of(f), Jobs.rep_name(db, f)], 19, Palette.faction(f))
 		head.add_theme_font_override("font", Palette.display())
-		_list.add_child(head)
+		var heading := UiKit.hbox(10)
+		heading.add_child(Symbols.badge(f, 36))
+		heading.add_child(head)
+		_list.add_child(heading)
 		var ids: Array = Perks.ids(db, "rig").filter(func(id: String) -> bool: return db.perks[id].get("faction", "") == f)
 		ids.sort_custom(func(a: String, b: String) -> bool: return int(db.perks[a].get("capstone", false)) < int(db.perks[b].get("capstone", false)))
 		for id in ids:

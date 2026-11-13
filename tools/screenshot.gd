@@ -5,7 +5,7 @@ extends SceneTree
 ##                   [out=/tmp/shot.png] [frames=30] [plays=2] [seed=1] [theme=archive] [end_turn=1] [give=sparring_dummy,drone_swarm]
 ## Under --headless it still runs (smoke test for script errors) but writes no image.
 
-const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile"]
+const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume"]
 
 
 func _initialize() -> void:
@@ -75,7 +75,7 @@ func _idle(cs) -> void:
 
 func _go(main: Control, scr: String, seed_in: int) -> void:
 	var db: CardDB = main.db
-	if scr not in ["hub", "collection", "picker", "pack", "inspect", "rules", "jobs", "rig", "firmware"]:
+	if scr not in ["hub", "collection", "picker", "pack", "inspect", "rules", "jobs", "rig", "firmware", "resume"]:
 		var p: Profile = main.profile
 		main.run = RunState.start(db, p, RunState.default_picks(db, p), seed_in)
 		main.run.add_talisman("oak_token")
@@ -116,6 +116,15 @@ func _go(main: Control, scr: String, seed_in: int) -> void:
 			main._show_pack()
 		"map":
 			main.show_map()
+		"menu":
+			main._start_combat({"type": "fight", "encounter": "wisp_court"})
+			main._resume = {"screen": "node"}
+			main._open_menu()
+		"settings":
+			main.show_map()
+			main._open_settings()
+		"resume":
+			main._show(HubScreen.new().setup(db, main.profile, "Layer 2 · Node 17 · HP 40/60"))
 		"combat":
 			main._start_combat({"type": "fight", "encounter": "wisp_court"})
 		"crew":

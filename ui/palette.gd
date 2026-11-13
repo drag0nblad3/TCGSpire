@@ -2,19 +2,14 @@ class_name Palette
 extends RefCounted
 ## The active visual theme. Every screen reads colors and fonts from here, so
 ## switching theme (Palette.apply) restyles the whole game. Themes are defined
-## in ui/themes.gd. Values below are the defaults ("starforge").
+## in ui/themes.gd.
 
 static var theme_id := "glassnet"
 
-static var FACTION := {
-	"neutral": Color("#c9c2b0"),
-	"ember": Color("#ff7a3d"),
-	"tide": Color("#3dc6ff"),
-	"bloom": Color("#7ee06a"),
-	"void": Color("#a98bff"),
-	"chrome": Color("#d9dfe8"),
-	"noise": Color("#ffd23d"),
-}
+## Rajdhani SemiBold keeps the cyberpunk look at small card and combat sizes.
+const NAME_FONT := preload("res://assets/fonts/Rajdhani.ttf")
+
+static var FACTION := Themes.FACTIONS_DARK
 
 static var RARITY := {
 	"starter": Color("#6f6a60"),
@@ -82,7 +77,7 @@ static func faction_name(f: String) -> String:
 
 
 static func faction(f: String) -> Color:
-	return FACTION.get(f, FACTION["neutral"])
+	return Color(FACTION.get(f, FACTION["neutral"]))
 
 
 static func rarity(r: String) -> Color:
@@ -105,7 +100,8 @@ static func apply(id: String) -> void:
 	theme_id = id if Themes.ALL.has(id) else Themes.DEFAULT
 	for k in t.get("colors", {}):
 		set_color(k, t["colors"][k])
-	for group in ["FACTION", "RARITY", "NODE"]:
+	FACTION = t.get("faction", Themes.FACTIONS_DARK)
+	for group in ["RARITY", "NODE"]:
 		var src: Dictionary = t.get(group.to_lower(), {})
 		var dst: Dictionary = _group(group)
 		for k in src:
@@ -143,7 +139,6 @@ static func set_color(key: String, v: Variant) -> void:
 
 static func _group(g: String) -> Dictionary:
 	match g:
-		"FACTION": return FACTION
 		"RARITY": return RARITY
 	return NODE
 
