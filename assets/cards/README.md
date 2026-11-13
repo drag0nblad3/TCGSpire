@@ -16,3 +16,16 @@ The atlas is preloaded for export; the manifest is under the existing exported
 `data/**/*.json` filter. Source sheet identifiers and extraction rectangles are
 recorded in provenance.json. Original generated sheets remain in the review
 conversation. No gameplay data or card ids changed.
+
+## Preview expansion
+
+The expansion adds 68 distinct illustrations in `field_service_expansion.webp`,
+with stable card-id regions in `data/card_art_expansion.json`. The original atlas
+and its 88 mappings are unchanged. Both atlases use the same 448 × 168 framing,
+non-stretched fitting, clipped sampling and two-pixel gutters. Source sheets and
+crop rectangles are recorded in `expansion_provenance.json`.
+
+New art follows the Field Service ink-and-ivory hardware style: faction-colored
+components, monochrome Street equipment, and both faction accents on joint cards.
+All 156 current cards have artwork, including primary daemon summon portraits.
+The coverage test requires every database card to resolve to a unique region.

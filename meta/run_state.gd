@@ -81,7 +81,7 @@ static func start(db_in: CardDB, profile: Profile, picks: Array, seed_in: int, h
 		push_warning("Job '%s': %s" % [job_in, problem])
 	var used := {}
 	for id in picks.slice(0, allowed):
-		if db_in.card(id) != null and db_in.card(id).faction in r.banned:
+		if db_in.card(id) != null and db_in.card(id).banned_by(r.banned):
 			continue
 		used[id] = int(used.get(id, 0)) + 1
 		if used[id] > profile.deck_copies(db_in, id):
@@ -116,14 +116,14 @@ static func default_picks(db_in: CardDB, profile: Profile, job_in: String = "", 
 		var need := Jobs.required(db_in, job_in, n)
 		for id in profile.collection.owned_ids():
 			var c := db_in.card(id)
-			if c == null or c.faction != job_in or c.rarity == "starter":
+			if c == null or not c.is_of(job_in) or c.banned_by(ban) or c.rarity == "starter":
 				continue
 			for k in profile.deck_copies(db_in, id):
 				if out.size() < need:
 					out.append(id)
 	for id in db_in.balance.get("default_picks", []):
 		var c := db_in.card(id)
-		if c != null and c.faction not in ban and profile.deck_copies(db_in, id) > out.count(id) and out.size() < n:
+		if c != null and not c.banned_by(ban) and profile.deck_copies(db_in, id) > out.count(id) and out.size() < n:
 			out.append(id)
 	for id in profile.collection.owned_ids():
 		if out.size() >= n:
@@ -131,7 +131,7 @@ static func default_picks(db_in: CardDB, profile: Profile, job_in: String = "", 
 		if id in out:
 			continue
 		var c := db_in.card(id)
-		if c != null and c.rarity != "starter" and c.faction not in ban:
+		if c != null and c.rarity != "starter" and not c.banned_by(ban):
 			out.append(id)
 	return out.slice(0, n)
 

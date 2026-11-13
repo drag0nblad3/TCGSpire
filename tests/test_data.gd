@@ -18,3 +18,11 @@ func test_every_card_has_text() -> void:
 func test_packable_rarities_exist() -> void:
 	for r in ["common", "uncommon", "rare"]:
 		check(not Packs._pool(db, r).is_empty(), "no %s cards" % r)
+
+
+func test_every_crew_has_the_same_rarity_spread() -> void:
+	var want := {"common": 8, "uncommon": 6, "rare": 4, "mythic": 2}
+	for f in Lexicon.FACTION:
+		for r in want:
+			var n := db.ids_where(func(c: CardDef) -> bool: return c.faction == f and c.faction2 == "" and c.rarity == r).size()
+			eq(n, want[r], "%s %s cards" % [f, r])

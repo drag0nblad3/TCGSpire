@@ -255,13 +255,18 @@ func end_turn() -> void:
 			return
 		if en.is_dead():
 			continue
-		var mv: Dictionary = en.current_move()
-		emit("enemy_move", {"source": en.id, "move": mv.get("name", "")})
-		for e in mv.get("effects", []):
-			if is_over():
-				break
-			Effects.resolve(self, e, en, player)
-		en.advance_move()
+		if en.status("stall") > 0:
+			# Lagged: skips this move; the same intent waits for next turn.
+			en.add_status("stall", -1)
+			emit("enemy_move", {"source": en.id, "move": "Lagged", "stalled": true})
+		else:
+			var mv: Dictionary = en.current_move()
+			emit("enemy_move", {"source": en.id, "move": mv.get("name", "")})
+			for e in mv.get("effects", []):
+				if is_over():
+					break
+				Effects.resolve(self, e, en, player)
+			en.advance_move()
 		Statuses.on_turn_end(self, en)
 		_check_end()
 		if is_over():
@@ -322,6 +327,15 @@ func deal_damage(t: Fighter, amount: int, source_id: String = "", kind: String =
 		elif enemies.has(t) and phase == Phase.PLAYER:
 			Talismans.fire(self, "kill", {"target": t})
 	return dealt
+
+
+## Crashes a running daemon on purpose (op "sacrifice"): its rule ends now.
+func crash_daemon(u: Fighter) -> void:
+	if not units.has(u):
+		return
+	units.erase(u)
+	emit("expire", {"target": u.id, "crashed": true})
+	_daemon_closed(u)
 
 
 ## A daemon left the board (crashed or ran out): Hive Link's blast.
@@ -434,6 +448,8 @@ func _refreshes(card: CardInstance) -> bool:
 ## Damage the enemy's next move would deal to the player (ignores Ward). For UI + bot.
 func intent_damage(en: Fighter) -> int:
 	var total := 0
+	if en.status("stall") > 0:
+		return 0
 	for e in en.current_move().get("effects", []):
 		if e.get("op", "") == "damage":
 			if str(e.get("to", "")) == "daemon" or (str(e.get("to", "")) == "front" and not units.is_empty()):

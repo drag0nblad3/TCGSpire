@@ -147,7 +147,7 @@ static func score(run: RunState) -> int:
 ## Card ids that fill a crew's binder tier ("full" = every rarity).
 static func binder_ids(db: CardDB, faction: String, tier: String) -> Array:
 	return db.ids_where(func(c: CardDef) -> bool:
-		return c.faction == faction and c.rarity not in ["starter", "curse"] and (tier == "full" or c.rarity == tier))
+		return c.faction == faction and c.faction2 == "" and c.rarity not in ["starter", "curse"] and (tier == "full" or c.rarity == tier))
 
 
 ## [{"tier", "name", "have", "need", "done", "claimed"}] for one crew.

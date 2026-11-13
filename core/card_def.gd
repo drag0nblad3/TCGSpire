@@ -27,6 +27,9 @@ const TYPE_DESC := {
 var id := ""
 var name := ""
 var faction := "neutral"
+## Joint ops only: a second crew. The card counts as both crews for a job's picks and is
+## banned if either crew is a target. `faction` stays the home crew (firmware rep).
+var faction2 := ""
 var rarity := "common"
 var type := "skill"
 var target := "none"
@@ -43,6 +46,7 @@ static func from_dict(d: Dictionary) -> CardDef:
 	c.id = str(d.get("id", ""))
 	c.name = str(d.get("name", c.id))
 	c.faction = str(d.get("faction", "neutral"))
+	c.faction2 = str(d.get("faction2", ""))
 	c.rarity = str(d.get("rarity", "common"))
 	c.type = str(d.get("type", "skill"))
 	c.target = str(d.get("target", "none"))
@@ -52,6 +56,19 @@ static func from_dict(d: Dictionary) -> CardDef:
 	c.text_override = str(d.get("text", ""))
 	c.upgrade = d.get("upgrade", {})
 	return c
+
+
+func factions() -> Array:
+	return [faction] if faction2 == "" else [faction, faction2]
+
+
+func is_of(f: String) -> bool:
+	return faction == f or (faction2 != "" and faction2 == f)
+
+
+## True if any of the card's crews is in `ban` (job targets).
+func banned_by(ban: Array) -> bool:
+	return faction in ban or (faction2 != "" and faction2 in ban)
 
 
 func get_cost(upgraded: bool) -> int:

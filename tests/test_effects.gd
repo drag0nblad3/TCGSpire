@@ -246,3 +246,79 @@ func test_frail_reduces_ward() -> void:
 	c.player.add_status("frail", 1)
 	c.play_card(give(c, "brace"))
 	eq(c.player.ward, 3, "floor(5*0.75)")
+
+
+func test_lag_skips_one_move_and_keeps_the_intent() -> void:
+	var en: Fighter = c.enemies[0]
+	var move: Dictionary = en.current_move()
+	c.play_card(give(c, "packet_loss"), 0)
+	c.play_card(give(c, "packet_loss"), 0)
+	eq(en.status("stall"), 1, "Lagged never stacks")
+	eq(c.intent_damage(en), 0, "a lagged enemy threatens nothing")
+	eq(Intents.of(c, en)[0]["kind"], "stall")
+	c.enemies[1].moves = []
+	var hp := c.player.hp
+	c.end_turn()
+	eq(c.player.hp, hp, "skipped its move")
+	eq(en.status("stall"), 0, "lag used up")
+	eq(en.current_move(), move, "same intent waits")
+
+
+func test_strip_removes_only_helpful_statuses() -> void:
+	var en: Fighter = c.enemies[0]
+	en.add_status("might", 3)
+	en.add_status("thorns", 2)
+	en.add_status("burn", 4)
+	c.play_card(give(c, "void_siphon"), 0)
+	eq(en.status("might"), 0)
+	eq(en.status("thorns"), 0)
+	eq(en.status("burn"), 4, "debuffs stay")
+	eq(c.player.status("charge"), 2)
+
+
+func test_amplify_doubles_a_status() -> void:
+	var en: Fighter = c.enemies[0]
+	en.add_status("burn", 3)
+	c.play_card(give(c, "accelerant"), 0)
+	eq(en.status("burn"), 6)
+	eq(en.hp, 26)
+	c.player.add_status("charge", 4)
+	c.play_card(give(c, "recursion"))
+	eq(c.player.status("charge"), 8, "amplify on self")
+
+
+func test_damage_per_status_can_read_the_target() -> void:
+	c.enemies[0].add_status("burn", 5)
+	c.play_card(give(c, "backdraft"), 0)
+	eq(c.enemies[0].hp, 21, "4 + 5 Virus")
+	c.play_card(give(c, "backdraft"), 1)
+	eq(c.enemies[1].hp, 26, "no Virus, base only")
+	c.enemies[1].add_status("burn", 2)
+	c.play_card(give(c, "chain_reaction"))
+	eq(c.enemies[0].hp, 16, "each enemy takes its own Virus")
+	eq(c.enemies[1].hp, 24)
+	eq(c.enemies[0].status("burn"), 10)
+
+
+func test_sacrifice_crashes_the_front_daemon_for_its_hp() -> void:
+	c.play_card(give(c, "kamikaze_protocol"))
+	eq(c.enemies[0].hp, 30, "no daemon: nothing happens")
+	c.play_card(give(c, "sparring_dummy"))
+	eq(c.units.size(), 1)
+	c.play_card(give(c, "kamikaze_protocol"))
+	eq(c.units.size(), 0, "daemon crashed")
+	eq(c.enemies[0].hp, 22, "2x its 4 HP")
+	eq(c.enemies[1].hp, 22)
+	c.play_card(give(c, "sparring_dummy"))
+	c.play_card(give(c, "armor_swap"))
+	eq(c.player.ward, 12, "3x its 4 HP as Firewall")
+
+
+func test_joint_op_cards_count_for_both_crews_and_obey_bans() -> void:
+	var card: CardDef = db.card("fever_graft")
+	check(card.is_of("ember") and card.is_of("bloom"), "counts as both crews")
+	check(card.banned_by(["bloom"]) and card.banned_by(["ember"]), "banned if either crew is a target")
+	check(not card.banned_by(["tide"]), "fine otherwise")
+	eq(Jobs.check(db, "bloom", ["fever_graft", "fever_graft"], 4, ["void"]), "", "fills Wetware picks")
+	check(Jobs.check(db, "tide", ["fever_graft"], 2, ["ember"]) != "", "Burner half is banned on a Flux job")
+	check("fever_graft" not in Records.binder_ids(db, "ember", "full"), "joint ops stay out of crew binders")

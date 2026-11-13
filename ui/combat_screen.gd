@@ -460,10 +460,14 @@ func _play_events(played: CardView) -> int:
 				var debuff: bool = Statuses.DEFS.get(e["status"], {}).get("debuff", false)
 				_float_text(v, "%s %s%d" % [Lexicon.status(str(e["status"])), "+" if e["stacks"] >= 0 else "", e["stacks"]], Palette.ENEMY if debuff else Palette.UPGRADED)
 				await _wait(0.1)
+			"strip":
+				if v != null:
+					_float_text(v, "Stripped", Palette.faction("void"))
+				await _wait(0.1)
 			"expire":
 				var xv: FighterView = _views.get(str(e["target"]))
 				if xv != null and is_instance_valid(xv):
-					_float_text(xv, "Closed", Palette.TEXT_DIM)
+					_float_text(xv, "Crashed" if e.get("crashed", false) else "Closed", Palette.TEXT_DIM)
 					xv.create_tween().tween_property(xv, "modulate:a", 0.0, 0.3)
 				await _wait(0.15)
 			"rule":
