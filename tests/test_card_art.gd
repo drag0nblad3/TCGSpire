@@ -17,3 +17,17 @@ func test_every_card_has_distinct_in_bounds_art() -> void:
 		used[texture.region.position] = true
 		check(texture == CardArt.texture_for(id), "art cache reused: " + id)
 	check(CardArt.texture_for("unknown_future_card") == null, "future cards retain fallback")
+
+
+func test_primary_daemon_summons_have_portraits() -> void:
+	for definition: CardDef in db.cards.values():
+		if definition.type != "unit":
+			continue
+		var effect: Dictionary = definition.effects[0]
+		if effect.get("op", "") != "summon":
+			continue
+		var source := CardArt.daemon_card(effect["name"], db)
+		check(source != null, "missing daemon source: " + effect["name"])
+		if source != null:
+			check(CardArt.texture_for(source.id) != null, "daemon texture resolves")
+	check(CardArt.daemon_card("Unknown future daemon", db) == null, "unknown daemon fallback")

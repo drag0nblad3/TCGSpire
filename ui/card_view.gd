@@ -25,6 +25,7 @@ var badge := "":
 var selected := false:
 	set(v):
 		selected = v
+		z_index = 5 if v else 0
 		queue_redraw()
 
 ## Shows the card back (pack opening). Setting false reveals with a flip.
@@ -35,6 +36,11 @@ var face_down := false:
 			_holo.visible = not v
 		queue_redraw()
 
+var reveal_progress := 1.0:
+	set(v):
+		reveal_progress = v
+		queue_redraw()
+var _reveal_tween: Tween
 var _holo: ColorRect
 ## Draw scale: the card is laid out at SIZE and drawn zoomed (hand cards in combat).
 var zoom := 1.0
@@ -109,7 +115,7 @@ func _draw() -> void:
 	var fc := Palette.faction(d.faction)
 	var font := Palette.font()
 	var title_font := Palette.display()
-	var lift := Vector2(0, -14) if selected else Vector2.ZERO
+	var lift := Vector2(0, -22) if selected else Vector2.ZERO
 	var rect := Rect2(lift, SIZE)
 	var dim := 1.0 if playable else 0.45
 	var ink := Color(Palette.CARD_TEXT, dim)
@@ -121,6 +127,9 @@ func _draw() -> void:
 	sb.set_corner_radius_all(Palette.RADIUS)
 	sb.shadow_color = Color(fc, 0.35 if playable else 0.0)
 	sb.shadow_size = 6
+	if reveal_progress < 1.0:
+		sb.shadow_color = Color(fc, sin(reveal_progress * PI) * 0.65)
+		sb.shadow_size = 16
 	draw_style_box(sb, rect)
 	if Palette.FRAME == "circuit":
 		_draw_circuit(rect, Color(fc if not selected else Palette.ENERGY, dim))
@@ -160,6 +169,14 @@ func _draw() -> void:
 			Sigil.draw(self, art.get_center(), 19.0, d.id, Color(fc, dim), t)
 		if d.type == "unit" or TYPE_GLYPH.has(d.type):
 			Sigil.draw(self, art.get_center() + Vector2(31, 0), 11.0, d.id, Color(fc, 0.35 * dim), t)
+	# A single foil pass confined to the illustration; rules and title stay clear.
+	if reveal_progress < 1.0:
+		var sweep := art.position.x - 20.0 + reveal_progress * (art.size.x + 40.0)
+		var left := clampf(sweep, art.position.x, art.end.x)
+		var right := clampf(sweep + 18.0, art.position.x, art.end.x)
+		if right > left:
+			draw_rect(Rect2(left, art.position.y, right - left, art.size.y), Color(fc.lightened(0.65), 0.24 * sin(reveal_progress * PI)))
+
 	# Type line.
 	# Type line; a modded card shows its mod there instead.
 	if card.mod.is_empty():
@@ -247,5 +264,19 @@ static func back_color() -> Color:
 func flip_reveal() -> void:
 	var tw := create_tween()
 	tw.tween_property(self, "scale:x", 0.0, 0.12)
-	tw.tween_callback(func() -> void: face_down = false)
+	tw.tween_callback(func() -> void:
+		face_down = false
+		reveal_reward())
 	tw.tween_property(self, "scale:x", 1.0, 0.12)
+
+
+## One-shot reveal on reward offers and pack flips, never on ordinary hand rebuilds.
+func reveal_reward(delay: float = 0.0) -> void:
+	if card == null or card.def.rarity not in ["rare", "mythic"] and not card.foil:
+		return
+	if _reveal_tween != null:
+		_reveal_tween.kill()
+	reveal_progress = 0.0
+	_reveal_tween = create_tween()
+	_reveal_tween.tween_interval(delay)
+	_reveal_tween.tween_property(self, "reveal_progress", 1.0, 0.85).set_trans(Tween.TRANS_SINE)

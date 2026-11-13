@@ -29,3 +29,14 @@ static func texture_for(id: String) -> Texture2D:
 	texture.filter_clip = true
 	_textures[id] = texture
 	return texture
+
+
+## Find the primary summon card, rather than a secondary summon on a carrier/power.
+static func daemon_card(name: String, db: CardDB) -> CardDef:
+	for definition: CardDef in db.cards.values():
+		if definition.type != "unit" or definition.effects.is_empty():
+			continue
+		var effect: Dictionary = definition.effects[0]
+		if effect.get("op", "") == "summon" and effect.get("name", "") == name:
+			return definition
+	return null
