@@ -39,7 +39,7 @@ static func glossary(card: CardInstance) -> Array[String]:
 	if card.fw > 0:
 		out.append("Firmware v%d: its numbers are %d%% higher." % [card.fw, roundi((card.fw_mult() - 1.0) * 100)])
 	if card.def.rarity != "curse":
-		out.append("Upgrades climb v1 (+%d%%), v2 (+%d%%), then (+): %s Recompile at a safehouse for this run, or flash firmware for good. (+) opens once the rest of your deck is v2." % [25, 50, card.def.upgrade_summary()] if card.fw_scale.size() < 3 else "Upgrades climb v1 (+%d%%), v2 (+%d%%), then (+): %s Recompile at a safehouse for this run, or flash firmware for good. (+) opens once the rest of your deck is v2." % [roundi((float(card.fw_scale[1]) - 1.0) * 100), roundi((float(card.fw_scale[2]) - 1.0) * 100), card.def.upgrade_summary()])
+		out.append("Upgrades climb v1 (+%d%%), v2 (+%d%%), then (+): %s Recompile at a safehouse for this run, or collect copies and flash firmware for good. (+) opens once the rest of your deck is v2." % [25, 50, card.def.upgrade_summary()] if card.fw_scale.size() < 3 else "Upgrades climb v1 (+%d%%), v2 (+%d%%), then (+): %s Recompile at a safehouse for this run, or collect copies and flash firmware for good. (+) opens once the rest of your deck is v2." % [roundi((float(card.fw_scale[1]) - 1.0) * 100), roundi((float(card.fw_scale[2]) - 1.0) * 100), card.def.upgrade_summary()])
 		if card.upgraded:
 			out.append("This copy is fully upgraded (+).")
 	return out

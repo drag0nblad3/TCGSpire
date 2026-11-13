@@ -97,10 +97,7 @@ func _ready() -> void:
 			func() -> void: daily_pressed.emit(), Vector2(300, 60), 16)
 		db_btn.disabled = done
 		v.add_child(db_btn)
-	v.add_child(UiKit.button("Program library", func() -> void: collection_pressed.emit(), Vector2(300, 60)))
-	var pk := UiKit.button("Open %s (%d)" % [Palette.w("packs").to_lower(), profile.packs_unopened], func() -> void: packs_pressed.emit(), Vector2(300, 60))
-	pk.disabled = profile.packs_unopened <= 0
-	v.add_child(pk)
+	v.add_child(_collector_panel())
 	var rig_row := UiKit.hbox(12)
 	rig_row.add_child(UiKit.button("Rig upgrades", func() -> void: rig_pressed.emit(), Vector2(200, 60)))
 	rig_row.add_child(UiKit.button("Records", func() -> void: records_pressed.emit(), Vector2(200, 60)))
@@ -109,6 +106,49 @@ func _ready() -> void:
 	row.add_child(UiKit.button("How to play", func() -> void: Rules.open(self), Vector2(200, 52), 16))
 	row.add_child(UiKit.button("Settings", func() -> void: settings_pressed.emit(), Vector2(200, 52), 16))
 	v.add_child(row)
+
+
+## Collecting front and center: packs, shards, library progress, upgrades waiting, the next binder.
+func _collector_panel() -> Control:
+	var box := UiKit.vbox(6)
+	var lib := CollectionScreen.library_progress(db, profile)
+	var ready := profile.ready_to_flash(db).size()
+	var pk := UiKit.button("Open %s (%d)\nShards %d / %d" % [Palette.w("packs").to_lower(), profile.packs_unopened, profile.pack_shards, Profile.shards_per_pack(db)],
+		func() -> void: packs_pressed.emit(), Vector2(300, 72), 20)
+	pk.disabled = profile.packs_unopened <= 0
+	box.add_child(pk)
+	var extra: Array[String] = []
+	if not profile.unseen.is_empty():
+		extra.append("%d NEW" % profile.unseen.size())
+	if ready > 0:
+		extra.append("%d ready to flash" % ready)
+	var lib_b := UiKit.button("Program library %d / %d%s" % [lib[0], lib[1], ("\n" + " · ".join(extra)) if not extra.is_empty() else ""],
+		func() -> void: collection_pressed.emit(), Vector2(300, 72 if not extra.is_empty() else 60), 18)
+	if not profile.unseen.is_empty():
+		for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+			lib_b.add_theme_color_override(state, Palette.UPGRADED)
+	box.add_child(lib_b)
+	var goal := _next_binder()
+	var lines: Array[String] = ["Rare within %d %s · mythic within %d" % [Packs.pity_left(db, profile, "rare"), Palette.w("packs").to_lower(), Packs.pity_left(db, profile, "mythic")]]
+	if goal != "":
+		lines.append(goal)
+	box.add_child(UiKit.label("\n".join(lines), 14, Palette.UPGRADED, true))
+	return box
+
+
+## The unclaimed binder page closest to done: "Next binder: Burner rares 3 / 4".
+func _next_binder() -> String:
+	var best := ""
+	var best_left := 999
+	for f in Jobs.board(db) + ["neutral"]:
+		for page in Records.binder(db, profile, f):
+			if page["claimed"] or int(page["need"]) <= 0:
+				continue
+			var left := int(page["need"]) - int(page["have"])
+			if left < best_left:
+				best_left = left
+				best = "Next binder: %s %s %d / %d" % [Lexicon.faction(f), str(page["name"]).to_lower(), int(page["have"]), int(page["need"])]
+	return best
 
 
 ## Titles are either a crew title (binders) or an Exploit log id.
