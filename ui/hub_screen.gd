@@ -149,7 +149,9 @@ func _login_panel() -> Control:
 		var r := LoginBonus.reward(db, day)
 		var done := day < today_day or (day == today_day and not open)
 		var now := day == today_day and open
-		var reward := ("+%d" % r["scrap"]) if int(r["scrap"]) > 0 else "cache"
+		var reward := ("+%d" % r["scrap"]) if int(r["scrap"]) > 0 else ""
+		for k in r["packs"]:
+			reward += ("\n" if reward != "" else "") + ("Zero-day" if k == Packs.PREMIUM else "cache")
 		var cell := UiKit.label("Day %d\n%s" % [day, "done" if done else reward], 13,
 			Palette.UPGRADED if done else (Palette.ENERGY if now else Palette.TEXT_DIM))
 		cell.custom_minimum_size = Vector2(54, 0)

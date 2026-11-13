@@ -537,7 +537,7 @@ func _show_weekly() -> void:
 	v.add_child(rules)
 	var packs := int(db.balance.get("weekly", {}).get("packs", 0))
 	var reward := "Cleared this week. Best score %d. Replays count for score only." % int(st["best"]) if st["cleared"] \
-		else "First clear this week: %s. Normal job pay (rep, XP, caches per Core) on every try." % HubScreen.count(packs, "pack", "packs")
+		else "First clear this week: +%d %s. Normal job pay (rep, XP, caches per Core) on every try." % [packs, PackArt.title(db, str(db.balance.get("weekly", {}).get("pack_kind", Packs.PREMIUM)))]
 	v.add_child(UiKit.label(reward, 15, Palette.ENERGY, true))
 	if int(st["tries"]) > 0:
 		v.add_child(UiKit.label("Tries this week: %d · best score %d" % [int(st["tries"]), int(st["best"])], 14, Palette.TEXT_DIM))
@@ -612,6 +612,7 @@ func _show_pack(kind: String = "") -> void:
 	var views: Array = []
 	var summary := UiKit.label("", 16, Palette.UPGRADED, true)
 	var revealed := [0]
+	var scrap_btns: Array = []
 	var on_reveal := func(view: CardView, p: Dictionary) -> void:
 		view.badge = _pack_badge(p)
 		view.pips = profile.copy_pips(db, p["id"])
@@ -619,6 +620,10 @@ func _show_pack(kind: String = "") -> void:
 		revealed[0] += 1
 		if revealed[0] >= pulled.size():
 			summary.text = _pack_summary(pulled)
+		# Quick scrap: a copy beyond the two a deck can hold.
+		var sb: Button = scrap_btns[views.find(view)]
+		sb.visible = Profile.can_quick_scrap(db, profile, p["id"])
+		sb.text = "Scrap +%d" % _quick_scrap_value(p)
 	for p in pulled:
 		var inst := db.instance(p["id"])
 		inst.foil = p["foil"]
@@ -631,7 +636,31 @@ func _show_pack(kind: String = "") -> void:
 				view.flip_reveal()
 				on_reveal.call(view, p))
 		views.append(cv)
-		grid.add_child(cv)
+		var cell := UiKit.vbox(6, BoxContainer.ALIGNMENT_BEGIN)
+		cell.custom_minimum_size.y = CardView.SIZE.y + 46
+		cell.add_child(cv)
+		var sb := UiKit.button("", Callable(), Vector2(CardView.SIZE.x, 40), 14)
+		sb.visible = false
+		sb.tooltip_text = "Turn this copy into %s. You keep %d." % [Palette.w("dust").to_lower(), Profile.deck_limit(db)]
+		sb.pressed.connect(func() -> void:
+			var got := profile.quick_scrap(db, p["id"], p["foil"])
+			if got <= 0:
+				sb.visible = false
+				return
+			_save()
+			p["scrapped"] = true
+			sb.text = "Scrapped +%d" % got
+			sb.disabled = true
+			cv.pips = profile.copy_pips(db, p["id"])
+			cv.badge = _pack_badge(p)
+			cv.modulate.a = 0.45
+			# Other copies of the same program in this pack may have dropped to the limit.
+			for k in pulled.size():
+				if not scrap_btns[k].disabled and not views[k].face_down:
+					scrap_btns[k].visible = Profile.can_quick_scrap(db, profile, pulled[k]["id"]))
+		scrap_btns.append(sb)
+		cell.add_child(sb)
+		grid.add_child(cell)
 	v.add_child(grid)
 	v.add_child(summary)
 	v.add_child(UiKit.label(PackArt.odds_line(db, profile, kind), 14, Palette.TEXT_DIM, true))
@@ -686,6 +715,14 @@ func _pack_badge(p: Dictionary) -> String:
 	if p.get("unlocked", false):
 		return "v%d unlocked!" % (profile.firmware_level(p["id"]) + 1)
 	return profile.copy_badge(db, p["id"])
+
+
+## Scrap a pulled copy pays: its foil value if it was a foil.
+func _quick_scrap_value(p: Dictionary) -> int:
+	if p["foil"] and int(profile.collection.foils.get(p["id"], 0)) > 0:
+		return Collection.foil_value(p["id"], db)
+	var c := db.card(p["id"])
+	return int(db.balance.get("dust", {}).get("disenchant", {}).get(c.rarity, 0)) if c != null else 0
 
 
 ## One line under a fully revealed pack: what it did for the collection.

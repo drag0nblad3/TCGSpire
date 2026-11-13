@@ -81,7 +81,10 @@ func test_first_clear_pays_once_and_keeps_heat() -> void:
 		run.boss_won = true
 		run.acts_cleared = run.total_acts()
 		run.floor_num = 30
+		var premium := p.pack_count(Packs.PREMIUM)
 		var lines := Weekly.finish_run(db, p, run) if k == 0 else p.finish_run(db, run)
+		if k == 0:
+			eq(p.pack_count(Packs.PREMIUM), premium + int(db.balance["weekly"]["packs"]), "first clear pays a Zero-day cache")
 		var paid := lines.any(func(l: Variant) -> bool: return str(l).begins_with("Weekly challenge cleared"))
 		eq(paid, k == 0, "weekly pack on the first clear only (try %d)" % k)
 		check(lines.any(func(l: Variant) -> bool: return str(l).begins_with("Weekly challenge score")), "score line")
@@ -110,14 +113,40 @@ func test_login_bonus_escalates_and_never_resets() -> void:
 	# A missed week still continues the track at day 2.
 	got = LoginBonus.claim(db, p, "2026-11-09")
 	eq(int(got["day"]), 2)
-	for d in range(10, 14):
+	LoginBonus.claim(db, p, "2026-11-10")
+	var normal := p.pack_count(Packs.NORMAL)
+	got = LoginBonus.claim(db, p, "2026-11-11")
+	eq(int(got["day"]), 4)
+	eq(p.pack_count(Packs.NORMAL), normal + 1, "day 4 pays a data cache")
+	for d in range(12, 14):
 		LoginBonus.claim(db, p, "2026-11-%02d" % d)
 	eq(int(p.login["day"]), 6)
 	check(int(scrap[5]) > int(scrap[0]), "scrap escalates")
-	var packs := p.packs_unopened
+	var premium := p.pack_count(Packs.PREMIUM)
 	got = LoginBonus.claim(db, p, "2026-11-15")
 	eq(int(got["day"]), 7)
-	eq(p.packs_unopened, packs + int(db.balance["login"]["packs"]), "day 7 pays a pack")
+	eq(p.pack_count(Packs.PREMIUM), premium + 1, "day 7 pays a Zero-day cache")
 	eq(int(LoginBonus.claim(db, p, "2026-11-16")["day"]), 1, "cycle restarts")
 	var again := Profile.from_dict(p.to_dict(), db)
 	eq(again.login, p.login, "saved")
+
+
+func test_quick_scrap_only_beyond_deck_limit() -> void:
+	var p := Profile.new_player(db)
+	var id := ""
+	for cid in db.cards:
+		if db.cards[cid].rarity == "common" and db.cards[cid].faction2 == "":
+			id = cid
+			break
+	var limit := Profile.deck_limit(db)
+	p.collection.counts.erase(id)
+	p.collection.add(id, limit)
+	check(not Profile.can_quick_scrap(db, p, id), "keeps a full deck's worth")
+	eq(p.quick_scrap(db, id), 0)
+	p.collection.add(id, 1)
+	var dust := p.collection.dust
+	eq(p.quick_scrap(db, id), int(db.balance["dust"]["disenchant"]["common"]))
+	eq(p.collection.count(id), limit)
+	eq(p.collection.dust, dust + int(db.balance["dust"]["disenchant"]["common"]))
+	p.collection.add(id, 1, true)
+	eq(p.quick_scrap(db, id, true), Collection.foil_value(id, db), "a foil pull scraps at foil value")

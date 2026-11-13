@@ -4,7 +4,7 @@ extends RefCounted
 ## everyone, at balance.weekly.heat with balance.weekly.mods rule modifiers rolled from
 ## data/weekly.json. You load programs from your own library, but firmware and rig
 ## upgrades stay off: every card plays at base level and no bought rig rank applies.
-## Tries are unlimited; the first clear each week pays balance.weekly.packs.
+## Tries are unlimited; the first clear each week pays balance.weekly.packs of pack_kind (Zero-day cache).
 ##
 ## A modifier is perk-shaped: "mods" (Perks.MODS keys, added to RunState.perk_mod),
 ## "heat" (HEAT_KEYS, stacked on top of the run's heat), "triggers" (combat triggers,
@@ -83,10 +83,12 @@ static func finish_run(db: CardDB, p: Profile, run: RunState) -> Array:
 	if run.boss_won and not bool(p.weekly.get("cleared", false)):
 		p.weekly["cleared"] = true
 		p.weekly["clears"] = int(p.weekly.get("clears", 0)) + 1
-		var packs := int(db.balance.get("weekly", {}).get("packs", 0))
-		p.add_packs(Packs.NORMAL, packs)
+		var cfg: Dictionary = db.balance.get("weekly", {})
+		var packs := int(cfg.get("packs", 0))
+		var kind := str(cfg.get("pack_kind", Packs.PREMIUM))
+		p.add_packs(kind, packs)
 		if packs > 0:
-			lines.append("Weekly challenge cleared: +%d %s" % [packs, "pack" if packs == 1 else "packs"])
+			lines.append("Weekly challenge cleared: +%d %s" % [packs, Packs.kind_name(db, kind)])
 	return lines
 
 
