@@ -26,7 +26,7 @@ func _ready() -> void:
 	var title := UiKit.hbox(12)
 	title.add_child(UiKit.label("THE STACK / %02d" % run.act, 24, Palette.ENERGY))
 	v.add_child(title)
-	v.add_child(UiKit.label("Choose a lit node · Scroll upward toward the Core", 15, Palette.TEXT_DIM))
+	v.add_child(UiKit.label(_hint(), 15, Palette.TEXT_DIM))
 	var legend := UiKit.flow(12)
 	for kind in ["fight", "elite", "event", "rest", "shop", "treasure", "boss"]:
 		var item := UiKit.hbox(4)
@@ -50,6 +50,16 @@ func _ready() -> void:
 	await get_tree().process_frame
 	var row := 0 if run.node_id < 0 else int(run.map.node(run.node_id)["row"])
 	_scroll.scroll_vertical = int(_node_pos(0, 1, row).y - _scroll.size.y * 0.6)
+
+
+## Tells the player when a sidestep is open, and when it is the only way on.
+func _hint() -> String:
+	var side := run.side_moves()
+	if run.node_id >= 0 and run.map.is_dead_end(run.node_id):
+		return "Dead end: sidestep to a node beside you to keep climbing"
+	if not side.is_empty():
+		return "Climb to a lit node, or sidestep along this floor (once per floor)"
+	return "Choose a lit node · One sidestep per floor · Scroll up toward the Core"
 
 
 func _process(_dt: float) -> void:
@@ -105,6 +115,36 @@ func _draw_map() -> void:
 			_canvas.draw_polyline(wire, col, 5 if on_path else 3, true)
 			if not on_path:
 				_route_pulse(wire, fposmod(t * 0.24 + phase, 1.0), Color(Palette.ENERGY, 0.65 if next_step else 0.38))
+	# Severed uplinks: a dead end shows a cut wire, so the maze reads ahead of time.
+	for n in run.map.nodes:
+		if run.map.is_dead_end(n["id"]):
+			var a := _pos(n["id"])
+			var top := a + Vector2(0, -ROW_H * 0.33)
+			_canvas.draw_line(a, top, Color(Palette.CARD_BG, 0.95), 8, true)
+			_canvas.draw_line(a, top, Color(Palette.HP, 0.75), 3, true)
+			for d in [Vector2(-7, -7), Vector2(7, -7)]:
+				_canvas.draw_line(top - d, top + d, Palette.HP, 3, true)
+	# Sidesteps already taken stay drawn as solid sideways links on the trail.
+	for i in range(1, run.path.size()):
+		var pa: Dictionary = run.map.node(run.path[i - 1])
+		var pb: Dictionary = run.map.node(run.path[i])
+		if pa["row"] == pb["row"]:
+			_canvas.draw_line(_pos(pa["id"]), _pos(pb["id"]), Color(Palette.ENERGY, 0.16), 10, true)
+			_canvas.draw_line(_pos(pa["id"]), _pos(pb["id"]), Palette.ENERGY, 5, true)
+	# Sidesteps open from the current node: a dashed sideways link with an arrow.
+	for sid in run.side_moves():
+		var a := _pos(run.node_id)
+		var b := _pos(sid)
+		var dir := signf(b.x - a.x)
+		var y := (a.y + b.y) / 2.0
+		var from := Vector2(a.x + dir * 30, y)
+		var to := Vector2(b.x - dir * 34, y)
+		var pulse := 0.65 + 0.35 * sin(t * 3.0)
+		_canvas.draw_line(from, to, Color(Palette.CARD_BG, 0.95), 8, true)
+		_canvas.draw_dashed_line(from, to, Color(Palette.ENERGY, pulse), 3, 9, true)
+		_canvas.draw_polyline(PackedVector2Array([to + Vector2(-dir * 9, -8), to, to + Vector2(-dir * 9, 8)]), Color(Palette.ENERGY, pulse), 3, true)
+		var mid := (from + to) / 2.0
+		_canvas.draw_string(font, mid + Vector2(-50, -9), "SIDESTEP", HORIZONTAL_ALIGNMENT_CENTER, 100, 12, Palette.ENERGY)
 	for n in run.map.nodes:
 		var p := _pos(n["id"])
 		var col: Color = Palette.NODE[n["type"]]

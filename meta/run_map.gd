@@ -4,6 +4,9 @@ extends RefCounted
 ## ending in a single boss. Generated from a seed; all layout rules come from
 ## balance.json "map".
 ##   node: {"id": int, "row": int, "col": int, "type": String, "next": [ids], "encounter": String}
+## A few nodes are dead ends ("next" empty, balance map.break_chance per row): the
+## run can always sidestep from one to a neighbour on the same row that climbs on
+## (see side_nodes and RunState.available_nodes).
 
 const TYPES := ["fight", "elite", "rest", "shop", "event", "treasure", "boss"]
 
@@ -35,6 +38,7 @@ static func generate(db: CardDB, rng: GameRng, act: int = 1, targets: Array = []
 	m.nodes.append(boss)
 	m.rows.append([boss["id"]])
 	m._link(rng)
+	m._break_links(cfg, rng.fork("breaks"))
 	m.act = act
 	m._assign_encounters(db, rng, targets, boss_faction)
 	return m
@@ -76,6 +80,56 @@ func _link(rng: GameRng) -> void:
 			if not reached.has(nid):
 				var src_id: int = _nearest(cur, _rel(nodes[nid]))
 				_add_link(nodes[src_id], nid)
+
+
+## Cuts every upward link of at most one node per middle row, so climbing from it
+## needs a sidestep. Only cuts when a row neighbour still climbs and no node in
+## the next row loses its last incoming link, so the map stays winnable.
+func _break_links(cfg: Dictionary, rng: GameRng) -> void:
+	var p := float(cfg.get("break_chance", 0.0))
+	for r in range(1, rows.size() - 2):
+		if rows[r].size() < 2 or not rng.chance(p):
+			continue
+		var order: Array = rows[r].duplicate()
+		rng.shuffle(order)
+		for id in order:
+			if _can_break(id):
+				nodes[id]["next"] = []
+				break
+
+
+func _can_break(id: int) -> bool:
+	var node: Dictionary = nodes[id]
+	if node["next"].is_empty():
+		return false
+	var climbs := false
+	for sid in side_nodes(id):
+		if not nodes[sid]["next"].is_empty():
+			climbs = true
+	if not climbs:
+		return false
+	for to_id in node["next"]:
+		var other := false
+		for src in rows[node["row"]]:
+			if src != id and to_id in nodes[src]["next"]:
+				other = true
+		if not other:
+			return false
+	return true
+
+
+## Nodes beside this one on the same row (one column left/right).
+func side_nodes(id: int) -> Array:
+	var node: Dictionary = nodes[id]
+	var out: Array = []
+	for sid in rows[node["row"]]:
+		if absi(int(nodes[sid]["col"]) - int(node["col"])) == 1:
+			out.append(sid)
+	return out
+
+
+func is_dead_end(id: int) -> bool:
+	return nodes[id]["type"] != "boss" and nodes[id]["next"].is_empty()
 
 
 func _rel(node: Dictionary) -> float:
@@ -152,6 +206,7 @@ func ascii() -> String:
 	for r in range(rows.size() - 1, -1, -1):
 		var parts: Array[String] = []
 		for id in rows[r]:
-			parts.append("%s%s" % [sym[nodes[id]["type"]], ",".join(nodes[id]["next"].map(func(x: int) -> String: return str(x)))])
+			var nx: String = ",".join(nodes[id]["next"].map(func(x: int) -> String: return str(x)))
+			parts.append("%s%s" % [sym[nodes[id]["type"]], nx if not is_dead_end(id) else "x"])
 		lines.append("%2d: %s" % [r, "  ".join(parts)])
 	return "\n".join(lines)

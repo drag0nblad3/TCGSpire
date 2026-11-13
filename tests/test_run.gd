@@ -23,13 +23,60 @@ func test_map_every_node_reachable_and_ends_in_boss() -> void:
 				continue
 			seen[id] = true
 			frontier.append_array(m.node(id)["next"])
+			frontier.append_array(m.side_nodes(id).filter(func(x: int) -> bool: return not m.is_dead_end(x)))
 		eq(seen.size(), m.nodes.size(), "seed %d reachable nodes" % s)
 		eq(m.nodes.back()["type"], "boss", "seed %d last node" % s)
 		for n in m.nodes:
-			if n["type"] != "boss":
-				check(not n["next"].is_empty(), "seed %d node %d dead end" % [s, n["id"]])
+			if m.is_dead_end(n["id"]):
+				# Winnable: a dead end always has a neighbour to sidestep to that climbs on.
+				check(n["row"] > 0 and n["row"] < m.rows.size() - 2, "seed %d node %d dead end on edge row" % [s, n["id"]])
+				check(m.side_nodes(n["id"]).any(func(x: int) -> bool: return not m.is_dead_end(x)), "seed %d node %d stuck" % [s, n["id"]])
 			if n["type"] in ["fight", "elite", "boss"]:
 				check(n["encounter"] != "", "seed %d node %d has no encounter" % [s, n["id"]])
+
+
+func test_map_has_some_dead_ends() -> void:
+	var dead := 0
+	for s in 20:
+		var m := RunMap.generate(db, GameRng.new(s))
+		for n in m.nodes:
+			dead += 1 if m.is_dead_end(n["id"]) else 0
+	check(dead >= 20 and dead <= 120, "a few dead ends per map, got %d in 20 maps" % dead)
+
+
+func test_sidestep_once_per_floor() -> void:
+	# Find a run whose first row has a node with a neighbour.
+	var r := _run()
+	var start: int = r.available_nodes()[0]
+	r.enter(start)
+	var side: Array = r.side_moves()
+	check(not side.is_empty(), "first row has a sidestep")
+	for id in side:
+		check(id in r.available_nodes(), "sidestep offered")
+	r.enter(side[0])
+	eq(r.side_row, 0, "sidestep used on row 0")
+	eq(r.side_moves(), [], "only one sidestep per floor")
+	for id in r.available_nodes():
+		eq(int(r.map.node(id)["row"]), 1, "only upward moves left")
+	var up: int = r.available_nodes()[0]
+	r.enter(up)
+	if not r.map.side_nodes(up).is_empty():
+		var fresh: Array = r.map.side_nodes(up).filter(func(x: int) -> bool: return not r.map.is_dead_end(x))
+		eq(r.side_moves(), fresh, "next floor allows a new sidestep")
+	var r2 := RunState.from_dict(db, JSON.parse_string(JSON.stringify(r.to_dict())))
+	eq(int(r2.side_row), 0, "side_row saved")
+
+
+func test_dead_end_offers_only_sidesteps() -> void:
+	for s in 20:
+		var r := _run(s)
+		for n in r.map.nodes:
+			if r.map.is_dead_end(n["id"]):
+				r.node_id = n["id"]
+				r.path = [n["id"]]
+				check(not r.available_nodes().is_empty(), "seed %d dead end %d has a way out" % [s, n["id"]])
+				return
+	check(false, "no dead end found in 20 runs")
 
 
 func test_map_is_deterministic() -> void:

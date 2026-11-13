@@ -16,6 +16,7 @@ var heat := 0
 var talismans: Array = []
 var map: RunMap
 var node_id := -1
+var side_row := -1  # row of this act's last sidestep (one per floor)
 var path: Array = []
 var combats_won := 0
 var elites_won := 0
@@ -195,7 +196,18 @@ func available_nodes() -> Array:
 		return []
 	if node_id < 0:
 		return map.start_nodes()
-	return map.node(node_id)["next"].duplicate()
+	return map.node(node_id)["next"] + side_moves()
+
+
+## Sidesteps open from the current node: a row neighbour not yet visited that
+## climbs on, at most one sidestep per floor (side_row remembers the last one).
+func side_moves() -> Array:
+	if over or node_id < 0:
+		return []
+	var row := int(map.node(node_id)["row"])
+	if side_row == row:
+		return []
+	return map.side_nodes(node_id).filter(func(id: int) -> bool: return id not in path and not map.is_dead_end(id))
 
 
 func current_node() -> Dictionary:
@@ -206,6 +218,8 @@ func enter(id: int) -> Dictionary:
 	if id not in available_nodes():
 		push_error("Node %d not reachable" % id)
 		return {}
+	if id in side_moves():
+		side_row = int(map.node(id)["row"])
 	node_id = id
 	path.append(id)
 	var node := map.node(id)
@@ -267,6 +281,7 @@ func _next_act() -> void:
 	act += 1
 	node_id = -1
 	path = []
+	side_row = -1
 	var boss_faction := ""
 	if act == total_acts() and job != "" and float(heat_mod("double_cross", 0.0)) > 0.0 and job not in banned:
 		# The client sells you out: their crew joins the targets, their programs
@@ -541,7 +556,7 @@ func summary() -> String:
 
 ## Plain fields copied as-is by to_dict()/from_dict(). Everything random forks
 ## from seed_value, so restoring these replays the rest of the run exactly.
-const SAVED := ["seed_value", "hp", "max_hp", "gold", "floor_num", "heat", "talismans", "node_id", "path",
+const SAVED := ["seed_value", "hp", "max_hp", "gold", "floor_num", "heat", "talismans", "node_id", "path", "side_row",
 	"combats_won", "elites_won", "boss_won", "act", "acts_cleared", "double_crossed", "over", "card_plays",
 	"remove_cost", "outcome_counter", "locked_talismans", "perks", "rig", "firmware", "firmware_mods",
 	"mods_installed", "job", "banned", "tally", "clauses", "daily"]

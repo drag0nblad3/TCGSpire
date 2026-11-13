@@ -5,7 +5,7 @@ extends SceneTree
 ##                   [out=/tmp/shot.png] [frames=30] [plays=2] [seed=1] [theme=archive] [end_turn=1] [give=sparring_dummy,drone_swarm]
 ## Under --headless it still runs (smoke test for script errors) but writes no image.
 
-const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "pack_open", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume", "records", "exploits", "daily", "tutorial", "coach"]
+const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "pack_open", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume", "records", "exploits", "daily", "tutorial", "coach", "map_side", "map_dead"]
 
 
 func _initialize() -> void:
@@ -133,6 +133,30 @@ func _go(main: Control, scr: String, seed_in: int) -> void:
 			main.reveal_packs_now = true
 			main._show_pack()
 		"map":
+			main.show_map()
+		"map_side":
+			# Two floors in after a sidestep on floor 1: the trail shows it, floor 2 offers a new one.
+			main.run.enter(main.run.available_nodes()[0])
+			main.run.enter(main.run.side_moves()[0])
+			main.run.enter(main.run.map.node(main.run.node_id)["next"][0])
+			main.show_map()
+		"map_dead":
+			# Standing on a dead end, with the route that led there.
+			var m: RunMap = main.run.map
+			var dead := -1
+			for n in m.nodes:
+				if m.is_dead_end(n["id"]) and dead < 0:
+					dead = n["id"]
+			var chain: Array = [dead]
+			while dead >= 0 and int(m.node(chain[0])["row"]) > 0:
+				var below: int = chain[0]
+				for src in m.rows[int(m.node(below)["row"]) - 1]:
+					if below in m.node(src)["next"]:
+						chain.push_front(src)
+						break
+			main.run.path = chain
+			main.run.node_id = chain.back()
+			main.run.floor_num = chain.size()
 			main.show_map()
 		"menu":
 			main._start_combat({"type": "fight", "encounter": "wisp_court"})

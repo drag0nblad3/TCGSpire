@@ -16,6 +16,10 @@ static func play(db: CardDB, profile: Profile, seed_in: int, heat: int = 0, job:
 		var options := run.available_nodes()
 		if options.is_empty():
 			break
+		# Sidestep only off a dead end, so the bot's pace matches the old baseline.
+		var up: Array = options.filter(func(id: int) -> bool: return id not in run.side_moves())
+		if not up.is_empty():
+			options = up
 		var node := run.enter(_choose_node(run, options))
 		match node["type"]:
 			"fight", "elite", "boss":
