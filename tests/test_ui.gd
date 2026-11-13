@@ -79,9 +79,9 @@ func test_glossaries_show_rule_names_once() -> void:
 	check("Exposed: " + exposed in CardInspector.glossary(db.instance("searing_brand")), "Exposed card glossary")
 	var rules := {}
 	for section in Rules.sections(db):
-		rules[section[0]] = section[1]
-	check("Exposed (harmful): " + exposed in rules["Statuses"], "Exposed in How to Play")
-	check(locked in rules["Programs and keywords"], "Locked in How to Play")
+		rules[section[0]] = section[2]
+	check(["Exposed", exposed] in rules["Statuses"], "Exposed in the rules reference")
+	check(["Locked", locked.trim_prefix("Locked: ")] in rules["Keywords"], "Locked in the rules reference")
 
 
 func test_every_theme_applies() -> void:
