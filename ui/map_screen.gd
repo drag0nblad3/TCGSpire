@@ -6,6 +6,8 @@ signal node_chosen(id: int)
 
 const ROW_H := 104.0
 const NAMES := {"fight": "Sentry", "elite": "Black sentry", "rest": "Safehouse", "shop": "Fixer", "event": "Signal", "treasure": "Cache", "boss": "Core"}
+## Plain meaning beside each flavor name in the legend.
+const PLAIN := {"fight": "fight", "elite": "elite fight", "rest": "rest", "shop": "shop", "event": "event", "treasure": "loot", "boss": "boss"}
 
 var run: RunState
 var _canvas: Control
@@ -26,14 +28,14 @@ func _ready() -> void:
 	var title := UiKit.hbox(12)
 	title.add_child(UiKit.label("THE STACK / %02d" % run.act, 24, Palette.ENERGY))
 	v.add_child(title)
-	v.add_child(UiKit.label("Choose a lit node · Scroll upward toward the Core", 15, Palette.TEXT_DIM))
+	v.add_child(UiKit.label("Tap a lit node to move there. Climb to the Core (the boss) at the top.", 15, Palette.TEXT_DIM))
 	var legend := UiKit.flow(12)
 	for kind in ["fight", "elite", "event", "rest", "shop", "treasure", "boss"]:
 		var item := UiKit.hbox(4)
 		var icon := Symbols.badge(kind, 26)
 		icon.modulate = Palette.NODE[kind]
 		item.add_child(icon)
-		item.add_child(UiKit.label(NAMES[kind], 14, Palette.TEXT))
+		item.add_child(UiKit.label("%s (%s)" % [NAMES[kind], PLAIN[kind]], 14, Palette.TEXT))
 		legend.add_child(item)
 	v.add_child(legend)
 	_scroll = ScrollContainer.new()
