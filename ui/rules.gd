@@ -4,8 +4,8 @@ extends Control
 ## keyword text comes straight from Statuses.DEFS / CardDef.KEYWORD_DESC, so
 ## new content documents itself. Open with Rules.open(node).
 
-const WARD := "Firewall absorbs damage before HP and normally clears at the start of your turn. Hardened keeps all remaining Firewall. Liquidity Engine keeps 30%, rounded up."
-const UNITS := "Daemons: programs that stay on your board. Each hits the front enemy at the end of your turn. Area attacks and attacks aimed at the front can crash them."
+const WARD := "Firewall absorbs damage before HP and normally clears at the start of your turn. Hardened (or a Gatekeeper daemon) keeps all remaining Firewall. Liquidity Engine keeps 30%, rounded up."
+const UNITS := "Daemons: programs that stay on your board for a few turns and change the rules while they run. A daemon's HP is its countdown: it loses 1 at the start of each of your turns and 1 for each hit it takes, and Purge moves take more. At 0 it closes and its rule ends. Running a daemon that is already up tops its HP back up. Up to 3 can run at once."
 
 var _tap := Tap.new()
 

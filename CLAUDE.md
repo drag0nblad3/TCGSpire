@@ -48,6 +48,15 @@ Original design only: don't copy cards, names, characters or look from existing 
   InputEventScreenTouch too (Android emulates mouse from touch: double events = select/deselect bug).
   Long-press a card = `CardInspector`; rules text lives in `Rules` (generated from Statuses.DEFS,
   CardDef.KEYWORD_DESC, Intents.DESC) so new content documents itself.
+- Daemons (unit cards) are temporary rule changes, not attackers: `summon` = {name, hp, rule}; `rule` = passive
+  `flags` (`DaemonRules.FLAGS`) + implant-style `triggers`. HP is the countdown: -1 at the start of each of your
+  turns, -1 per hit taken, Purge moves (enemy damage `"to": "daemon"`) take their full number. Re-running a daemon
+  that is up tops its HP back up. Scaling: `daemon_hp` (rig/subroutine mod, implant `"daemon": {"hp": n}`),
+  `rally` (+HP to all daemons), Patch on a daemon (cards with `"target": "ally"`).
+- Records (`meta/records.gd`, cosmetic/currency only): run tally from combat events (`RunState.tally`), contract bonus
+  clauses (`data/contracts.json`, rolled per job offer, pay rep), exploit log (`data/exploits.json`, lifetime stats),
+  binders (own every card of a crew rarity page: dust, full set = card back + title), daily breach (fixed seed/job per
+  date, one try, scored), glitch foils (`pack.foil_chance`, `shaders/glitch_foil.gdshader`), 3 saved loadouts per crew.
 - Combat animation: `CombatScreen._play_events` replays `combat.events` step by step (input blocked);
   damage/ward/heal events carry `hp`/`ward` after the change for the bars. `step_scale = 0` in tests.
 - `data/` all content as JSON: `cards/<faction>.json` (one card per line), `enemies/`,

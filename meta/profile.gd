@@ -11,7 +11,7 @@ extends RefCounted
 ##   rig       -> rep buys ranks of that faction's rig upgrades (permanent perks)
 ##   firmware  -> rep (dust for Street/starter cards) permanently upgrades a card
 
-const SAVE_VERSION := 7
+const SAVE_VERSION := 8
 const DEFAULT_PATH := "user://profile.json"
 
 var collection := Collection.new()
@@ -35,6 +35,13 @@ var _rig_refund_adjustment: Dictionary = {}
 var firmware: Dictionary = {}
 ## Firmware tier 2: card id -> mod id baked in (needs firmware + mastery tier 2).
 var firmware_mods: Dictionary = {}
+## Records (see Records): claimed binder pages ("ember:full" -> true), Exploit log ids,
+## daily breach {"last": date, "best": score, "scores": {date: score}}.
+var binders: Dictionary = {}
+var exploits: Dictionary = {}
+var daily: Dictionary = {}
+## Saved starter-pick loadouts: client crew id -> [picks or [], ...] (Loadouts.SLOTS slots).
+var loadouts: Dictionary = {}
 
 
 static func new_player(db: CardDB) -> Profile:
@@ -114,6 +121,8 @@ func finish_run(db: CardDB, run: RunState) -> Array:
 		lines.append("+%d %s from %s" % [rep_gain, Jobs.rep_name(db, run.job), Jobs.info(db, run.job).get("client", run.job)])
 	lines.append_array(add_xp(db, gained_xp))
 	lines.append_array(add_mastery(db, run.card_plays))
+	lines.append_array(Records.finish_run(db, self, run))
+	lines.append_array(Records.check_exploits(db, self))
 	return lines
 
 
@@ -342,6 +351,35 @@ func open_pack(db: CardDB, rng: GameRng) -> Array:
 	return cards
 
 
+# --- saved loadouts ---------------------------------------------------------------
+
+const LOADOUT_SLOTS := 3
+
+
+## Saved picks for a crew's slot ([] = empty).
+func loadout(job: String, slot: int) -> Array:
+	var slots: Array = loadouts.get(job, [])
+	return slots[slot].duplicate() if slot < slots.size() else []
+
+
+func save_loadout(job: String, slot: int, picks: Array) -> void:
+	var slots: Array = loadouts.get(job, [])
+	while slots.size() < LOADOUT_SLOTS:
+		slots.append([])
+	slots[clampi(slot, 0, LOADOUT_SLOTS - 1)] = picks.duplicate()
+	loadouts[job] = slots
+
+
+## A saved loadout trimmed to what you still own and may pick (cards can be disenchanted).
+func usable_loadout(db: CardDB, job: String, slot: int, banned: Array) -> Array:
+	var out: Array = []
+	for id in loadout(job, slot):
+		var c := db.card(str(id))
+		if c != null and c.faction not in banned and out.count(id) < collection.count(id) and out.size() < starter_picks(db):
+			out.append(id)
+	return out
+
+
 # --- persistence --------------------------------------------------------------
 
 func to_dict() -> Dictionary:
@@ -361,6 +399,10 @@ func to_dict() -> Dictionary:
 		"rig_refund_adjustment": _rig_refund_adjustment,
 		"firmware": firmware,
 		"firmware_mods": firmware_mods,
+		"binders": binders,
+		"exploits": exploits,
+		"daily": daily,
+		"loadouts": loadouts,
 	}
 
 
@@ -388,6 +430,11 @@ static func from_dict(d: Dictionary, db: CardDB = null) -> Profile:
 		p.firmware[str(id)] = int(fw[id]) if fw is Dictionary else 1
 	for id in d.get("firmware_mods", {}):
 		p.firmware_mods[str(id)] = str(d["firmware_mods"][id])
+	p.binders = d.get("binders", {}).duplicate()
+	p.exploits = d.get("exploits", {}).duplicate()
+	p.daily = d.get("daily", {}).duplicate(true)
+	for f in d.get("loadouts", {}):
+		p.loadouts[str(f)] = d["loadouts"][f].duplicate(true)
 	return p
 
 
@@ -427,6 +474,11 @@ static func _migrate(d: Dictionary, db: CardDB) -> Dictionary:
 		_adjust_v5_rig_refunds(d, db if db != null else CardDB.shared())
 	if v < 7:
 		v = 7
+	if v < 8:
+		# v8 added records (binders, Exploit log, daily breach) and loadouts; all start empty.
+		for k in ["binders", "exploits", "daily", "loadouts"]:
+			d[k] = d.get(k, {})
+		v = 8
 	d["version"] = v
 	return d
 

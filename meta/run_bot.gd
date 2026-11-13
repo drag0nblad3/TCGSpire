@@ -149,9 +149,9 @@ static func card_value(c: CardDef, upgraded: bool = false) -> float:
 			"energy":
 				v += n * 4.5
 			"summon":
-				v += float(e.get("atk", 0)) * 3.5 + float(e.get("hp", 0)) * 0.6
-			"rally", "grow":
-				v += 3.0 + float(e.get("atk", n)) * 2.0
+				v += DaemonRules.value(e) * 0.9
+			"rally":
+				v += 1.0 + n * 1.5
 			"heal":
 				v += n * 0.7
 			"lose_hp":

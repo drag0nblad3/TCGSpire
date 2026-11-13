@@ -2,14 +2,14 @@ extends SceneTree
 ## Boots the real main scene, jumps to a screen, optionally auto-plays a few
 ## cards, and saves a PNG. Lets you review UI from the CLI without an emulator.
 ##   scripts/shot.sh [screen=hub|map|combat|reward|rest|shop|event|collection|picker|pack|end]
-##                   [out=/tmp/shot.png] [frames=30] [plays=2] [seed=1] [theme=archive] [end_turn=1]
+##                   [out=/tmp/shot.png] [frames=30] [plays=2] [seed=1] [theme=archive] [end_turn=1] [give=sparring_dummy,drone_swarm]
 ## Under --headless it still runs (smoke test for script errors) but writes no image.
 
-const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume"]
+const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume", "records", "exploits", "daily"]
 
 
 func _initialize() -> void:
-	var opts := {"out": "user://shot.png", "frames": "30", "plays": "0", "screen": "combat", "seed": "1", "theme": "", "end_turn": "0"}
+	var opts := {"out": "user://shot.png", "frames": "30", "plays": "0", "screen": "combat", "seed": "1", "theme": "", "end_turn": "0", "give": ""}
 	for a in OS.get_cmdline_user_args():
 		var kv := a.split("=", true, 1)
 		if kv.size() == 2:
@@ -29,6 +29,17 @@ func _initialize() -> void:
 		_go(main, scr, int(opts["seed"]))
 		for i in 3:
 			await process_frame
+		if scr == "combat" and opts["give"] != "":
+			# give=id,id: hand-place those programs and run them (e.g. to show daemons).
+			var gs = main.get("_screen")
+			var gc: Combat = gs.combat
+			for id in str(opts["give"]).split(","):
+				var inst: CardInstance = main.db.instance(id)
+				if inst != null:
+					gc.hand.append(inst)
+					gc.energy += inst.cost()
+					gs._on_card_pressed(null, gc.hand.size() - 1)
+					await _idle(gs)
 		if scr == "combat":
 			for p in int(opts["plays"]):
 				var cs = main.get("_screen")
@@ -64,7 +75,7 @@ func _idle(cs) -> void:
 
 func _go(main: Control, scr: String, seed_in: int) -> void:
 	var db: CardDB = main.db
-	if scr not in ["hub", "collection", "picker", "pack", "inspect", "rules", "jobs", "rig", "firmware", "resume"]:
+	if scr not in ["hub", "collection", "picker", "pack", "inspect", "rules", "jobs", "rig", "firmware", "resume", "records", "exploits"]:
 		var p: Profile = main.profile
 		main.run = RunState.start(db, p, RunState.default_picks(db, p), seed_in)
 		main.run.add_talisman("oak_token")
@@ -112,6 +123,17 @@ func _go(main: Control, scr: String, seed_in: int) -> void:
 		"settings":
 			main.show_map()
 			main._open_settings()
+		"records":
+			main.profile.binders = {"ember:common": true}
+			main.profile.collection.foils = {"kindle": 1, "shriek": 1}
+			main._show(RecordsScreen.new().setup(db, main.profile, "binders"))
+		"exploits":
+			main.profile.stats["wins"] = 1
+			main.profile.stats["best_max_burn"] = 34
+			Records.check_exploits(db, main.profile)
+			main._show(RecordsScreen.new().setup(db, main.profile, "exploits"))
+		"daily":
+			main._start_daily()
 		"resume":
 			main._show(HubScreen.new().setup(db, main.profile, "Layer 2 · Node 17 · HP 40/60"))
 		"combat":

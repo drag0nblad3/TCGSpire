@@ -194,6 +194,12 @@ func show_hub() -> void:
 			["!Yes, abandon it", _abandon_saved_run],
 			["No", null]], "It counts as a loss. You keep the XP and rewards earned so far.")))
 	hub.start_pressed.connect(_show_jobs)
+	hub.daily_pressed.connect(_start_daily)
+	hub.records_pressed.connect(func() -> void:
+		var rs := RecordsScreen.new().setup(db, profile)
+		rs.changed.connect(_save)
+		rs.closed.connect(show_hub)
+		_show(rs))
 	hub.collection_pressed.connect(func() -> void:
 		var cs := CollectionScreen.new().setup(db, profile)
 		cs.closed.connect(show_hub)
@@ -205,6 +211,11 @@ func show_hub() -> void:
 		rs.closed.connect(show_hub)
 		_show(rs))
 	_show(hub)
+	CardView.back_style = str(profile.settings.get("card_back", "default"))
+	var news := Records.claim_binders(db, profile) + Records.check_exploits(db, profile)
+	if not news.is_empty():
+		_save()
+		UiKit.toast(self, "\n".join(news), 5.0)
 
 
 ## Job board: every run is a job for one faction (see Jobs).
@@ -214,11 +225,13 @@ func _show_jobs(heat: int) -> void:
 	v.add_child(UiKit.label("Job board", 32, Palette.ENERGY))
 	var n := profile.starter_picks(db)
 	# Same board until the next run ends, so browsing doesn't reroll the targets.
-	for offer in Jobs.offers(db, heat, GameRng.new(int(profile.stats.get("runs", 0)) * 7919 + heat)):
+	var board_rng := GameRng.new(int(profile.stats.get("runs", 0)) * 7919 + heat)
+	for offer in Jobs.offers(db, heat, board_rng):
 		var f: String = offer["client"]
+		var clauses := Records.roll_clauses(db, board_rng.fork("clauses:" + f))
 		var j := Jobs.info(db, f)
 		var against: Array = offer["targets"].map(func(x: String) -> String: return Lexicon.faction(x))
-		var b := UiKit.button("", _show_picker.bind(heat, f, offer["targets"]), Vector2(640, 144), 15)
+		var b := UiKit.button("", _show_picker.bind(heat, f, offer["targets"], clauses), Vector2(640, 196), 15)
 		var margin := MarginContainer.new()
 		margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -238,6 +251,8 @@ func _show_jobs(heat: int) -> void:
 			[j.get("job", ""), 15, Palette.TEXT],
 			["Load %d+ %s programs · Against: %s (banned)" % [Jobs.required(db, f, n), Lexicon.faction(f), " + ".join(against)], 14, Palette.TEXT_DIM],
 			["Pays %s · You have %d" % [Jobs.rep_name(db, f), profile.rep_of(f)], 14, Palette.faction(f)]]
+		for id in clauses:
+			lines.append(["Bonus " + Records.clause_text(db, id, heat), 13, Palette.UPGRADED])
 		for line in lines:
 			var label := UiKit.label(line[0], line[1], line[2])
 			label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -248,15 +263,30 @@ func _show_jobs(heat: int) -> void:
 	_show(parts[0])
 
 
-func _show_picker(heat: int, job: String = "", targets: Array = []) -> void:
+func _show_picker(heat: int, job: String = "", targets: Array = [], clauses: Array = []) -> void:
 	var cs := CollectionScreen.new().setup(db, profile, true, job, targets)
 	cs.closed.connect(_show_jobs.bind(heat))
 	cs.picks_confirmed.connect(func(picks: Array) -> void:
 		profile.last_picks = picks
 		_save()
 		run = RunState.start(db, profile, picks, int(Time.get_unix_time_from_system()), heat, job, targets)
+		run.clauses = clauses.duplicate()
 		show_map())
 	_show(cs)
+
+
+## Daily breach: today's fixed job, heat and seed. One attempt per day.
+func _start_daily() -> void:
+	var d := Records.daily(db, Records.today())
+	if str(profile.daily.get("last", "")) == d["date"]:
+		show_hub()
+		return
+	profile.daily["last"] = d["date"]
+	_save()
+	run = RunState.start(db, profile, RunState.default_picks(db, profile, d["job"], d["targets"]), int(d["seed"]), int(d["heat"]), d["job"], d["targets"])
+	run.daily = d["date"]
+	run.clauses = Records.roll_clauses(db, GameRng.new(int(d["seed"])).fork("clauses"))
+	show_map()
 
 
 func _show_pack() -> void:

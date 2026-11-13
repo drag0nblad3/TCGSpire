@@ -42,11 +42,14 @@ var _enemy_counter := 0
 var enemy_hp_mult := 1.0
 var enemy_might := 0
 var enemy_dmg_mult := 1.0
+## Extra HP (= extra turns) for every daemon, from rig ranks, implants and subroutines.
+var daemon_hp := 0
 
 
 ## deck: Array of CardInstance (copied, not mutated). hp < 0 means full HP.
 ## opts (all optional): max_hp, talismans (Array of ids), perks (Array of perk dicts),
-## start_ward, ward_retention, daemon_death_damage, enemy_hp_mult, enemy_might, enemy_dmg_mult, extra_energy, extra_hand, extra_slots.
+## start_ward, ward_retention, daemon_death_damage, enemy_hp_mult, enemy_might, enemy_dmg_mult, extra_energy, extra_hand, extra_slots,
+## daemon_hp. Implants add their "daemon": {"hp": n} on top.
 static func create(db_in: CardDB, deck: Array, encounter_id: String, rng_in: GameRng, hp: int = -1, opts: Dictionary = {}) -> Combat:
 	var c := Combat.new()
 	c.db = db_in
@@ -60,9 +63,11 @@ static func create(db_in: CardDB, deck: Array, encounter_id: String, rng_in: Gam
 	var max_hp := int(opts.get("max_hp", p.get("max_hp", 60)))
 	c.enemy_might = int(opts.get("enemy_might", 0))
 	c.enemy_dmg_mult = float(opts.get("enemy_dmg_mult", 1.0))
+	c.daemon_hp = int(opts.get("daemon_hp", 0))
 	for tid in opts.get("talismans", []):
 		if db_in.talismans.has(tid):
 			c.talismans.append(db_in.talismans[tid])
+			c.daemon_hp += int(db_in.talismans[tid].get("daemon", {}).get("hp", 0))
 	for pd in opts.get("perks", []):
 		if not pd.get("triggers", []).is_empty():
 			c.perks.append(pd)
@@ -124,11 +129,20 @@ func _start_player_turn() -> void:
 	turn += 1
 	phase = Phase.PLAYER
 	_played_once_per_turn.clear()
-	if player.status("fortify") <= 0:
+	if player.status("fortify") <= 0 and rule_sum("keep_ward") <= 0:
 		player.ward = ceili(player.ward * ward_retention)
 	energy = maxi(max_energy - player.status("overcharge"), 0)
 	player.statuses.erase("overcharge")
 	emit("turn_start", {"turn": turn, "ward": player.ward})
+	# Daemons run down: HP is the countdown, so a daemon with N HP lasts N rounds if left alone.
+	for u in units.duplicate():
+		u.hp -= 1
+		if u.hp <= 0:
+			units.erase(u)
+			emit("expire", {"target": u.id})
+			_daemon_closed(u)
+		else:
+			emit("uptime", {"target": u.id, "hp": u.hp})
 	if turn == 1:
 		# After the Ward reset, so start-of-combat Ward sticks for turn 1.
 		if start_ward > 0:
@@ -148,7 +162,7 @@ func can_play(hand_idx: int) -> bool:
 	var card: CardInstance = hand[hand_idx]
 	if card.has_keyword("unplayable") or card.cost() > energy or was_played_this_turn(card):
 		return false
-	if _summons(card) and units.size() >= board_slots:
+	if units.size() >= board_slots and _summons(card) and not _refreshes(card):
 		return false
 	return true
 
@@ -161,7 +175,12 @@ func needs_target(card: CardInstance) -> bool:
 	return card.def.target == "enemy"
 
 
+func needs_ally(card: CardInstance) -> bool:
+	return card.def.target == "ally"
+
+
 ## target_idx is an index into `enemies`; -1 picks the first living enemy.
+## For "ally" cards it indexes [you] + your daemons (0 or -1 = you).
 func play_card(hand_idx: int, target_idx: int = -1) -> bool:
 	if not can_play(hand_idx):
 		return false
@@ -173,6 +192,11 @@ func play_card(hand_idx: int, target_idx: int = -1) -> bool:
 		if target_idx < 0 or target_idx >= enemies.size() or enemies[target_idx].is_dead():
 			return false
 		target = enemies[target_idx]
+	if needs_ally(card):
+		var allies: Array = [player] + units
+		if target_idx >= allies.size():
+			return false
+		target = allies[maxi(target_idx, 0)]
 	hand.remove_at(hand_idx)
 	energy -= card.cost()
 	if card.has_keyword("once_per_turn"):
@@ -206,16 +230,9 @@ func end_turn() -> void:
 	Talismans.fire(self, "turn_end")
 	if is_over():
 		return
-	# Units strike the front enemy.
-	for u in units.duplicate():
-		var t := _first_living(enemies)
-		if t == null:
-			break
-		attack(u, t, u.atk)
-	_check_end()
-	if is_over():
-		return
 	Statuses.on_turn_end(self, player)
+	for u in units:
+		Statuses.on_turn_end(self, u)
 	var kept: Array = []
 	for card in hand:
 		if card.has_keyword("retain"):
@@ -275,9 +292,12 @@ func emit(t: String, data: Dictionary = {}) -> void:
 
 
 func attack(src: Fighter, t: Fighter, base: int) -> int:
-	var dealt := deal_damage(t, Statuses.modify_attack(base, src, t), src.id if src != null else "")
+	var amount := Statuses.modify_attack(base, src, t)
+	if t == player and src != null and enemies.has(src):
+		amount = maxi(amount - rule_sum("guard"), 0)
+	var dealt := deal_damage(t, amount, src.id if src != null else "")
 	# Thorns: being attacked hurts the attacker (even if Ward absorbed the hit).
-	var thorns := t.status("thorns")
+	var thorns := t.status("thorns") + (rule_sum("thorns") if t == player else 0)
 	if thorns > 0 and src != null and not src.is_dead():
 		deal_damage(src, thorns, t.id, "thorns")
 	return dealt
@@ -286,6 +306,9 @@ func attack(src: Fighter, t: Fighter, base: int) -> int:
 func deal_damage(t: Fighter, amount: int, source_id: String = "", kind: String = "attack") -> int:
 	if t.is_dead() or amount <= 0:
 		return 0
+	# A daemon's HP is turns, not toughness: any hit costs it 1. Only Purge takes more.
+	if units.has(t) and kind != "purge":
+		amount = 1
 	var blocked := mini(t.ward, amount)
 	t.ward -= blocked
 	var dealt := amount - blocked
@@ -295,13 +318,19 @@ func deal_damage(t: Fighter, amount: int, source_id: String = "", kind: String =
 		emit("death", {"target": t.id})
 		if units.has(t):
 			units.erase(t)
-			if daemon_death_damage > 0:
-				emit("daemon_explosion", {"target": t.id})
-				for enemy in living(enemies):
-					deal_damage(enemy, daemon_death_damage, t.id, "daemon_explosion")
+			_daemon_closed(t)
 		elif enemies.has(t) and phase == Phase.PLAYER:
 			Talismans.fire(self, "kill", {"target": t})
 	return dealt
+
+
+## A daemon left the board (crashed or ran out): Hive Link's blast.
+func _daemon_closed(u: Fighter) -> void:
+	if daemon_death_damage > 0 and not is_over():
+		emit("daemon_explosion", {"target": u.id})
+		for enemy in living(enemies):
+			deal_damage(enemy, daemon_death_damage, u.id, "daemon_explosion")
+		_check_end()
 
 
 func draw(n: int) -> void:
@@ -320,15 +349,34 @@ func draw(n: int) -> void:
 		emit("draw", {"card": card.key()})
 
 
-func summon(unit_name: String, atk: int, hp: int) -> bool:
+## Runs a daemon: a rule change that lasts while it has HP. It loses 1 HP at the start of each
+## of your turns and 1 per hit taken (Purge takes more). Running one that is already up
+## (same name) tops its HP back up instead of taking a slot.
+func summon(unit_name: String, hp: int, rule: Dictionary = {}) -> bool:
+	hp = maxi(hp + daemon_hp, 1)
+	for u in units:
+		if u.name == unit_name:
+			u.max_hp = maxi(u.max_hp, hp)
+			u.hp = maxi(u.hp, hp)
+			u.rule = rule
+			emit("refresh", {"target": u.id, "hp": u.hp})
+			return true
 	if units.size() >= board_slots:
 		return false
 	var u := Fighter.make("u%d" % _unit_counter, unit_name, hp)
 	_unit_counter += 1
-	u.atk = atk
+	u.rule = rule
 	units.append(u)
-	emit("summon", {"target": u.id, "name": unit_name, "atk": atk, "hp": hp})
+	emit("summon", {"target": u.id, "name": unit_name, "hp": hp})
 	return true
+
+
+## Sum of a rule flag over the daemons that are running (true counts as 1).
+func rule_sum(flag: String) -> int:
+	var total := 0
+	for u in units:
+		total += int(u.rule.get("flags", {}).get(flag, 0))
+	return total
 
 
 ## Enemy-side summon (op "spawn"). Max 5 enemies alive.
@@ -375,13 +423,28 @@ func _summons(card: CardInstance) -> bool:
 	return false
 
 
+## True if every daemon the card runs is already up (so it needs no free slot).
+func _refreshes(card: CardInstance) -> bool:
+	for e in card.effects():
+		if e.get("op", "") == "summon" and not units.any(func(u: Fighter) -> bool: return u.name == str(e.get("name", "Unit"))):
+			return false
+	return true
+
+
 ## Damage the enemy's next move would deal to the player (ignores Ward). For UI + bot.
 func intent_damage(en: Fighter) -> int:
 	var total := 0
 	for e in en.current_move().get("effects", []):
 		if e.get("op", "") == "damage":
-			total += Statuses.modify_attack(int(e.get("amount", 0)), en, player) * int(e.get("hits", 1))
+			if str(e.get("to", "")) == "daemon" or (str(e.get("to", "")) == "front" and not units.is_empty()):
+				continue
+			total += hit_on_player(int(e.get("amount", 0)), en) * int(e.get("hits", 1))
 	return total
+
+
+## One enemy hit on the player after statuses and Guard daemons.
+func hit_on_player(base: int, en: Fighter) -> int:
+	return maxi(Statuses.modify_attack(base, en, player) - rule_sum("guard"), 0)
 
 
 func incoming_damage() -> int:

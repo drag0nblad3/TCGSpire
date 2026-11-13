@@ -2,11 +2,12 @@ class_name Intents
 extends RefCounted
 ## Turns an enemy's next move into a short list of telegraph icons for the UI:
 ##   [{"kind": "attack", "value": 7, "hits": 2, "aoe": false}, {"kind": "ward", "value": 6}, ...]
-## Kinds: attack, ward, buff, debuff, heal, summon, curse (adds cards), unknown.
+## Kinds: attack, purge (hits your front daemon), ward, buff, debuff, heal, summon, curse (adds cards), unknown.
 ## Pure data, no Nodes: the UI draws the icons, tests check the classification.
 
 const DESC := {
 	"attack": "Attacks you. The number is damage per hit after Boost, Throttled and Exposed.",
+	"purge": "Purge: your front daemon loses that much HP. At 0 it crashes and its rule ends. Does nothing if no daemon is running.",
 	"ward": "Raises its Firewall, which absorbs damage until its next turn.",
 	"buff": "Upgrades itself (for example Boost or Feedback).",
 	"debuff": "Infects you with a harmful status.",
@@ -31,8 +32,10 @@ static func of(c: Combat, en: Fighter) -> Array:
 					base = int(en.ward * float(e.get("mult", 1.0)))
 				elif op == "damage_per_status":
 					base = int(e.get("base", 0)) + int(en.status(str(e.get("status", ""))) * float(e.get("mult", 1.0)))
-				var per := base if op == "lose_hp" else Statuses.modify_attack(base, en, c.player)
+				var per := base if op == "lose_hp" else c.hit_on_player(base, en)
 				item = {"kind": "attack", "value": per, "hits": int(e.get("hits", 1)), "aoe": to == "all_enemies"}
+				if to == "daemon":
+					item = {"kind": "purge", "value": base}
 			"ward":
 				item = {"kind": "ward", "value": int(e.get("amount", 0))}
 			"heal":

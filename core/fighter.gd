@@ -8,8 +8,9 @@ var hp := 1
 var max_hp := 1
 var ward := 0
 var statuses: Dictionary = {}
-## Units only: damage dealt to the front enemy at the end of the player's turn.
-var atk := 0
+## Daemons only: the rule change it enforces while it runs (see DaemonRules). A daemon's
+## HP is its countdown: it loses 1 at the start of each of your turns.
+var rule: Dictionary = {}
 ## Enemies only: looping move list [{name, effects}] from data/enemies.
 var moves: Array = []
 var move_idx := 0
@@ -58,8 +59,6 @@ func summary() -> String:
 	var s := "%s %d/%d" % [id, hp, max_hp]
 	if ward > 0:
 		s += " w%d" % ward
-	if atk > 0:
-		s += " atk%d" % atk
 	for k in statuses:
 		s += " %s%d" % [k, statuses[k]]
 	return s

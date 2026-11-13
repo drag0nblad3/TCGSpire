@@ -42,7 +42,7 @@ func setup(f: Fighter, c: Combat, kind_in: String) -> FighterView:
 	fighter = f
 	combat = c
 	kind = kind_in
-	custom_minimum_size = Vector2(200, 274) if kind == "enemy" else (Vector2(120, 130) if kind == "unit" else Vector2(340, 70))
+	custom_minimum_size = Vector2(200, 274) if kind == "enemy" else (Vector2(176, 158) if kind == "unit" else Vector2(340, 70))
 	if kind == "enemy":
 		if combat != null and combat.db != null:
 			enemy_faction = str(combat.db.enemies.get(fighter.def_id, {}).get("faction", ""))
@@ -195,7 +195,8 @@ func _draw() -> void:
 	# HP bar (+ Ward shield badge on its left).
 	var bar := Rect2(26, y, w - 38, 17)
 	draw_rect(bar, Color(Palette.CARD_BG, 0.85))
-	draw_rect(Rect2(bar.position, Vector2(bar.size.x * clampf(float(hp()) / fighter.max_hp, 0, 1), bar.size.y)), Palette.HP)
+	# A daemon's HP is its countdown, so it gets the RAM colour instead of the HP red.
+	draw_rect(Rect2(bar.position, Vector2(bar.size.x * clampf(float(hp()) / fighter.max_hp, 0, 1), bar.size.y)), Palette.ENERGY if kind == "unit" else Palette.HP)
 	if flash > 0.0 and kind == "player":
 		draw_rect(bar.grow(3), Color(Palette.HP, flash * 0.6), false, 3)
 	draw_rect(bar, Color(Palette.TEXT, 0.4), false, 1)
@@ -209,7 +210,12 @@ func _draw() -> void:
 	# Status chips.
 	var chips: Array = []
 	if kind == "unit":
-		chips.append(["Offline", Palette.HP] if offline else ["ATK %d" % fighter.atk, Palette.ENERGY])
+		if offline:
+			chips.append(["Offline", Palette.HP])
+		else:
+			# The rule this daemon enforces while it runs (its HP bar above is the countdown).
+			draw_multiline_string(font, Vector2(4, y + 10), DaemonRules.describe(fighter.rule), HORIZONTAL_ALIGNMENT_CENTER, w - 8, 11, 4, Palette.TEXT)
+			y += 48
 	for k in fighter.statuses:
 		var debuff: bool = Statuses.DEFS.get(k, {}).get("debuff", false)
 		chips.append(["%s %d" % [Lexicon.status(str(k)), fighter.statuses[k]], Palette.ENEMY if debuff else Palette.UPGRADED])
@@ -314,7 +320,8 @@ func describe() -> String:
 	if kind == "enemy" and not fighter.is_dead():
 		lines.append("Next: " + Intents.explain(fighter))
 	if kind == "unit":
-		lines.append("Daemon: hits the front enemy for %d at the end of your turn. Area attacks, and attacks aimed at the front, can hit it." % fighter.atk)
+		lines.append("Daemon: %s" % DaemonRules.describe(fighter.rule))
+		lines.append("Its HP is its countdown: it loses 1 at the start of each of your turns and 1 per hit taken. Purge moves take more. At 0 it closes and the rule ends.")
 	if fighter.ward > 0:
 		lines.append("Firewall %d: absorbs damage first." % fighter.ward)
 	for k in fighter.statuses:

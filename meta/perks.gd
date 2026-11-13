@@ -29,6 +29,7 @@ const MODS := {
 	"max_energy": "RAM each turn",
 	"hand_size": "Programs drawn each turn",
 	"board_slots": "Daemon slots",
+	"daemon_hp": "Daemon HP",
 }
 const SCOPES := ["run", "rig"]
 const PCT := ["gold_pct", "rest_heal_pct", "shop_discount_pct"]
@@ -85,6 +86,8 @@ static func describe_mod(k: String, v: float) -> String:
 			return "Draw %d more program%s each turn." % [int(v), "" if int(v) == 1 else "s"]
 		"board_slots":
 			return "+%d daemon slot%s." % [int(v), "" if int(v) == 1 else "s"]
+		"daemon_hp":
+			return "Your daemons have +%d HP." % int(v)
 		"perk_choices":
 			return "+%d subroutine choice%s." % [int(v), "" if int(v) == 1 else "s"]
 		"remove_discount":

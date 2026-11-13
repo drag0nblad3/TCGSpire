@@ -34,8 +34,30 @@ func disenchant(id: String, db: CardDB) -> bool:
 	if c == null or count(id) <= 1 or c.rarity == "starter":
 		return false
 	counts[id] = count(id) - 1
+	if int(foils.get(id, 0)) > count(id):
+		foils[id] = count(id)
 	dust += int(db.balance.get("dust", {}).get("disenchant", {}).get(c.rarity, 0))
 	return true
+
+
+## Turns a spare glitch foil copy into dust (balance.dust.foil_mult times a normal copy).
+## Needs a foil and another copy left over.
+func disenchant_foil(id: String, db: CardDB) -> bool:
+	var c := db.card(id)
+	if c == null or count(id) <= 1 or int(foils.get(id, 0)) <= 0 or c.rarity == "starter":
+		return false
+	counts[id] = count(id) - 1
+	foils[id] = int(foils[id]) - 1
+	if int(foils[id]) <= 0:
+		foils.erase(id)
+	dust += foil_value(id, db)
+	return true
+
+
+static func foil_value(id: String, db: CardDB) -> int:
+	var c := db.card(id)
+	var d: Dictionary = db.balance.get("dust", {})
+	return int(d.get("disenchant", {}).get(c.rarity, 0)) * int(d.get("foil_mult", 4)) if c != null else 0
 
 
 func craft_cost(id: String, db: CardDB) -> int:

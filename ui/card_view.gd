@@ -11,6 +11,9 @@ const SIZE := Vector2(128, 184)
 const DRONE := preload("res://assets/combat/drone.svg")
 const TYPE_GLYPH := {"attack": "attack", "skill": "ward", "power": "power"}
 const HOLO := preload("res://shaders/holo.gdshader")
+const GLITCH := preload("res://shaders/glitch_foil.gdshader")
+## Card back picked in Records ("default", "glitch" or a crew id). Set from the profile by Main.
+static var back_style := "default"
 
 var card: CardInstance
 var playable := true
@@ -46,13 +49,16 @@ func setup(c: CardInstance, zoom_in: float = 1.0) -> CardView:
 	pivot_offset = size / 2
 	mouse_filter = Control.MOUSE_FILTER_PASS
 	if c.foil or c.def.rarity in ["rare", "mythic"]:
+		# Glitch foils get their own scanline/chromatic shader; rares keep the holo sheen.
 		_holo = ColorRect.new()
 		_holo.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_holo.position = Vector2(6, 6) * zoom
 		_holo.size = (SIZE - Vector2(12, 12)) * zoom
 		var mat := ShaderMaterial.new()
-		mat.shader = HOLO
-		mat.set_shader_parameter("strength", 0.5 if c.foil else 0.28)
+		mat.shader = GLITCH if c.foil else HOLO
+		mat.set_shader_parameter("strength", 0.6 if c.foil else 0.28)
+		if c.foil:
+			mat.set_shader_parameter("seed", float(c.def.id.hash() % 997))
 		_holo.material = mat
 		add_child(_holo)
 	return self
@@ -213,14 +219,28 @@ func _draw_circuit(r: Rect2, col: Color) -> void:
 func _draw_back() -> void:
 	var rect := Rect2(Vector2.ZERO, SIZE)
 	var sb := StyleBoxFlat.new()
+	var accent := back_color()
 	sb.bg_color = Palette.BUTTON
-	sb.border_color = Palette.ENERGY
+	sb.border_color = accent
 	sb.set_border_width_all(Palette.BORDER)
 	sb.set_corner_radius_all(Palette.RADIUS)
 	draw_style_box(sb, rect)
 	var t := Time.get_ticks_msec() / 1000.0
-	Sigil.draw(self, rect.get_center(), 40.0, "card-back", Color(Palette.ENERGY, 0.8), t)
+	Sigil.draw(self, rect.get_center(), 40.0, "card-back:" + back_style, Color(accent, 0.8), t)
+	if back_style == Records.BACK_GLITCH:
+		# Scanlines that crawl down the back.
+		for i in 8:
+			var y := fmod(t * 40.0 + i * SIZE.y / 8.0, SIZE.y)
+			draw_line(Vector2(8, y), Vector2(SIZE.x - 8, y), Color(Palette.HP, 0.25), 2)
 	draw_string(Palette.display(), Vector2(0, SIZE.y - 16), Palette.w("title"), HORIZONTAL_ALIGNMENT_CENTER, SIZE.x, 11, Palette.BUTTON_TEXT)
+
+
+static func back_color() -> Color:
+	if back_style == Records.BACK_GLITCH:
+		return Palette.HP
+	if back_style != "default" and back_style != "":
+		return Palette.faction(back_style)
+	return Palette.ENERGY
 
 
 ## Flip animation: squash to 0 width, swap face, expand back.

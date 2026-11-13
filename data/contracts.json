@@ -1,0 +1,10 @@
+[
+{"id":"ghost_protocol","name":"Ghost protocol","text":"Win 3 fights without losing any HP.","stat":"clean_fights","at_least":3,"rep":25},
+{"id":"fast_cash","name":"Fast cash","text":"Breach a Core in 6 turns or fewer.","stat":"fast_cores","at_least":1,"rep":30},
+{"id":"full_stack","name":"Full stack","text":"Run 8 daemons.","stat":"daemons","at_least":8,"rep":20},
+{"id":"leave_a_tag","name":"Leave a tag","text":"Stack 15 Virus on one enemy.","stat":"max_burn","at_least":15,"rep":20},
+{"id":"black_bag","name":"Black bag","text":"Crash 3 black sentries.","stat":"elites","at_least":3,"rep":25},
+{"id":"lean_rig","name":"Lean rig","text":"Clear layer 1 with 18 or fewer programs in your deck.","stat":"deck_size","at_most":18,"needs_act":true,"rep":20},
+{"id":"cold_storage","name":"Cold storage","text":"Hold 40 Firewall at once.","stat":"max_ward","at_least":40,"rep":20},
+{"id":"one_shot","name":"One-shot","text":"Deal 30 damage with a single hit.","stat":"big_hit","at_least":30,"rep":20}
+]

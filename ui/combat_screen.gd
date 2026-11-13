@@ -96,7 +96,7 @@ func _ready() -> void:
 	field.add_child(_units_row)
 	_player_view = FighterView.new().setup(combat.player, combat, "player")
 	_player_view.inspected.connect(_inspect_fighter)
-	_player_view.pressed.connect(_inspect_fighter)
+	_player_view.pressed.connect(_on_ally_pressed)
 	field.add_child(_player_view)
 
 	var bar := HBoxContainer.new()
@@ -166,7 +166,10 @@ func _rebuild() -> void:
 	_pile_btns["exhaust"].text = "Wiped %d" % combat.exhaust_pile.size()
 	_pile_btns["deck"].text = "Deck %d" % _all_cards().size()
 	var inc := combat.incoming_damage()
-	if _selected >= 0:
+	_player_view.targetable = _ally_mode()
+	if _ally_mode():
+		_hint.text = "%s\nTap yourself or a daemon" % combat.hand[_selected].display_name()
+	elif _selected >= 0:
 		_hint.text = "%s\nTap a highlighted enemy" % combat.hand[_selected].display_name()
 	else:
 		_hint.text = ("Incoming %d damage" % inc if inc > 0 else "No attacks incoming") + ("  ·  Firewall %d" % combat.player.ward if combat.player.ward > 0 else "")
@@ -187,7 +190,7 @@ func _hand_zoom(n: int) -> float:
 
 func _add_enemy_view(e: Fighter, i: int) -> FighterView:
 	var v := FighterView.new().setup(e, combat, "enemy")
-	v.targetable = _selected >= 0
+	v.targetable = _selected >= 0 and not _ally_mode()
 	v.pressed.connect(_on_enemy_pressed.bind(i))
 	v.inspected.connect(_inspect_fighter)
 	_enemies_row.add_child(v)
@@ -217,7 +220,8 @@ func reveal_boss() -> Color:
 
 func _add_unit_view(u: Fighter) -> FighterView:
 	var v := FighterView.new().setup(u, combat, "unit")
-	v.pressed.connect(_inspect_fighter)
+	v.targetable = _ally_mode()
+	v.pressed.connect(_on_ally_pressed)
 	v.inspected.connect(_inspect_fighter)
 	_units_row.add_child(v)
 	_views[u.id] = v
@@ -286,17 +290,34 @@ func _on_card_pressed(_view: CardView, idx: int) -> void:
 			UiKit.toast(self, "Not enough RAM (%d needed)." % c.cost())
 		return
 	var card: CardInstance = combat.hand[idx]
-	if combat.needs_target(card) and combat.living(combat.enemies).size() > 1:
+	if (combat.needs_target(card) and combat.living(combat.enemies).size() > 1) or (combat.needs_ally(card) and not combat.units.is_empty()):
 		_selected = idx
 		_rebuild()
 		return
 	_act(func() -> void: combat.play_card(idx, -1), idx)
 
 
+## True while the selected program wants you or one of your daemons as its target.
+func _ally_mode() -> bool:
+	return _selected >= 0 and _selected < combat.hand.size() and combat.needs_ally(combat.hand[_selected])
+
+
+func _on_ally_pressed(view: FighterView) -> void:
+	if _busy:
+		return
+	if not _ally_mode():
+		_inspect_fighter(view)
+		return
+	var idx := _selected
+	var ally_idx := ([combat.player] + combat.units).find(view.fighter)
+	_selected = -1
+	_act(func() -> void: combat.play_card(idx, ally_idx), idx)
+
+
 func _on_enemy_pressed(view: FighterView, enemy_idx: int) -> void:
 	if _busy:
 		return
-	if _selected < 0:
+	if _selected < 0 or _ally_mode():
 		_inspect_fighter(view)
 		return
 	var idx := _selected
@@ -393,11 +414,33 @@ func _play_events(played: CardView) -> int:
 				var debuff: bool = Statuses.DEFS.get(e["status"], {}).get("debuff", false)
 				_float_text(v, "%s %s%d" % [Lexicon.status(str(e["status"])), "+" if e["stacks"] >= 0 else "", e["stacks"]], Palette.ENEMY if debuff else Palette.UPGRADED)
 				await _wait(0.1)
+			"expire":
+				var xv: FighterView = _views.get(str(e["target"]))
+				if xv != null and is_instance_valid(xv):
+					_float_text(xv, "Closed", Palette.TEXT_DIM)
+					xv.create_tween().tween_property(xv, "modulate:a", 0.0, 0.3)
+				await _wait(0.15)
+			"rule":
+				var rv: FighterView = _views.get(str(e["id"]))
+				if rv != null and is_instance_valid(rv):
+					rv.flash = 0.6
+					rv.create_tween().tween_property(rv, "flash", 0.0, 0.3)
+				await _wait(0.1)
+			"uptime":
+				var tv: FighterView = _views.get(str(e["target"]))
+				if tv != null and is_instance_valid(tv):
+					tv.shown_hp = int(e["hp"])
+					tv.queue_redraw()
+			"refresh":
+				var fv: FighterView = _views.get(str(e["target"]))
+				if fv != null and is_instance_valid(fv):
+					_float_text(fv, "Refreshed", Palette.ENERGY)
+				await _wait(0.12)
 			"death":
 				if v != null:
 					if v.kind == "unit":
 						v.offline = true
-						_float_text(v, "Daemon destroyed", Palette.HP, 8, true)
+						_float_text(v, "Daemon crashed", Palette.HP, 8, true)
 					var tw := v.create_tween()
 					tw.tween_property(v, "modulate", Color(Palette.HP, 0.0), 0.35)
 				await _wait(0.3)
@@ -428,7 +471,6 @@ func _play_events(played: CardView) -> int:
 				if u == null:
 					# A daemon can be summoned and destroyed before this action is replayed.
 					u = Fighter.make(str(e["target"]), str(e["name"]), int(e["hp"]))
-					u.atk = int(e["atk"])
 				var nv := _add_unit_view(u)
 				nv.shown_hp = int(e["hp"])
 				nv.shown_ward = 0
@@ -452,9 +494,9 @@ func _play_events(played: CardView) -> int:
 				_float_text(_player_view, "Discard shuffled into draw pile", Palette.TEXT_DIM, -60)
 			"draw":
 				draws += 1
-			"rally", "grow":
+			"rally":
 				for uv in _units_row.get_children():
-					_float_text(uv, "+%d ATK" % int(e.get("amount", e.get("atk", 0))), Palette.ENERGY)
+					_float_text(uv, "+%d HP" % int(e["amount"]), Palette.ENERGY)
 				await _wait(0.12)
 			"combat_end":
 				await _banner("Victory" if e["won"] else "Defeated", Palette.ENERGY if e["won"] else Palette.HP)

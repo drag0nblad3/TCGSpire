@@ -528,8 +528,8 @@ func test_hive_link_explodes_once_for_each_destroyed_daemon() -> void:
 	c.start()
 	eq(c.units.size(), 0, "Hive Link starts with an empty board")
 	eq(c.board_slots, int(db.balance["board_slots"]), "normal board capacity")
-	c.summon("Drone", 1, 2)
-	c.summon("Backup", 1, 8)
+	c.summon("Drone", 2)
+	c.summon("Backup", 8)
 	var drone: Fighter = c.units[0]
 	var first: Fighter = c.enemies[0]
 	var second: Fighter = c.enemies[1]
