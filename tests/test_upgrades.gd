@@ -300,6 +300,23 @@ func test_full_run_pays_an_extra_pack() -> void:
 	check(profile.packs_unopened - before >= 3 + int(db.balance["run_rewards"]["packs_full_run"]), "boss packs + full run pack")
 
 
+func test_bosses_pay_client_crew_packs_and_a_full_run_pays_premium() -> void:
+	var r := RunState.start(db, profile, [], 1, 0, "ember", ["tide"])
+	r.acts_cleared = 2
+	eq(Profile.run_pack_list(db, r), [Packs.crew_kind("ember"), Packs.crew_kind("ember")], "each Core pays the client's crew pack")
+	r.acts_cleared = 3
+	r.boss_won = true
+	var kinds := Profile.run_pack_list(db, r)
+	eq(kinds.count(Packs.PREMIUM), int(db.balance["run_rewards"]["packs_full_run"]), "finished job pays premium")
+	eq(kinds.count(Packs.NORMAL), 0, "no normal packs from bosses")
+	var before := profile.pack_count(Packs.PREMIUM)
+	profile.finish_run(db, r)
+	eq(profile.pack_count(Packs.PREMIUM) - before, int(db.balance["run_rewards"]["packs_full_run"]))
+	var free := RunState.start(db, profile, [], 1)
+	free.acts_cleared = 1
+	eq(Profile.run_pack_list(db, free), [Packs.crew_kind("neutral")], "freelance pays Street")
+
+
 func test_payout_preview_matches_what_a_full_clear_pays() -> void:
 	var job: String = Jobs.board(db)[0]
 	var heat := 2

@@ -12,19 +12,27 @@ extends RefCounted
 ##   rig       -> rep buys ranks of that faction's rig upgrades (permanent perks)
 ##   firmware  -> enough copies + rep (dust for Street/starter cards) permanently upgrades a card
 
-const SAVE_VERSION := 8
+const SAVE_VERSION := 9
 const DEFAULT_PATH := "user://profile.json"
 
 var collection := Collection.new()
 var unlocks: Dictionary = {}
 var stats: Dictionary = {"runs": 0, "wins": 0, "packs_opened": 0, "best_floor": 0}
-var packs_unopened := 0
+## Unopened packs by kind (Packs.kinds(): "normal", "premium", "crew:ember"...): kind -> count.
+var packs: Dictionary = {}
+## Total unopened packs. Setting it changes the normal count (old callers and cheats).
+var packs_unopened: int:
+	get:
+		return pack_total()
+	set(value):
+		packs[Packs.NORMAL] = maxi(0, pack_count(Packs.NORMAL) + value - pack_total())
 ## Pack shards from elites (balance.run_rewards.shards_per_pack make a pack).
 var pack_shards := 0
 ## Cards added to the collection for the first time and not yet seen in the library: id -> true.
 var unseen: Dictionary = {}
-## Packs opened since the last rare+ / mythic pull (balance.pack.pity).
-var pack_pity: Dictionary = {"rare": 0, "mythic": 0}
+## Per pack kind, packs opened since the last rare+ / mythic pull: kind -> {"rare", "mythic"}.
+## Every kind keeps its own mercy timers (Packs.config(kind).pity).
+var pack_pity: Dictionary = {}
 var xp := 0
 var mastery: Dictionary = {}  # card id -> total plays
 var max_heat := 0
@@ -57,7 +65,7 @@ var loadouts: Dictionary = {}
 
 static func new_player(db: CardDB) -> Profile:
 	var p := Profile.new()
-	p.packs_unopened = int(db.balance.get("starter_packs", 3))
+	p.add_packs(Packs.NORMAL, int(db.balance.get("starter_packs", 3)))
 	var start: Dictionary = db.balance.get("starter_collection", {})
 	for id in start:
 		p.collection.add(id, int(start[id]))
@@ -121,9 +129,10 @@ func finish_run(db: CardDB, run: RunState) -> Array:
 			lines.append("Heat %d unlocked" % max_heat)
 	var cfg: Dictionary = db.balance.get("run_rewards", {})
 	var gained_xp := run_xp(db, run)
-	var packs := run_packs(db, run)
-	packs_unopened += packs
-	lines.append("+%d XP, +%d pack%s" % [gained_xp, packs, "" if packs == 1 else "s"])
+	var won_packs := run_pack_list(db, run)
+	for k in won_packs:
+		add_packs(k, 1)
+	lines.append("+%d XP%s" % [gained_xp, "" if won_packs.is_empty() else ", " + pack_list_text(db, won_packs)])
 	lines.append_array(add_shards(db, run.elites_won * int(cfg.get("shards_per_elite", 0))))
 	var scrap := int(run.perk_mod("run_scrap"))
 	if scrap > 0:
@@ -151,15 +160,63 @@ static func run_xp(db: CardDB, run: RunState) -> int:
 	return int(n * (1.0 + 0.1 * run.heat) * float(cfg.get("xp_mult", 1.0)))
 
 
-## Packs a run pays when it ends: one per Core breached, plus one for the final Core.
+## How many packs a run pays when it ends (see run_pack_list).
 static func run_packs(db: CardDB, run: RunState) -> int:
+	return run_pack_list(db, run).size()
+
+
+## The pack kinds a run pays when it ends: a crew pack of the client crew hiring you per Core
+## breached (RunState.client_crew), a premium pack for finishing the whole job, and normal packs from
+## implants/subroutines ("bonus_packs").
+static func run_pack_list(db: CardDB, run: RunState) -> Array:
 	var cfg: Dictionary = db.balance.get("run_rewards", {})
-	var n := run.acts_cleared * int(cfg.get("packs_per_boss", 1))
+	var out: Array = []
+	for i in run.acts_cleared * int(cfg.get("packs_per_boss", 1)):
+		out.append(Packs.crew_kind(run.client_crew()))
 	if run.boss_won:
-		n += int(cfg.get("packs_full_run", 0))
+		for k in int(cfg.get("packs_full_run", 0)):
+			out.append(Packs.PREMIUM)
 	if run.acts_cleared > 0:
-		n += int(run.perk_mod("bonus_packs"))
+		for k in int(run.perk_mod("bonus_packs")):
+			out.append(Packs.NORMAL)
+	return out
+
+
+## "+1 Burner cache, +1 Zero-day cache, +2 Data caches" (kinds in shelf order).
+static func pack_list_text(db: CardDB, kinds: Array) -> String:
+	var bits: Array[String] = []
+	for k in Packs.kinds():
+		var n := kinds.count(k)
+		if n > 0:
+			bits.append("+%d %s%s" % [n, Packs.kind_name(db, k), "" if n == 1 else "s"])
+	return ", ".join(bits)
+
+
+func add_packs(kind: String, n: int) -> void:
+	if n == 0 or not Packs.is_kind(kind):
+		return
+	packs[kind] = maxi(0, pack_count(kind) + n)
+
+
+func pack_count(kind: String) -> int:
+	return int(packs.get(kind, 0))
+
+
+func pack_total() -> int:
+	var n := 0
+	for k in packs:
+		n += int(packs[k])
 	return n
+
+
+## Kinds with at least one unopened pack, in shelf order.
+func pack_kinds_owned() -> Array:
+	return Packs.kinds().filter(func(k: String) -> bool: return pack_count(k) > 0)
+
+
+## Mercy counter for one pack kind and rarity (packs of that kind since the last hit).
+func pity_count(kind: String, rarity: String) -> int:
+	return int(pack_pity.get(kind, {}).get(rarity, 0))
 
 
 ## What the next level-up pays: {"level", "packs", "dust"} (empty at the level cap).
@@ -178,10 +235,10 @@ func add_xp(db: CardDB, amount: int) -> Array:
 	var rewards: Dictionary = db.balance.get("levels", {})
 	for lvl in range(before + 1, level() + 1):
 		lines.append("Level %d!" % lvl)
-		var packs := int(rewards.get("packs", 1))
-		if packs > 0:
-			packs_unopened += packs
-			lines.append("  +%d pack%s" % [packs, "" if packs == 1 else "s"])
+		var level_packs := int(rewards.get("packs", 1))
+		if level_packs > 0:
+			add_packs(Packs.NORMAL, level_packs)
+			lines.append("  +%d pack%s" % [level_packs, "" if level_packs == 1 else "s"])
 		var dust := int(rewards.get("dust_per_level", 0)) * lvl
 		if dust > 0:
 			collection.dust += dust
@@ -203,7 +260,7 @@ func add_shards(db: CardDB, n: int) -> Array:
 	pack_shards += n
 	var made := pack_shards / per
 	pack_shards %= per
-	packs_unopened += made
+	add_packs(Packs.NORMAL, made)
 	var line := "+%d pack shard%s (%d/%d)" % [n, "" if n == 1 else "s", pack_shards, per]
 	if made > 0:
 		line += ", shards fused into %d pack%s" % [made, "" if made == 1 else "s"]
@@ -479,12 +536,16 @@ func bake_firmware_mod(db: CardDB, id: String, mod_id: String) -> bool:
 	return true
 
 
-func open_pack(db: CardDB, rng: GameRng) -> Array:
-	if packs_unopened <= 0:
+## Opens one pack of `kind` ("" = the first kind owned, in shelf order).
+func open_pack(db: CardDB, rng: GameRng, kind: String = "") -> Array:
+	if kind == "":
+		var owned := pack_kinds_owned()
+		kind = owned[0] if not owned.is_empty() else Packs.NORMAL
+	if pack_count(kind) <= 0:
 		return []
-	packs_unopened -= 1
+	packs[kind] = pack_count(kind) - 1
 	stats["packs_opened"] = int(stats.get("packs_opened", 0)) + 1
-	var cards := Packs.open(db, rng, self)
+	var cards := Packs.open(db, rng, self, kind)
 	for c in cards:
 		c["new"] = not collection.owns(c["id"])
 		if c["new"]:
@@ -534,7 +595,7 @@ func to_dict() -> Dictionary:
 		"collection": collection.to_dict(),
 		"unlocks": unlocks,
 		"stats": stats,
-		"packs_unopened": packs_unopened,
+		"packs": packs,
 		"pack_shards": pack_shards,
 		"unseen": unseen,
 		"pack_pity": pack_pity,
@@ -564,11 +625,14 @@ static func from_dict(d: Dictionary, db: CardDB = null) -> Profile:
 	p.unlocks = d.get("unlocks", {})
 	for k in d.get("stats", {}):
 		p.stats[k] = int(d["stats"][k])
-	p.packs_unopened = int(d.get("packs_unopened", 0))
+	for k in d.get("packs", {}):
+		p.add_packs(str(k), int(d["packs"][k]))
 	p.pack_shards = int(d.get("pack_shards", 0))
 	p.unseen = d.get("unseen", {}).duplicate()
 	var pity: Dictionary = d.get("pack_pity", {})
-	p.pack_pity = {"rare": int(pity.get("rare", 0)), "mythic": int(pity.get("mythic", 0))}
+	for k in pity:
+		if pity[k] is Dictionary:
+			p.pack_pity[str(k)] = {"rare": int(pity[k].get("rare", 0)), "mythic": int(pity[k].get("mythic", 0))}
 	p.xp = int(d.get("xp", 0))
 	for k in d.get("mastery", {}):
 		p.mastery[k] = int(d["mastery"][k])
@@ -636,6 +700,12 @@ static func _migrate(d: Dictionary, db: CardDB) -> Dictionary:
 		for k in ["binders", "exploits", "daily", "loadouts"]:
 			d[k] = d.get(k, {})
 		v = 8
+	if v < 9:
+		# v9: packs and mercy timers by pack kind. Old packs and timers are normal ones.
+		d["packs"] = {Packs.NORMAL: int(d.get("packs_unopened", 0))}
+		var old: Dictionary = d.get("pack_pity", {})
+		d["pack_pity"] = {Packs.NORMAL: {"rare": int(old.get("rare", 0)), "mythic": int(old.get("mythic", 0))}}
+		v = 9
 	d["version"] = v
 	return d
 

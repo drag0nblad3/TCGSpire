@@ -5,7 +5,7 @@ extends SceneTree
 ##                   [out=/tmp/shot.png] [frames=30] [plays=2] [seed=1] [theme=archive] [end_turn=1] [give=sparring_dummy,drone_swarm]
 ## Under --headless it still runs (smoke test for script errors) but writes no image.
 
-const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "pack_open", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume", "records", "exploits", "daily", "weekly", "weekly_map", "login", "tutorial", "coach", "map_walls", "map_jump", "foil"]
+const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "pack_open", "pack_shelf", "pack_premium", "pack_crew", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume", "records", "exploits", "daily", "weekly", "weekly_map", "login", "tutorial", "coach", "map_walls", "map_jump", "foil"]
 
 
 func _initialize() -> void:
@@ -85,7 +85,7 @@ func _idle(cs) -> void:
 
 func _go(main: Control, scr: String, seed_in: int, inspect_card: String = "flare_volley") -> void:
 	var db: CardDB = main.db
-	if scr not in ["hub", "collection", "picker", "pack", "pack_open", "inspect", "rules", "jobs", "rig", "firmware", "resume", "records", "exploits", "tutorial", "coach", "foil", "weekly", "weekly_map", "login"]:
+	if scr not in ["hub", "collection", "picker", "pack", "pack_open", "pack_shelf", "pack_premium", "pack_crew", "inspect", "rules", "jobs", "rig", "firmware", "resume", "records", "exploits", "tutorial", "coach", "foil", "weekly", "weekly_map", "login"]:
 		var p: Profile = main.profile
 		main.run = RunState.start(db, p, RunState.default_picks(db, p), seed_in)
 		main.run.add_talisman("oak_token")
@@ -145,6 +145,20 @@ func _go(main: Control, scr: String, seed_in: int, inspect_card: String = "flare
 			main._pick_mod_target("cached", func(_i: int) -> void: pass)
 		"pack":
 			main._show_pack()
+		"pack_shelf":
+			# One of every kind on the shelf (premium, the seven crews, normal).
+			for k in Packs.kinds():
+				main.profile.add_packs(k, 1)
+			main.profile.add_packs(Packs.crew_kind("ember"), 2)
+			main._show_pack_shelf()
+		"pack_premium":
+			main.profile.add_packs(Packs.PREMIUM, 1)
+			main.reveal_packs_now = true
+			main._show_pack(Packs.PREMIUM)
+		"pack_crew":
+			main.profile.add_packs(Packs.crew_kind("bloom"), 2)
+			main.reveal_packs_now = true
+			main._show_pack(Packs.crew_kind("bloom"))
 		"pack_open":
 			# Four copies of every common (2 deck + 2 extras), so pulls show pips and unlocks.
 			for id in main.db.ids_where(func(c: CardDef) -> bool: return c.rarity == "common"):
@@ -214,6 +228,7 @@ func _go(main: Control, scr: String, seed_in: int, inspect_card: String = "flare
 		"resume":
 			main._show(HubScreen.new().setup(db, main.profile, "Layer 2 · Node 17 · HP 40/60"))
 		"combat":
+			main.run.enter(main.run.available_nodes()[0])  # floor 1: shows the soft-entry hint
 			main._start_combat({"type": "fight", "encounter": "wisp_court"})
 		"crew":
 			main.run = RunState.start(db, main.profile, RunState.default_picks(db, main.profile, "noise"), seed_in, 0, "noise")

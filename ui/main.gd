@@ -358,7 +358,7 @@ func show_hub() -> void:
 		var cs := CollectionScreen.new().setup(db, profile)
 		cs.closed.connect(show_hub)
 		_show(cs))
-	hub.packs_pressed.connect(_show_pack)
+	hub.packs_pressed.connect(_show_pack_shelf)
 	hub.rig_pressed.connect(func() -> void:
 		var rs := RigScreen.new().setup(db, profile)
 		rs.changed.connect(_save)
@@ -562,16 +562,52 @@ func _show_weekly_picker(w: Dictionary) -> void:
 var reveal_packs_now := false
 
 
-func _show_pack() -> void:
-	if profile.packs_unopened <= 0:
+## The cache shelf: every unopened pack kind with its own packet. Tap one to open it.
+func _show_pack_shelf() -> void:
+	var owned := profile.pack_kinds_owned()
+	if owned.is_empty():
 		show_hub()
 		return
-	var pulled := profile.open_pack(db, GameRng.new(int(Time.get_ticks_usec())))
+	var parts := UiKit.screen(16)
+	var v: VBoxContainer = parts[1]
+	v.add_child(UiKit.label("%s (%d)" % [Palette.w("packs"), profile.packs_unopened], 26))
+	v.add_child(UiKit.label("Tap a cache to crack it. Each kind keeps its own mercy timer.", 14, Palette.TEXT_DIM, true))
+	var grid := UiKit.flow(14)
+	grid.alignment = FlowContainer.ALIGNMENT_CENTER
+	for k in owned:
+		var tile := PackArt.new().setup(db, k, profile.pack_count(k))
+		tile.custom_minimum_size.x = 170
+		tile.pressed.connect(func(kind: String) -> void: _show_pack(kind))
+		grid.add_child(tile)
+	v.add_child(grid)
+	v.add_child(UiKit.label(PackArt.odds_line(db, profile, owned[0]), 14, PackArt.tint(owned[0]), true))
+	v.add_child(UiKit.button("Open a %s" % PackArt.title(db, owned[0]), func() -> void: _show_pack(owned[0]), Vector2(260, 60)))
+	v.add_child(UiKit.button("Back", show_hub, Vector2(160, 52)))
+	_show(parts[0])
+
+
+func _show_pack(kind: String = "") -> void:
+	if kind == "" or profile.pack_count(kind) <= 0:
+		var owned := profile.pack_kinds_owned()
+		if owned.is_empty():
+			show_hub()
+			return
+		kind = owned[0]
+	var pulled := profile.open_pack(db, GameRng.new(int(Time.get_ticks_usec())), kind)
 	_save()
 	var parts := UiKit.screen(18)
 	var v: VBoxContainer = parts[1]
-	v.add_child(UiKit.label("%s: tap cards to reveal" % Palette.w("pack"), 24))
-	v.add_child(UiKit.label("The last card is the hot slot: uncommon or better.", 14, Palette.TEXT_DIM, true))
+	var head := UiKit.hbox(10)
+	head.alignment = BoxContainer.ALIGNMENT_CENTER
+	head.add_child(PackArt.new().setup(db, kind, 1).as_icon(64))
+	head.add_child(UiKit.label("%s: tap cards to reveal" % PackArt.title(db, kind), 24, PackArt.tint(kind)))
+	v.add_child(head)
+	var hot_text := "The last card is the hot slot: uncommon or better."
+	if Packs.odds_at_least(db, kind, "rare") >= 0.999:
+		hot_text = "The last card is the hot slot: rare or better. Every card has a %d%% glitch foil chance." % roundi(float(Packs.config(db, kind).get("foil_chance", 0)) * 100)
+	if Packs.crew_of(kind) != "":
+		hot_text = "Only %s programs. %s" % [Lexicon.faction(Packs.crew_of(kind)), hot_text]
+	v.add_child(UiKit.label(hot_text, 14, Palette.TEXT_DIM, true))
 	var grid := UiKit.flow(12)
 	var views: Array = []
 	var summary := UiKit.label("", 16, Palette.UPGRADED, true)
@@ -598,19 +634,21 @@ func _show_pack() -> void:
 		grid.add_child(cv)
 	v.add_child(grid)
 	v.add_child(summary)
-	v.add_child(UiKit.label("Rare guaranteed within %d %s · mythic within %d" % [Packs.pity_left(db, profile, "rare"),
-		Palette.w("packs").to_lower(), Packs.pity_left(db, profile, "mythic")], 14, Palette.TEXT_DIM, true))
+	v.add_child(UiKit.label(PackArt.odds_line(db, profile, kind), 14, Palette.TEXT_DIM, true))
 	v.add_child(UiKit.button("Reveal all", func() -> void:
 		for k in views.size():
 			if views[k].face_down:
 				views[k].flip_reveal()
 				on_reveal.call(views[k], pulled[k])))
-	var left := profile.packs_unopened
-	v.add_child(UiKit.button("Next %s (%d left)" % [Palette.w("pack").to_lower(), left] if left > 0 else "Done", func() -> void:
-		_show_pack() if profile.packs_unopened > 0 else show_hub()))
+	var left := profile.pack_count(kind)
+	if left > 0:
+		v.add_child(UiKit.button("Next %s (%d left)" % [PackArt.title(db, kind), left], func() -> void: _show_pack(kind)))
+	var others := profile.packs_unopened - left
+	v.add_child(UiKit.button("Cache shelf (%d more)" % others if others > 0 else "Done", func() -> void:
+		_show_pack_shelf() if profile.packs_unopened > 0 else show_hub(), Vector2(220, 52)))
 	_show(parts[0])
 	if not reveal_packs_now:
-		_play_pack_opening(parts[0])
+		_play_pack_opening(parts[0], kind)
 	if reveal_packs_now:
 		for k in views.size():
 			views[k].face_down = false
@@ -618,7 +656,7 @@ func _show_pack() -> void:
 
 
 ## A short encrypted-packet break, owned by the pack screen so navigation cancels it.
-func _play_pack_opening(host: Control) -> void:
+func _play_pack_opening(host: Control, kind: String = Packs.NORMAL) -> void:
 	GameAudio.play("pack")
 	var overlay := Control.new()
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -631,16 +669,9 @@ func _play_pack_opening(host: Control) -> void:
 		var packet := Rect2(center - Vector2(90, 120), Vector2(180, 240))
 		overlay.draw_rect(Rect2(Vector2.ZERO, overlay.size), Color(Palette.PANEL_BG, 0.96))
 		var split := maxf(0.0, progress[0] - 0.45) * 180.0
-		for side in [-1, 1]:
-			var half := Rect2(packet.position + Vector2(90 if side == 1 else 0, 0), Vector2(90, 240))
-			half.position.x += side * split
-			overlay.draw_rect(half, Palette.PANEL_BG)
-			overlay.draw_rect(half, Palette.ENERGY, false, 2.0)
-			for row in 7:
-				var y := half.position.y + 24 + row * 28
-				overlay.draw_line(Vector2(half.position.x + 12, y), Vector2(half.end.x - 12, y), Color(Palette.ENERGY, 0.35), 2.0)
+		PackArt.draw_packet(overlay, packet, kind, split, progress[0])
 		var scan_y: float = packet.position.y + progress[0] * packet.size.y
-		overlay.draw_line(Vector2(packet.position.x - 14 - split, scan_y), Vector2(packet.end.x + 14 + split, scan_y), Palette.UPGRADED, 3.0)
+		overlay.draw_line(Vector2(packet.position.x - 14 - split, scan_y), Vector2(packet.end.x + 14 + split, scan_y), PackArt.accent(kind), 3.0)
 	)
 	var tween := overlay.create_tween()
 	tween.tween_method(func(value: float) -> void:

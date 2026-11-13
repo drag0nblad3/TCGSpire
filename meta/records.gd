@@ -135,7 +135,7 @@ static func begin_daily(db: CardDB, p: Profile, date: String) -> int:
 		return 0
 	p.daily["last"] = date
 	var packs := int(db.balance.get("daily", {}).get("packs", 0))
-	p.packs_unopened += packs
+	p.add_packs(Packs.NORMAL, packs)
 	return packs
 
 

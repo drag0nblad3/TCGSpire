@@ -46,7 +46,7 @@ static func claim(db: CardDB, p: Profile, date: String) -> Dictionary:
 	var day := next_day(p)
 	var r := reward(db, day)
 	p.collection.dust += int(r["scrap"])
-	p.packs_unopened += int(r["packs"])
+	p.add_packs(Packs.NORMAL, int(r["packs"]))
 	p.login["last"] = date
 	p.login["day"] = day
 	p.login["claims"] = int(p.login.get("claims", 0)) + 1

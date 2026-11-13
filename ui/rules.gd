@@ -156,8 +156,14 @@ static func sections(db: CardDB) -> Array:
 	var limit := Profile.deck_limit(db)
 	out.append(["Collecting", "Between runs", [
 		["Library", "Your deck is built from programs you own. Before each run you load extra programs from your library, up to %d copies of each." % limit],
-		[Palette.w("packs"), "Earned by play only: one per Core breached, one more for a finished job, one per level, one for playing the daily breach, one for the first weekly challenge clear, one on day 7 of the login bonus. Black sentries drop shards (%d make a %s)." % [Profile.shards_per_pack(db), Palette.w("pack").to_lower()]],
-		["Hot slot", "Every %s has a hot slot (uncommon or better). A rare is guaranteed at least every %d %s and a mythic every %d." % [Palette.w("pack").to_lower(), int(db.balance["pack"].get("pity", {}).get("rare", 0)), packs, int(db.balance["pack"].get("pity", {}).get("mythic", 0))]],
+		[Palette.w("packs"), "Earned by play only. Each Core breached pays a crew cache of the crew hiring you (Street when freelance). Finishing the whole job pays a %s. Levels, the daily breach, the first weekly challenge clear, day 7 of the login bonus and shards from black sentries (%d make one) pay a %s." % [PackArt.title(db, Packs.PREMIUM), Profile.shards_per_pack(db), Palette.w("pack").to_lower()]],
+		["Hot slot", "The last card of every %s is the hot slot: uncommon or better (rare or better in a %s)." % [Palette.w("pack").to_lower(), PackArt.title(db, Packs.PREMIUM)]],
+		["Mercy", "Each kind of %s keeps its own timer (every crew separately): a %s or crew cache guarantees a rare at least every %d and a mythic every %d of that same kind; a %s guarantees a mythic every %d." % [Palette.w("pack").to_lower(),
+			Palette.w("pack").to_lower(), int(Packs.config(db).get("pity", {}).get("rare", 0)), int(Packs.config(db).get("pity", {}).get("mythic", 0)),
+			PackArt.title(db, Packs.PREMIUM), int(Packs.config(db, Packs.PREMIUM).get("pity", {}).get("mythic", 0))]],
+		[Palette.w("pack"), "Any crew. " + _pack_odds(db, Packs.NORMAL)],
+		["Crew caches", "One per crew, Street included: only that crew's programs (and its joint ops). " + _pack_odds(db, Packs.crew_kind("ember"))],
+		[PackArt.title(db, Packs.PREMIUM), "Premium. Any crew. " + _pack_odds(db, Packs.PREMIUM)],
 		["Rarity", "Rarer programs add complexity, not raw power."],
 		[Palette.w("dust"), "Scrap copies you no longer need for %s, and compile the ones you want." % dust],
 		["Mastery", "Running a program often raises its mastery."],
@@ -314,3 +320,19 @@ static func _ladder(db: CardDB, lvl: int) -> String:
 		var l: Array = db.balance["firmware"].get("copies", {}).get(r, [])
 		parts.append(str(l[lvl]) if lvl < l.size() else "-")
 	return "/".join(parts)
+
+
+## "3 cards: common 76%, ... · hot slot: ... · 5% glitch foil per card" from a pack kind's config.
+static func _pack_odds(db: CardDB, kind: String) -> String:
+	var cfg := Packs.config(db, kind)
+	var pct := func(w: Dictionary) -> String:
+		var total := 0.0
+		for r in w:
+			total += float(w[r])
+		var bits: Array[String] = []
+		for r in ["common", "uncommon", "rare", "mythic"]:
+			if w.has(r) and float(w[r]) > 0.0:
+				bits.append("%s %s%%" % [r, String.num(100.0 * float(w[r]) / total, 1).trim_suffix(".0")])
+		return ", ".join(bits)
+	return "%d cards (%s), then the hot slot (%s). %d%% glitch foil per card." % [int(cfg.get("size", 4)) - 1, pct.call(cfg.get("weights", {})),
+		pct.call(cfg.get("hot_slot", {})), roundi(float(cfg.get("foil_chance", 0)) * 100)]

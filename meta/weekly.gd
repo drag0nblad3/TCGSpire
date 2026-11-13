@@ -84,7 +84,7 @@ static func finish_run(db: CardDB, p: Profile, run: RunState) -> Array:
 		p.weekly["cleared"] = true
 		p.weekly["clears"] = int(p.weekly.get("clears", 0)) + 1
 		var packs := int(db.balance.get("weekly", {}).get("packs", 0))
-		p.packs_unopened += packs
+		p.add_packs(Packs.NORMAL, packs)
 		if packs > 0:
 			lines.append("Weekly challenge cleared: +%d %s" % [packs, "pack" if packs == 1 else "packs"])
 	return lines

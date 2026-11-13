@@ -208,6 +208,8 @@ func _rebuild() -> void:
 	_hand_row.add_theme_constant_override("separation", sep)
 	_energy.queue_redraw()
 	_floor_label.text = ("Layer %d · Node %d   ·   %d creds   ·   Turn %d" % [run.act, run.floor_num, run.gold, combat.turn]) if run else "Practice fight   ·   Turn %d" % combat.turn
+	if run and run.act_start_eased():
+		_floor_label.text += "   ·   Soft entry: enemies %d%% HP, %d%% dmg" % [roundi(run.act_start_mult("enemy_hp_pct") * 100.0 - 100.0), roundi(run.act_start_mult("enemy_dmg_pct") * 100.0 - 100.0)]
 	_pile_btns["draw"].text = "Draw %d" % combat.draw_pile.size()
 	_pile_btns["discard"].text = "Discard %d" % combat.discard_pile.size()
 	_pile_btns["exhaust"].text = "Wiped %d" % combat.exhaust_pile.size()
