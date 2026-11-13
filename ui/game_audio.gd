@@ -5,6 +5,20 @@ const RATE := 22050
 const VOICES := 8
 # Duration, starting pitch, ending pitch, noise blend, modulation, gain.
 const CUES := {
+	"draw": [0.065, 900, 1500, 0.22, 0, 0.15],
+	"shuffle": [0.22, 450, 900, 0.65, 35, 0.22],
+	"select": [0.07, 620, 950, 0.03, 0, 0.2],
+	"error": [0.14, 180, 130, 0.08, 35, 0.24],
+	"travel": [0.3, 120, 750, 0.18, 20, 0.3],
+	"purchase": [0.22, 700, 1400, 0.03, 7, 0.32],
+	"upgrade": [0.42, 330, 1320, 0.06, 12, 0.35],
+	"delete": [0.2, 1000, 80, 0.35, 50, 0.25],
+	"reward": [0.32, 520, 1040, 0.02, 6, 0.3],
+	"boss": [0.7, 130, 40, 0.25, 18, 0.5],
+	"virus": [0.23, 320, 120, 0.55, 65, 0.3],
+	"energy": [0.18, 350, 1100, 0.04, 9, 0.25],
+	"implant": [0.2, 900, 600, 0.08, 140, 0.23],
+	"loop": [0.18, 500, 1000, 0.1, 28, 0.25],
 	"tap": [0.045, 1250, 700, 0.12, 0, 0.2],
 	"hit": [0.18, 150, 42, 0.55, 0, 0.55],
 	"block": [0.15, 900, 300, 0.2, 110, 0.35],
@@ -87,7 +101,14 @@ static func event_cue(e: Dictionary) -> String:
 				return "break" if int(e.get("ward", 0)) == 0 else "block"
 			return "hit" if int(e.get("amount", 0)) > 0 else ""
 		"ward", "heal", "summon", "death": return str(e["t"])
-		"status", "strip": return "glitch"
+		"draw": return "draw"
+		"reshuffle": return "shuffle"
+		"loop": return "loop"
+		"talisman", "rule": return "implant"
+		"energy", "refresh", "rally": return "energy"
+		"spawn": return "summon"
+		"status": return "virus" if e.get("status", "") == "burn" else "glitch"
+		"strip": return "delete"
 		"expire": return "death"
 		"daemon_explosion": return "explode"
 		"enemy_phase", "turn_start": return "turn"
@@ -118,3 +139,8 @@ static func synthesize(cue: String) -> AudioStreamWAV:
 	stream.mix_rate = RATE
 	stream.data = bytes
 	return stream
+
+func _notification(what: int) -> void:
+	if what in [NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_APPLICATION_FOCUS_OUT]:
+		for player in _players:
+			player.stop()
