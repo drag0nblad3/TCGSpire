@@ -13,6 +13,9 @@ var mod: Dictionary = {}
 var fw := 0
 ## Set by whoever builds firmware cards (CardDB.firmware_scale), index = level.
 var fw_scale: Array = [1.0]
+## Loop: times this copy has run in the current fight (Combat resets it). Each run
+## grows every effect marked "loop": n by n (Effects.LOOP_KEY names the number).
+var loops := 0
 
 ## Numbers firmware scales, per op. Draw/RAM/copies stay as they are.
 const FW_KEYS := {
@@ -36,7 +39,35 @@ func cost() -> int:
 
 
 func effects() -> Array:
-	return CardMods.effects(mod, scaled(def.get_effects(upgraded), fw_mult()))
+	return CardMods.effects(mod, looped(scaled(def.get_effects(upgraded), fw_mult()), loops))
+
+
+## True if any of this card's effects grow with Loop.
+func has_loop() -> bool:
+	for e in def.get_effects(upgraded):
+		if e.has("loop"):
+			return true
+	return false
+
+
+## Effects with each Loop number grown by its "loop" step x times.
+static func looped(effs: Array, times: int) -> Array:
+	if times <= 0:
+		return effs
+	var out: Array = []
+	for e in effs:
+		if e.has("loop") and Effects.LOOP_KEY.has(str(e.get("op", ""))):
+			var d: Dictionary = e.duplicate()
+			var k: String = Effects.LOOP_KEY[str(d["op"])]
+			var base: Variant = d.get(k, 1 if k in ["hp", "stacks", "mult"] else 0)
+			if base is float:
+				d[k] = float(base) + float(d["loop"]) * times
+			else:
+				d[k] = int(base) + int(d["loop"]) * times
+			out.append(d)
+		else:
+			out.append(e)
+	return out
 
 
 func fw_mult() -> float:
@@ -103,6 +134,8 @@ func level_up_text() -> String:
 
 
 func text() -> String:
+	if loops > 0 and def.get_text(upgraded) != "" and has_loop():
+		return _generated_text()
 	if mod.is_empty() and fw == 0:
 		return def.get_text(upgraded)
 	if fw > 0:
@@ -134,4 +167,5 @@ func copy() -> CardInstance:
 	c.mod = mod
 	c.fw = fw
 	c.fw_scale = fw_scale
+	c.loops = loops
 	return c

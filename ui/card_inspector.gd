@@ -21,6 +21,8 @@ static func glossary(card: CardInstance) -> Array[String]:
 	out.append(str(CardDef.TYPE_DESC.get(card.def.type, "")))
 	for k in card.keywords():
 		out.append("%s: %s" % [Lexicon.keyword(str(k)), CardDef.KEYWORD_DESC.get(k, "")])
+	if card.has_loop():
+		out.append("%s: %s" % [Lexicon.keyword("loop"), CardDef.KEYWORD_DESC["loop"]])
 	var seen := {}
 	for e in card.effects():
 		var op := str(e.get("op", ""))

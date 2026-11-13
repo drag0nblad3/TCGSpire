@@ -17,7 +17,7 @@
 {"id":"storm_capacitor","name":"Storm Capacitor","rarity":"common","triggers":[{"on":"combat_start","effects":[{"op":"apply","status":"charge","stacks":3,"to":"self"}]}]},
 {"id":"seed_pouch","name":"Cell Pouch","rarity":"common","triggers":[{"on":"turn_start","turn":2,"effects":[{"op":"add_card","card":"sprout"}]}]},
 {"id":"iron_will","name":"Hardened Kernel","rarity":"common","pickup":[{"op":"max_hp","amount":5}],"triggers":[{"on":"combat_start","effects":[{"op":"ward","amount":4}]}]},
-{"id":"echo_shell","name":"Echo Shell","rarity":"uncommon","triggers":[{"on":"turn_start","turn":1,"effects":[{"op":"apply","status":"echo","stacks":1,"to":"self"}]}]},
+{"id":"echo_shell","name":"Echo Shell","rarity":"uncommon","triggers":[{"on":"turn_start","turn":1,"effects":[{"op":"draw","amount":2}]}]},
 {"id":"ember_brazier","name":"Heat Exchanger","rarity":"uncommon","triggers":[{"on":"turn_end","effects":[{"op":"apply","status":"burn","stacks":1,"to":"all_enemies"}]}]},
 {"id":"hunters_mark","name":"Tracer","rarity":"uncommon","triggers":[{"on":"combat_start","effects":[{"op":"apply","status":"brittle","stacks":1,"to":"all_enemies"}]}]},
 {"id":"quill_of_fate","name":"Fate Compiler","rarity":"rare","triggers":[{"on":"card_played","every":10,"effects":[{"op":"energy","amount":2},{"op":"draw","amount":2}]}]},

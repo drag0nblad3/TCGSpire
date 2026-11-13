@@ -28,6 +28,13 @@ const OPS := {
 	"sacrifice": ["effect", "mult", "to"],
 }
 
+## Loop: any effect below may carry "loop": n (a card keyword shown as "Loop +n").
+## Each time the card runs in a fight, that number grows by n (CardInstance.looped).
+const LOOP_KEY := {
+	"damage": "amount", "ward": "amount", "heal": "amount", "apply": "stacks", "draw": "amount",
+	"energy": "amount", "rally": "amount", "summon": "hp", "damage_per_status": "mult",
+}
+
 ## Ops a "sacrifice" can turn the crashed daemon's HP into.
 const SACRIFICE_EFFECTS := ["damage", "ward", "heal", "draw", "energy"]
 
@@ -197,6 +204,19 @@ static func targets(c: Combat, e: Dictionary, src: Fighter, target: Fighter, def
 
 
 static func describe(e: Dictionary) -> String:
+	var s := _describe(e)
+	if not e.has("loop"):
+		return s
+	var tag := "Loop +%d" % int(e["loop"])
+	if str(e.get("op", "")) == "summon":
+		return s.replace(" HP):", " HP, %s):" % tag)
+	var i := s.find(". ")
+	if i < 0:
+		i = s.length() - 1
+	return s.substr(0, i) + " (%s)" % tag + s.substr(i)
+
+
+static func _describe(e: Dictionary) -> String:
 	var op := str(e.get("op", ""))
 	var n := int(e.get("amount", 0))
 	var to := str(e.get("to", ""))
@@ -287,6 +307,10 @@ static func validate(e: Dictionary, where: String) -> Array[String]:
 		errs.append("%s: unknown op '%s'" % [where, op])
 		return errs
 	for k in e:
+		if k == "loop":
+			if not LOOP_KEY.has(op) or not (e[k] is int or e[k] is float) or int(e[k]) <= 0:
+				errs.append("%s: bad loop on op '%s'" % [where, op])
+			continue
 		if k != "op" and k not in OPS[op]:
 			errs.append("%s: op '%s' has unknown param '%s'" % [where, op, k])
 	if e.has("to") and str(e["to"]) not in TARGETS:

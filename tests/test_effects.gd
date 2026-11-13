@@ -226,20 +226,34 @@ func test_charge_discharge_consumes() -> void:
 	eq(c.player.status("charge"), 0, "consumed")
 
 
-func test_echo_repeats_next_card_once() -> void:
-	c.player.add_status("echo", 1)
-	c.play_card(give(c, "jab"), 0)
-	eq(c.enemies[0].hp, 18, "jab twice")
-	c.play_card(give(c, "jab"), 0)
-	eq(c.enemies[0].hp, 12, "third jab once")
+func test_loop_grows_each_run_this_fight() -> void:
+	c.play_card(give(c, "mirror_step"))
+	eq(c.player.ward, 5, "first run")
+	var card: CardInstance = c.discard_pile.pop_back()
+	eq(card.loops, 1)
+	c.hand.append(card)
+	c.play_card(c.hand.size() - 1)
+	eq(c.player.ward, 12, "second run +2")
+	check("Loop +2" in card.text(), "text keeps the tag")
+	check("9" in card.text(), "text shows the grown number")
 
 
-func test_echo_retargets_if_target_dies() -> void:
-	c.enemies[0].hp = 5
-	c.player.add_status("echo", 1)
-	c.play_card(give(c, "jab"), 0)
-	check(c.enemies[0].is_dead(), "first died")
-	eq(c.enemies[1].hp, 24, "echo hit next enemy")
+func test_loop_resets_next_fight() -> void:
+	var deck: Array = db.make_deck(["mirror_step"])
+	deck[0].loops = 3
+	var c2: Combat = Combat.create(db, deck, "mites", GameRng.new(1))
+	eq(c2.draw_pile[0].loops, 0)
+
+
+func test_loop_bonus_daemon_doubles_growth() -> void:
+	c.play_card(give(c, "ghost_thread"))
+	c.play_card(give(c, "twin_cast"))
+	eq(c.enemies[0].hp, 28)
+	var card: CardInstance = c.discard_pile.pop_back()
+	eq(card.loops, 2, "1 + Thread's extra step")
+	c.hand.append(card)
+	c.play_card(c.hand.size() - 1)
+	eq(c.enemies[0].hp, 22, "2 + 2x2")
 
 
 func test_frail_reduces_ward() -> void:
@@ -284,7 +298,7 @@ func test_amplify_doubles_a_status() -> void:
 	eq(en.hp, 26)
 	c.player.add_status("charge", 4)
 	c.play_card(give(c, "recursion"))
-	eq(c.player.status("charge"), 8, "amplify on self")
+	eq(c.player.status("charge"), 9, "amplify on self, then +1")
 
 
 func test_damage_per_status_can_read_the_target() -> void:

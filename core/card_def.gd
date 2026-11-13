@@ -16,6 +16,7 @@ const KEYWORD_DESC := {
 	"innate": "Always loaded into your opening hand.",
 	"ethereal": "If it's still in your hand at the end of your turn, it is wiped.",
 	"once_per_turn": "After you run a copy, it can't run again that turn, even if you redraw it.",
+	"loop": "Each time you run this copy, every number marked Loop +N grows by N for the rest of the fight.",
 }
 const TYPE_DESC := {
 	"attack": "Exploit: usually deals damage to an enemy.",
@@ -146,6 +147,8 @@ static func _param_name(e: Dictionary, k: String) -> String:
 	var op := str(e.get("op", ""))
 	if k == "hits":
 		return "Hits"
+	if k == "loop":
+		return "Loop"
 	if op == "summon":
 		return "%s HP" % e.get("name", "Daemon")
 	if op == "apply" and k == "stacks":

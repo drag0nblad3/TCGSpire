@@ -19,13 +19,14 @@ const FLAGS := {
 	"burn_bonus": "Whenever you apply Virus to an enemy, apply %d more.",
 	"regen_bonus": "Whenever you or a daemon gain Patch, gain %d more.",
 	"debuff_bonus": "Harmful statuses you apply to enemies get +%d.",
+	"loop_bonus": "Your Loop programs grow %d extra step each run.",
 }
 
 ## Rough worth of one turn of each flag (per point), for the bots.
 const FLAG_VALUE := {
 	"burn_no_decay": 2.5, "regen_no_decay": 1.5, "keep_ward": 3.5, "guard": 2.2,
 	"attack_bonus": 2.5, "ward_bonus": 1.6, "thorns": 1.2, "burn_bonus": 2.0,
-	"regen_bonus": 1.5, "debuff_bonus": 1.5,
+	"regen_bonus": 1.5, "debuff_bonus": 1.5, "loop_bonus": 2.0,
 }
 
 
