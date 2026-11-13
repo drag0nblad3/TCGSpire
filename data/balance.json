@@ -169,26 +169,26 @@
    }
   },
   {
-   "desc": "Enemies get another 20% HP and damage. Safehouses repair 10% less. Jobs run against one more crew.",
+   "desc": "Enemies get another 25% HP and 20% damage. Safehouses repair 10% less. Jobs run against one more crew.",
    "mods": {
-    "enemy_hp_pct": 0.2,
+    "enemy_hp_pct": 0.25,
     "enemy_dmg_pct": 0.2,
     "rest_heal_pct": -0.1,
     "extra_targets": 1
    }
   },
   {
-   "desc": "Enemies get another 20% HP and damage. Safehouses repair 10% less.",
+   "desc": "Enemies get another 30% HP and 20% damage. Safehouses repair 10% less.",
    "mods": {
-    "enemy_hp_pct": 0.2,
+    "enemy_hp_pct": 0.3,
     "enemy_dmg_pct": 0.2,
     "rest_heal_pct": -0.1
    }
   },
   {
-   "desc": "Enemies get another 20% HP and damage. Safehouses repair 10% less. Double cross: in the last layer your client sells you out. Their crew hunts you, their programs stop showing up, and their Core waits at the top.",
+   "desc": "Enemies get another 40% HP and 20% damage. Safehouses repair 10% less. Double cross: in the last layer your client sells you out. Their crew hunts you, their programs stop showing up, and their Core waits at the top.",
    "mods": {
-    "enemy_hp_pct": 0.2,
+    "enemy_hp_pct": 0.4,
     "enemy_dmg_pct": 0.2,
     "rest_heal_pct": -0.1,
     "double_cross": 1
