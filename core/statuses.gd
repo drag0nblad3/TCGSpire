@@ -4,18 +4,18 @@ extends RefCounted
 ## handle it in the hook(s) below, then add a test in tests/test_effects.gd.
 
 const DEFS := {
-	"burn": {"debuff": true, "desc": "A virus eating your code: take damage equal to stacks at turn start, then lose 1."},
-	"brittle": {"debuff": true, "desc": "Exposed: takes 50% more attack damage. Loses 1 at end of turn."},
-	"weaken": {"debuff": true, "desc": "Throttled: deals 25% less attack damage. Loses 1 at end of turn."},
-	"might": {"debuff": false, "desc": "Boost: attacks deal +1 damage per stack."},
-	"overcharge": {"debuff": true, "desc": "Overheat: start next turn with 1 less RAM per stack."},
-	"thorns": {"debuff": false, "desc": "Feedback: when attacked, deal damage equal to stacks back to the attacker."},
-	"regen": {"debuff": false, "desc": "Patch: repair HP equal to stacks at end of turn, then lose 1. On a daemon it wins back turns."},
-	"fortify": {"debuff": false, "desc": "Hardened: your Firewall isn't cleared at the start of your turn."},
-	"frail": {"debuff": true, "desc": "Fragmented: gain 25% less Firewall. Loses 1 at end of turn."},
-	"charge": {"debuff": false, "desc": "Buffer: stored power. Some programs spend it for big effects."},
-	"echo": {"debuff": false, "desc": "Loop: your next program runs twice. Uses 1 stack."},
-	"stall": {"debuff": true, "desc": "Lagged: skips its next move, and that intent waits a turn. Never more than 1."},
+	"burn": {"debuff": true, "desc": "At the start of your turn, take damage equal to stacks, then lose 1 stack."},
+	"brittle": {"debuff": true, "desc": "Takes 50% more attack damage. Loses 1 stack at end of turn."},
+	"weaken": {"debuff": true, "desc": "Deals 25% less attack damage. Loses 1 stack at end of turn."},
+	"might": {"debuff": false, "desc": "Attacks deal +1 damage per stack."},
+	"overcharge": {"debuff": true, "desc": "Start next turn with 1 less RAM per stack."},
+	"thorns": {"debuff": false, "desc": "When attacked, deal damage equal to stacks back to the attacker."},
+	"regen": {"debuff": false, "desc": "Repair HP equal to stacks at end of turn, then lose 1 stack. On a daemon it wins back turns."},
+	"fortify": {"debuff": false, "desc": "Your Firewall stays up at the start of your turn."},
+	"frail": {"debuff": true, "desc": "Gain 25% less Firewall. Lose 1 stack at end of turn."},
+	"charge": {"debuff": false, "desc": "Stored power that some programs spend for big effects."},
+	"echo": {"debuff": false, "desc": "Your next program runs twice. Uses 1 stack."},
+	"stall": {"debuff": true, "desc": "Skips its next move, and that intent waits a turn. Never more than 1 stack."},
 }
 
 const DECAYING := ["brittle", "weaken", "frail"]
