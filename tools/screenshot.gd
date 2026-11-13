@@ -204,6 +204,7 @@ func _go(main: Control, scr: String, seed_in: int, inspect_card: String = "flare
 		"resume":
 			main._show(HubScreen.new().setup(db, main.profile, "Layer 2 · Node 17 · HP 40/60"))
 		"combat":
+			main.run.enter(main.run.available_nodes()[0])  # floor 1: shows the soft-entry hint
 			main._start_combat({"type": "fight", "encounter": "wisp_court"})
 		"crew":
 			main.run = RunState.start(db, main.profile, RunState.default_picks(db, main.profile, "noise"), seed_in, 0, "noise")
