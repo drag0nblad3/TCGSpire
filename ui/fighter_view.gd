@@ -40,6 +40,7 @@ var boss_accent := Color.TRANSPARENT
 var enemy_faction := ""
 var enemy_portrait: Array = []
 var elite := false
+var boss_action := 0.0
 
 var _tap := Tap.new()
 
@@ -104,6 +105,7 @@ func _gui_input(event: InputEvent) -> void:
 
 
 func _process(dt: float) -> void:
+	boss_action = maxf(0.0, boss_action - dt * 1.4)
 	if _tap.poll_long():
 		inspected.emit(self)
 	flash = maxf(flash - dt * 4.0, 0.0)
@@ -171,7 +173,11 @@ func _draw() -> void:
 			var tint := Color.WHITE
 			if boss:
 				tint = Color.WHITE.lerp(heat.lightened(0.62), charge * 0.28)
-			draw_texture_rect(portrait, Rect2(c - art_size * 0.5, art_size), false, tint)
+			var art_rect := Rect2(c - art_size * 0.5, art_size)
+			if boss and VirtualBossArt.supports(fighter.def_id) and hp() > 0:
+				VirtualBossArt.draw(self, portrait, art_rect, fighter.def_id, t, maxf(charge * 0.35, boss_action), tint, heat)
+			else:
+				draw_texture_rect(portrait, art_rect, false, tint)
 			if kind == "unit":
 				draw_rect(Rect2(c - art_size * 0.5, art_size).grow(1), Color(col, 0.7), false, 1.0)
 		else:

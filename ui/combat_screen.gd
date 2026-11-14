@@ -574,6 +574,7 @@ func _play_events(played: CardView) -> int:
 			"enemy_move":
 				var src: FighterView = _views.get(str(e["source"]))
 				if src != null and is_instance_valid(src):
+					src.boss_action = 1.0
 					if src.fighter.status("fortify") <= 0:
 						src.shown_ward = 0
 					src.frozen_intents = []
