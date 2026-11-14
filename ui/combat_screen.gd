@@ -63,15 +63,6 @@ func _ready() -> void:
 
 	_floor_label = UiKit.label("", 14, Palette.TEXT_DIM)
 	col.add_child(_floor_label)
-	var piles := UiKit.hbox(8)
-	# Left-aligned so the corner Menu button keeps the top-right free.
-	piles.alignment = BoxContainer.ALIGNMENT_BEGIN
-	for p in ["draw", "discard", "exhaust", "deck"]:
-		var b := UiKit.button("", _show_pile.bind(p), Vector2(118, 46), 15)
-		_pile_btns[p] = b
-		piles.add_child(b)
-	piles.add_child(UiKit.button("?", func() -> void: Rules.open(self, "Turn flow"), Vector2(52, 46), 20))
-	col.add_child(piles)
 	if not combat.talismans.is_empty():
 		var trow := TalismanView.strip(col)
 		for t in combat.talismans:
@@ -131,6 +122,16 @@ func _ready() -> void:
 	_hand_row = _row(6)
 	_hand_row.custom_minimum_size.y = CardView.SIZE.y * HAND_ZOOM + 20
 	col.add_child(_hand_row)
+
+	# Pile viewers sit under the hand, in thumb reach.
+	var piles := UiKit.hbox(8)
+	piles.alignment = BoxContainer.ALIGNMENT_CENTER
+	for p in ["draw", "discard", "exhaust", "deck"]:
+		var b := UiKit.button("", _show_pile.bind(p), Vector2(118, 46), 15)
+		_pile_btns[p] = b
+		piles.add_child(b)
+	piles.add_child(UiKit.button("?", func() -> void: Rules.open(self, "Turn flow"), Vector2(52, 46), 20))
+	col.add_child(piles)
 
 	_fx = Control.new()
 	_fx.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
