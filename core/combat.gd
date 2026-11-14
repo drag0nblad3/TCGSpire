@@ -68,7 +68,8 @@ static func create(db_in: CardDB, deck: Array, encounter_id: String, rng_in: Gam
 	c.hand_size += int(opts.get("extra_hand", 0))
 	var max_hp := int(opts.get("max_hp", p.get("max_hp", 60)))
 	c.enemy_might = int(opts.get("enemy_might", 0))
-	c.enemy_dmg_mult = float(opts.get("enemy_dmg_mult", 1.0))
+	# balance.enemy_dmg_mult scales every enemy's damage (on top of heat/act/perk mults).
+	c.enemy_dmg_mult = float(opts.get("enemy_dmg_mult", 1.0)) * float(db_in.balance.get("enemy_dmg_mult", 1.0))
 	c.daemon_hp = int(opts.get("daemon_hp", 0))
 	for tid in opts.get("talismans", []):
 		if db_in.talismans.has(tid):

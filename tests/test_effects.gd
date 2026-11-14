@@ -157,10 +157,10 @@ func test_rule_keep_ward_and_guard() -> void:
 	var g := make_combat([], "golem")
 	g.summon("Gate", 5, {"flags": {"keep_ward": 1}})
 	g.summon("Decoy", 3, {"flags": {"guard": 4}})
-	eq(g.incoming_damage(), 11, "Slam 15 - 4")
+	eq(g.incoming_damage(), 8, "Slam 15 x0.85 = 12, - 4")
 	g.player.ward = 20
 	g.end_turn()
-	eq(g.player.ward, 9, "20 - 11, and the Firewall is kept")
+	eq(g.player.ward, 12, "20 - 8, and the Firewall is kept")
 	eq(g.units[1].hp, 2)
 
 
@@ -228,14 +228,14 @@ func test_charge_discharge_consumes() -> void:
 
 func test_loop_grows_each_run_this_fight() -> void:
 	c.play_card(give(c, "mirror_step"))
-	eq(c.player.ward, 5, "first run")
+	eq(c.player.ward, 4, "first run")
 	var card: CardInstance = c.discard_pile.pop_back()
 	eq(card.loops, 1)
 	c.hand.append(card)
 	c.play_card(c.hand.size() - 1)
-	eq(c.player.ward, 12, "second run +2")
+	eq(c.player.ward, 10, "second run +2")
 	check("Loop +2" in card.text(), "text keeps the tag")
-	check("9" in card.text(), "text shows the grown number")
+	check("8" in card.text(), "text shows the grown number")
 
 
 func test_loop_resets_next_fight() -> void:
@@ -248,12 +248,12 @@ func test_loop_resets_next_fight() -> void:
 func test_loop_bonus_daemon_doubles_growth() -> void:
 	c.play_card(give(c, "ghost_thread"))
 	c.play_card(give(c, "twin_cast"))
-	eq(c.enemies[0].hp, 28)
+	eq(c.enemies[0].hp, 29)
 	var card: CardInstance = c.discard_pile.pop_back()
 	eq(card.loops, 2, "1 + Thread's extra step")
 	c.hand.append(card)
 	c.play_card(c.hand.size() - 1)
-	eq(c.enemies[0].hp, 22, "2 + 2x2")
+	eq(c.enemies[0].hp, 24, "1 + 2x2")
 
 
 func test_frail_reduces_ward() -> void:

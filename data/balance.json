@@ -5,6 +5,7 @@
   "hand_size": 5
  },
  "board_slots": 3,
+ "enemy_dmg_mult": 0.85,
  "enemy_hp_mult_by_act": {
   "1": 0.85
  },

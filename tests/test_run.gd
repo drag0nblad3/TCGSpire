@@ -425,7 +425,7 @@ func test_act_start_ease_reaches_enemies_and_stacks_with_act_mult() -> void:
 	var c := r.start_combat(enc)
 	var act1: float = float(db.balance["enemy_hp_mult_by_act"]["1"])
 	check(is_equal_approx(c.enemy_hp_mult, 0.8 * act1), "ease x act 1 hp mult")
-	check(is_equal_approx(c.enemy_dmg_mult, 0.9), "ease dmg mult")
+	check(is_equal_approx(c.enemy_dmg_mult, 0.9 * float(db.balance["enemy_dmg_mult"])), "ease dmg mult")
 	r.node_id = int(r.map.rows[2][0])
 	var c2 := r.start_combat(enc)
 	for i in c.enemies.size():
