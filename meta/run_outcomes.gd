@@ -7,7 +7,7 @@ extends RefCounted
 ## To add an op: OPS + apply() + describe(), then a test in tests/test_run.gd.
 
 const OPS := {
-	"gold": ["amount"],
+	"gold": ["amount", "pct"],
 	"heal": ["amount", "pct"],
 	"lose_hp": ["amount"],
 	"max_hp": ["amount"],
@@ -27,7 +27,8 @@ static func apply(run: RunState, o: Dictionary) -> String:
 	run.outcome_counter += 1
 	match str(o.get("op", "")):
 		"gold":
-			n = run.earned_creds(n)
+			if o.has("pct"):
+				n = int(run.gold * float(o["pct"]))
 			run.gold = maxi(run.gold + n, 0)
 			return "%+d creds" % n
 		"heal":
@@ -112,6 +113,8 @@ static func describe(o: Dictionary) -> String:
 	var n := int(o.get("amount", 0))
 	match str(o.get("op", "")):
 		"gold":
+			if o.has("pct"):
+				return "Gain %d%% of the creds you hold." % roundi(float(o["pct"]) * 100)
 			return "%s %d creds." % ["Gain" if n >= 0 else "Lose", absi(n)]
 		"heal":
 			return "Repair %d%% of max HP." % int(float(o["pct"]) * 100) if o.has("pct") else "Heal %d." % n

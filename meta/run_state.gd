@@ -192,13 +192,6 @@ func heat_mult(key: String) -> float:
 
 
 ## Sum of a perk modifier over this run's subroutines and the rig (x rank).
-## Creds you earn, after mods that boost every source (Gilded Chip). Spending isn't scaled.
-func earned_creds(n: int) -> int:
-	if n <= 0:
-		return n
-	return roundi(n * (1.0 + perk_mod("creds_pct")))
-
-
 func perk_mod(key: String) -> float:
 	var v := 0.0
 	for pid in perks:
@@ -319,6 +312,8 @@ func enter(id: int) -> Dictionary:
 	var node := map.node(id)
 	floor_num = (act - 1) * map.rows.size() + int(node["row"]) + 1
 	jump_lines = Talismans.fire_run(self, "jump") if jumped else []
+	if str(node.get("type", "")) == "rest":
+		jump_lines.append_array(Talismans.fire_run(self, "rest"))
 	return node
 
 
@@ -344,7 +339,6 @@ func finish_combat(c: Combat) -> Dictionary:
 	var kind := str(db.encounters.get(c.encounter_id, {}).get("kind", "normal"))
 	var g: Array = db.balance.get("gold", {}).get(kind, [10, 20])
 	rewards["gold"] = int(rng.fork("gold:%d" % floor_num).range_i(int(g[0]), int(g[1])) * (1.0 + perk_mod("gold_pct")))
-	rewards["gold"] = earned_creds(rewards["gold"])
 	gold += rewards["gold"]
 	var mend := int(perk_mod("combat_heal"))
 	if mend > 0:
@@ -586,7 +580,7 @@ func open_vault() -> Dictionary:
 	if tid != "":
 		add_talisman(tid)
 	var g: Array = cfg.get("gold", [60, 90])
-	var gold_won := earned_creds(r.range_i(int(g[0]), int(g[1])))
+	var gold_won := r.range_i(int(g[0]), int(g[1]))
 	gold += gold_won
 	return {"talisman": tid, "gold": gold_won, "lines": Talismans.fire_run(self, "vault")}
 

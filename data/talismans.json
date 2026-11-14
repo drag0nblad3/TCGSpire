@@ -23,7 +23,7 @@
 {"id":"quill_of_fate","name":"Fate Compiler","rarity":"uncommon","triggers":[{"on":"card_played","every":8,"effects":[{"op":"energy","amount":2},{"op":"draw","amount":2}]}]},
 {"id":"living_armor","name":"Living Chrome","rarity":"uncommon","unlock_level":5,"flags":{"guard":1}},
 {"id":"void_heart","name":"Null Heart","rarity":"boss","triggers":[{"on":"turn_start","effects":[{"op":"apply","status":"charge","stacks":2,"to":"self"}]}]},
-{"id":"gilded_scale","name":"Gilded Chip","rarity":"boss","mods":{"creds_pct":0.5}},
+{"id":"gilded_scale","name":"Gilded Chip","rarity":"boss","run":[{"on":"rest","outcomes":[{"op":"gold","pct":0.1}]}]},
 {"id":"ceramic_casing","name":"Ceramic Casing","rarity":"common","daemon":{"hp":2}},
 {"id":"watchdog_chip","name":"Watchdog Chip","rarity":"uncommon","triggers":[{"on":"card_played","card_type":"unit","effects":[{"op":"ward","amount":4}]}]},
 {"id":"swap_file","name":"Swap File","rarity":"uncommon","faction":"neutral","triggers":[{"on":"reshuffle","effects":[{"op":"energy","amount":1},{"op":"draw","amount":1}]}]},

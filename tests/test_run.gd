@@ -392,15 +392,14 @@ func test_implant_mods_feed_run_numbers() -> void:
 	eq(Profile.run_packs(db, r), base + 2, "bonus cache needs a Core")
 
 
-func test_gilded_chip_boosts_every_cred_source() -> void:
+func test_gilded_chip_pays_interest_at_safehouses() -> void:
 	var r := _run()
 	r.add_talisman("gilded_scale")
-	var g := r.gold
-	RunOutcomes.apply(r, {"op": "gold", "amount": 20})
-	eq(r.gold, g + 30, "+50% on event creds")
-	RunOutcomes.apply(r, {"op": "gold", "amount": -10})
-	eq(r.gold, g + 20, "losses aren't scaled")
-	eq(r.earned_creds(15), 23, "rounds")
+	r.gold = 205
+	var lines := Talismans.fire_run(r, "rest")
+	eq(r.gold, 225, "10% of held creds, rounded down")
+	eq(lines.size(), 1, "logged")
+	check("safehouse" in Talismans.describe(db.talismans["gilded_scale"]), "rules text names the trigger")
 
 
 func test_implant_run_triggers_on_vault_and_jump() -> void:

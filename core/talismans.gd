@@ -15,11 +15,11 @@ extends RefCounted
 ## "card_type": "attack" and "keyword": "loop" (card_played and loop only).
 
 const TRIGGERS := ["combat_start", "turn_start", "turn_end", "card_played", "kill", "daemon_closed", "loop", "reshuffle"]
-## Map-level triggers: "jump" (you jump to a node), "vault" (you crack a vault).
-const RUN_TRIGGERS := ["jump", "vault"]
-const RUN_LABEL := {"jump": "When you jump", "vault": "When you crack a vault"}
+## Map-level triggers: "jump" (you jump to a node), "vault" (you crack a vault), "rest" (you enter a safehouse).
+const RUN_TRIGGERS := ["jump", "vault", "rest"]
+const RUN_LABEL := {"jump": "When you jump", "vault": "When you crack a vault", "rest": "When you reach a safehouse"}
 ## Subroutine mod keys an implant may carry (the ones RunState reads live).
-const MOD_KEYS := ["gold_pct", "creds_pct", "rest_heal_pct", "shop_discount_pct", "reward_choices", "perk_choices",
+const MOD_KEYS := ["gold_pct", "rest_heal_pct", "shop_discount_pct", "reward_choices", "perk_choices",
 	"combat_heal", "start_ward", "ward_retention", "daemon_death_damage", "rep_pct", "remove_discount",
 	"max_energy", "hand_size", "board_slots", "daemon_hp", "jumps", "run_scrap", "bonus_packs"]
 const RARITIES := ["common", "uncommon", "rare", "boss"]
