@@ -66,13 +66,26 @@ func _ready() -> void:
 	var title := str(profile.settings.get("title", ""))
 	if title != "":
 		v.add_child(UiKit.label(_title_name(title), 16, Palette.UPGRADED))
-	v.add_child(_run_box())
-	v.add_child(_main_actions())
+	# Sections get a small gap that grows to share any spare screen height.
+	v.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var sections: Array[Control] = [_run_box(), _main_actions()]
 	if saved_run == "":
-		v.add_child(_challenges())
-	v.add_child(_login_panel())
-	v.add_child(_stats_box())
+		sections.append(_challenges())
+	sections.append(_login_panel())
+	sections.append(_stats_box())
+	for sec in sections:
+		v.add_child(_gap())
+		v.add_child(sec)
 	outer.add_child(_tab_bar())
+
+
+## Flexible spacer between hub sections: at least 10 px, takes a share of leftover height.
+func _gap() -> Control:
+	var c := Control.new()
+	c.custom_minimum_size.y = 10
+	c.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return c
 
 
 ## The soft box around everything that starts a run: heat, the run buttons and the payout fold.
@@ -348,7 +361,8 @@ func _set_heat(h: int) -> void:
 	if heat == 0:
 		_heat_desc.text = "Heat is difficulty. Heat 0 has no extra modifiers."
 	else:
-		_heat_desc.text = "Heat %d in total: %s.\nHeat %d adds: %s" % [heat, heat_total(db, heat), heat, str(levels[heat - 1]["desc"])]
+		var total := heat_total(db, heat)
+		_heat_desc.text = "Heat %d in total: %s." % [heat, total[0].to_upper() + total.substr(1)]
 	if heat == profile.max_heat and heat < levels.size():
 		_heat_desc.text += "\nBreach the final Core to unlock Heat %d." % (heat + 1)
 	if _rewards_label != null:
