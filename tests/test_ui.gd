@@ -207,6 +207,25 @@ func test_upgrade_diff_marks_changed_numbers() -> void:
 	eq(CardView.diff_text("Gain 5 Firewall.", "Gain 5 Firewall."), "Gain 5 Firewall.", "no change, no arrow")
 
 
+## A ScrollContainer only drag-scrolls on touch if its content passes mouse events up.
+## The map canvas on the default STOP filter ate every drag (map wouldn't scroll on phones).
+func test_map_canvas_lets_drags_scroll() -> void:
+	var p := Profile.new()
+	var r := RunState.start(db, p, RunState.default_picks(db, p), 1, 0)
+	var ms := MapScreen.new().setup(r)
+	ms._ready()  # builds the canvas; the scroll-to-row step needs a running tree
+	eq(ms._canvas.mouse_filter, Control.MOUSE_FILTER_PASS, "map canvas filter")
+	# A tap on a lit node still picks it.
+	ms._canvas.size = Vector2(720, ms._canvas.custom_minimum_size.y)
+	var picked: Array = []
+	ms.node_chosen.connect(func(id: int) -> void: picked.append(id))
+	var id: int = r.available_nodes()[0]
+	ms._on_canvas_input(_press(ms._pos(id), true))
+	ms._on_canvas_input(_press(ms._pos(id), false))
+	eq(picked, [id], "tap on a lit node")
+	ms.free()
+
+
 func test_fighter_inspect_lists_statuses_and_taps_closed() -> void:
 	var root: Window = (Engine.get_main_loop() as SceneTree).root
 	var c := make_combat(["jab", "jab", "jab", "jab", "jab"], "mites")

@@ -449,7 +449,7 @@ func _show_jobs(heat: int) -> void:
 		var sb: StyleBoxFlat = card.get_theme_stylebox("panel")
 		sb.border_color = Color(Palette.faction(f), 0.6)
 		sb.set_border_width_all(2)
-		card.mouse_filter = Control.MOUSE_FILTER_STOP
+		card.mouse_filter = Control.MOUSE_FILTER_PASS  # PASS so dragging on a job still scrolls the board
 		var tap := Tap.new()
 		card.gui_input.connect(func(event: InputEvent) -> void:
 			if tap.feed(event) == "tap":
