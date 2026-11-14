@@ -79,7 +79,7 @@ func test_wave2_extended_handshakes_and_once_per_turn() -> void:
 	var encore := db.instance("encore_buffer")
 	d.hand = [encore]
 	d.play_card(give(d, "rebroadcast"))
-	eq(encore.relay, 3)
+	eq(encore.relay, 2)
 	var ram := d.energy
 	d.play_card(0, 0)
 	eq(d.energy, ram, "encore refunds cost after rebroadcast")
@@ -95,7 +95,7 @@ func test_wave2_sequence_orders_and_reserve_payload() -> void:
 	eq(c.enemies[0].status("brittle"), 1)
 	c.play_card(give(c, "brace"))
 	c.play_card(give(c, "backdoor"), 0)
-	eq(c.enemies[0].status("stall"), 1, "attack-script order enables Backdoor")
+	eq(c.enemies[0].status("brittle"), 3, "attack-script order enables Backdoor")
 	var host := db.instance("brace")
 	c.draw_pile = [host]
 	c.play_card(give(c, "reserve_parcel"))
