@@ -11,7 +11,8 @@ field-service manual shading, strong small-scale silhouettes, uniform warm ivory
 background, no labels or frames. Built-in image generation produced two idle 5×5
 atlases, then two matching activation edits preserving each device's position,
 size, angle and construction while changing a local working component. Asset
-preparation only normalized atlas dimensions and encoded WebP; no art was repainted.
+preparation normalized the atlas dimensions and removed the ivory paper from
+both frame sets using alpha masks. Tile positions and activation hot spots are unchanged.
 First atlas follows the first 25 data entries (Hot Chip through Gilded Chip); second
 atlas follows the remaining 25 (Ceramic Casing through Inside Contact).
 
