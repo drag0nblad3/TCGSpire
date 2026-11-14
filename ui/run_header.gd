@@ -44,6 +44,9 @@ func _ready() -> void:
 	_info_box = UiKit.panel(_info)
 	_info_box.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_info_box.visible = false
+	UiKit.tap_to_close(_info_box, func() -> void:
+		_info_box.visible = false
+		_info_key = "")
 	add_child(_info_box)
 	if not run.talismans.is_empty():
 		var row := TalismanView.strip(self)

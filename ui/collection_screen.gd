@@ -398,3 +398,4 @@ func _show_detail(id: String) -> void:
 	v.add_child(UiKit.label("Your last copy can't be disenchanted.", 12, Palette.TEXT_DIM, true))
 	v.add_child(_firmware_row(id, overlay))
 	v.add_child(UiKit.button("Close", func() -> void: overlay.queue_free()))
+	UiKit.tap_to_close(overlay)
