@@ -61,7 +61,7 @@ func test_compile_retains_caps_executes_and_clears() -> void:
 	var hp: int = c.enemies[0].hp
 	c.play_card(c.hand.find(compiler), 0)
 	eq(c.enemies[0].hp, hp - 6)
-	eq(c.player.ward, 6, "base and compiled Firewall")
+	eq(c.player.ward, 5, "base and compiled Firewall")
 	eq(compiler.compiled, [])
 
 func test_compile_cannot_record_play_that_drew_it() -> void:
@@ -81,7 +81,7 @@ func test_compile_power_and_unit_instructions() -> void:
 	c.hand = [compiler]
 	c.play_card(0, 0)
 	eq(c.hand.size(), 1)
-	eq(c.player.ward, 8)
+	eq(c.player.ward, 7)
 
 func test_plant_once_strongest_and_empty_pile() -> void:
 	var c := arena()

@@ -84,18 +84,18 @@ func test_bone_saw_nerve_lash_partnership_both_orders() -> void:
 	var c := arena()
 	c.play_card(give(c, "bramble_lash"), 0)
 	c.play_card(give(c, "bone_saw"), 0)
-	eq(c.player.status("thorns"), 5)
+	eq(c.player.status("thorns"), 6)
 	var d := arena()
 	d.draw_pile = db.make_deck(["brace"])
 	d.play_card(give(d, "bone_saw"), 0)
 	eq(d.player.status("thorns"), 0, "Bone Saw alone has no Feedback")
 	d.play_card(give(d, "bramble_lash"), 0)
 	eq(d.hand.size(), 1, "reverse order draws")
-	eq(d.player.status("thorns"), 1)
+	eq(d.player.status("thorns"), 2)
 
 func test_refresh_preserves_simple_staples_and_unique_names() -> void:
 	eq(db.card("tidewall").effects, [{"op":"ward", "amount":12.0}])
-	eq(db.card("second_wind").effects, [{"op":"draw", "amount":2.0}])
+	eq(db.card("second_wind").effects, [{"op":"ward", "amount":3.0}, {"op":"draw", "amount":2.0}])
 	eq(db.card("molten_shield").name, "Heat Sink")
 	eq(db.card("heat_sink").name, "Thermal Reservoir")
 	var names := {}

@@ -9,6 +9,9 @@ Original design only: don't copy cards, names, characters or look from existing 
 - `scripts/sim.sh [n=200] [deck=a,b] [enc=mites,golem]` — bot plays seeded fights, one line per encounter.
 - `scripts/sim.sh mode=run [n=100] [heat] [job=ember|all] [profile=new|experienced|veteran|max] [acts=1]` — bot plays whole runs: win %, avg floor,
   top killers; `acts=1` adds per-act death share and turns per normal/elite/boss fight. `profile=experienced`/`veteran` = save after 10/39 bot runs with likely spending, `max` = everything owned/bought (`meta/profile_bot.gd`). Default heat per profile: new 0, experienced 1, veteran 3, max 6.
+- `scripts/card_sim.sh [n=60] [profile=new] [heat] [cards=a,b] [jobs=4] [out=/tmp/card_sim]` — per-card balance: 2 copies of each pack card
+  forced into the starter picks on its crew's job, scored by floor reached vs seed-paired baseline runs (`rel` = vs crew median), plus
+  bot picks/offers and plays/damage/Firewall per play; writes `report.tsv` in `out`. ~10 min for every card at n=80 on 4 cores. Low plays/run = bot blind spot.
 - `scripts/sim_matrix.sh` — the standard balance check Tyler wants: 150 runs per cell, new heat 0-1, experienced 1-3, veteran 2-5, max 4-6.
 - `scripts/shot.sh screen=<name|all> out=/tmp/x.png [plays=2] [end_turn=1] [theme=archive]` — real render to PNG (xvfb).
   Screens: hub map combat reward rest shop event collection picker pack pack_open pack_shelf pack_premium pack_crew weekly weekly_map login signal_result end inspect rules jobs rig perk tinker crew firmware recompile menu settings resume tutorial coach foil. Uses a throwaway profile.
@@ -55,7 +58,7 @@ Original design only: don't copy cards, names, characters or look from existing 
 - Daemons (unit cards) are temporary rule changes, not attackers: `summon` = {name, hp, rule}; `rule` = passive
   `flags` (`DaemonRules.FLAGS`) + implant-style `triggers`. HP is the countdown: -1 at the start of each of your
   turns, -1 per hit taken, Purge moves (enemy damage `"to": "daemon"`) take their full number. Re-running a daemon
-  that is up tops its HP back up. Scaling: `daemon_hp` (rig/subroutine mod, implant `"daemon": {"hp": n}`),
+  that is up tops its HP back up. Daemon-only trigger `closed` fires when that daemon shuts down (ran out, hit, crashed); re-running a daemon with a `closed` rule restarts it instead (payoff fires, fresh HP): Botnet Lease. Scaling: `daemon_hp` (rig/subroutine mod, implant `"daemon": {"hp": n}`),
   `rally` (+HP to all daemons), Patch on a daemon (cards with `"target": "ally"`). In a daemon rule trigger, `"to": "this"` targets that daemon (Leech Line repairs itself).
 - Card pool: every crew (Street included) has 8 common / 8 uncommon / 5 rare / 2 mythic (`test_data` enforces it).
   Joint ops (`data/cards/joint.json`, `"faction2"`): one per non-rival crew pair, on top of the spread. They count as
@@ -89,7 +92,7 @@ Original design only: don't copy cards, names, characters or look from existing 
   (jump, vault -> run outcomes) and a `faction` (never rolls when that crew is a target). Event outcomes use `RunOutcomes.OPS`.
 - Balance check after content changes: `scripts/sim.sh mode=run n=400 job=all` (~20 s). Bot baseline at heat 0
   on jobs (new profile, 3 acts): ~30% clear act 1, ~5% win; experienced (10 runs) ~37% win at heat 1, ~5% at heat 2; veteran (25 runs, now 39) ~47% at heat 2,
-  ~15% at heat 3; max ~89% at heat 3, ~33% at heat 6 (Tyler is fine with lower rates since Act 3). Heat `enemy_hp_pct`/`enemy_dmg_pct` compound per level (`RunState.heat_mult`), the main lever. The first 2 floors of each act are eased (`balance.act_start_ease`: -20% enemy HP, -10% damage, multiplied on top of act/heat/perk mults; `RunState.act_start_mult`).
+  ~15% at heat 3; max ~89% at heat 3, ~33% at heat 6 (Tyler is fine with lower rates since Act 3). Heat `enemy_hp_pct`/`enemy_dmg_pct` compound per level (`RunState.heat_mult`), the main lever. `balance.enemy_dmg_mult` (0.85) scales all enemy damage on top. The first 2 floors of each act are eased (`balance.act_start_ease`: -20% enemy HP, -10% damage, multiplied on top of act/heat/perk mults; `RunState.act_start_mult`).
   Runs pay `packs_per_boss`. Humans should do much
   better. Watch the killers list. `core/bot.gd` values (card, target) pairs from live state (no search/copies);
   `meta/run_bot.gd` uses static `card_value` for picks/upgrades/shop and scores event outcomes. Keep both cheap.

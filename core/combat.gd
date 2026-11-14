@@ -68,7 +68,8 @@ static func create(db_in: CardDB, deck: Array, encounter_id: String, rng_in: Gam
 	c.hand_size += int(opts.get("extra_hand", 0))
 	var max_hp := int(opts.get("max_hp", p.get("max_hp", 60)))
 	c.enemy_might = int(opts.get("enemy_might", 0))
-	c.enemy_dmg_mult = float(opts.get("enemy_dmg_mult", 1.0))
+	# balance.enemy_dmg_mult scales every enemy's damage (on top of heat/act/perk mults).
+	c.enemy_dmg_mult = float(opts.get("enemy_dmg_mult", 1.0)) * float(db_in.balance.get("enemy_dmg_mult", 1.0))
 	c.daemon_hp = int(opts.get("daemon_hp", 0))
 	for tid in opts.get("talismans", []):
 		if db_in.talismans.has(tid):
@@ -368,6 +369,14 @@ func crash_daemon(u: Fighter) -> void:
 
 ## A daemon left the board (crashed or ran out): Hive Link's blast.
 func _daemon_closed(u: Fighter) -> void:
+	# The daemon's own "closed" rule (Botnet Lease's parting blast).
+	for trig in u.rule.get("triggers", []):
+		if trig.get("on", "") != "closed" or is_over():
+			continue
+		emit("rule", {"id": u.id, "trigger": "closed"})
+		for e in trig.get("effects", []):
+			Effects.resolve(self, e, player, null)
+		_check_end()
 	if not is_over():
 		Talismans.fire(self, "daemon_closed", {"daemon": u})
 		_check_end()
@@ -408,6 +417,11 @@ func draw(n: int) -> void:
 ## (same name) tops its HP back up instead of taking a slot.
 func summon(unit_name: String, hp: int, rule: Dictionary = {}) -> bool:
 	hp = maxi(ceili(hp * daemon_hp_mult - 0.001) + daemon_hp, 1)
+	# A daemon with a "closed" rule restarts when re-run: it shuts down (payoff fires), then boots fresh.
+	for u in units:
+		if u.name == unit_name and u.rule.get("triggers", []).any(func(t: Dictionary) -> bool: return t.get("on", "") == "closed"):
+			crash_daemon(u)
+			break
 	for u in units:
 		if u.name == unit_name:
 			u.max_hp = maxi(u.max_hp, hp)

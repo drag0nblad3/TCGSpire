@@ -50,7 +50,8 @@ static func validate(rule: Dictionary, where: String) -> Array[String]:
 		if not FLAGS.has(k):
 			errs.append("%s: unknown rule flag '%s'" % [where, k])
 	for trig in rule.get("triggers", []):
-		if trig.get("on", "") not in Talismans.TRIGGERS or trig.get("on", "") == "combat_start":
+		# "closed" is a daemon-only trigger: it fires once, when this daemon leaves the board.
+		if trig.get("on", "") != "closed" and (trig.get("on", "") not in Talismans.TRIGGERS or trig.get("on", "") == "combat_start"):
 			errs.append("%s: bad rule trigger '%s'" % [where, trig.get("on", "")])
 		for e in trig.get("effects", []):
 			errs.append_array(Effects.validate(e, where))
@@ -79,6 +80,8 @@ static func value(e: Dictionary, hp_bonus: int = 0) -> float:
 				times = up * (1.3 if trig.has("card_type") else 3.0)
 			"kill":
 				times = 1.0
+			"closed":
+				times = 0.8  # once, and only if the fight lasts that long
 		v += per * times / float(trig.get("every", 1))
 	return v
 
@@ -87,7 +90,7 @@ static func _effect_value(fx: Dictionary) -> float:
 	var n := float(fx.get("amount", 0))
 	match str(fx.get("op", "")):
 		"damage":
-			return n * float(fx.get("hits", 1)) * (1.8 if fx.get("to", "") == "all_enemies" else 1.0)
+			return n * float(fx.get("hits", 1)) * (1.4 if fx.get("to", "") == "all_enemies" else 1.0)
 		"damage_per_ward":
 			return 6.0 * float(fx.get("mult", 1.0))
 		"ward":
@@ -95,7 +98,7 @@ static func _effect_value(fx: Dictionary) -> float:
 		"heal":
 			return n * 0.8
 		"apply":
-			return float(fx.get("stacks", 1)) * 1.8
+			return float(fx.get("stacks", 1)) * (3.0 if fx.get("to", "") == "all_enemies" else 1.8)
 		"draw":
 			return n * 3.5
 		"energy":

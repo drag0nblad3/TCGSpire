@@ -6,9 +6,17 @@ extends RefCounted
 ## estimates (card_value, _outcome_value), so it stays fast.
 
 
-static func play(db: CardDB, profile: Profile, seed_in: int, heat: int = 0, job: String = "") -> Dictionary:
+## forced: card ids that replace the weakest starter picks (per-card sims).
+## stats: optional Dictionary filled with per-card offers, picks and plays
+## (card id -> {offered, picked, plays, dmg, ward}) for tools/sim.gd mode=cards.
+static func play(db: CardDB, profile: Profile, seed_in: int, heat: int = 0, job: String = "", forced: Array = [], stats = null) -> Dictionary:
 	var targets := Jobs.targets(db, job, Jobs.extra_targets(db, heat), GameRng.new(seed_in).fork("job")) if job != "" else []
-	var run := RunState.start(db, profile, best_picks(db, profile, job, targets), seed_in, heat, job, targets)
+	var picks := best_picks(db, profile, job, targets)
+	if not forced.is_empty():
+		picks = picks.filter(func(id: String) -> bool: return id not in forced)
+		picks.resize(mini(picks.size(), maxi(profile.starter_picks(db) - forced.size(), 0)))
+		picks.append_array(forced)
+	var run := RunState.start(db, profile, picks, seed_in, heat, job, targets)
 	var died_to := ""
 	var fights: Array = []
 	var steps := 0
@@ -28,6 +36,8 @@ static func play(db: CardDB, profile: Profile, seed_in: int, heat: int = 0, job:
 				var act_now := run.act
 				var res := Bot.run_combat(c)
 				fights.append({"act": act_now, "kind": node["type"], "turns": int(res["turns"]), "won": c.phase == Combat.Phase.WON})
+				if stats != null:
+					tally_plays(c, stats)
 				var rewards := run.finish_combat(c)
 				if c.phase != Combat.Phase.WON:
 					died_to = node["encounter"]
@@ -35,6 +45,11 @@ static func play(db: CardDB, profile: Profile, seed_in: int, heat: int = 0, job:
 				var pick := _pick_reward(run, rewards["cards"])
 				if pick == "" and run.reward_rerolls_left > 0:
 					pick = _pick_reward(run, run.reroll_reward(rewards["kind"], rewards["cards"]))
+				if stats != null:
+					for id in rewards["cards"]:
+						_stat(stats, id)["offered"] += 1
+					if pick != "":
+						_stat(stats, pick)["picked"] += 1
 				if pick != "":
 					run.add_card(pick)
 				run.add_talisman(rewards["talisman"])
@@ -83,6 +98,32 @@ static func play(db: CardDB, profile: Profile, seed_in: int, heat: int = 0, job:
 		"stuck": not run.over and died_to == "",
 		"run": run,
 	}
+
+
+static func _stat(stats: Dictionary, id: String) -> Dictionary:
+	if not stats.has(id):
+		stats[id] = {"offered": 0, "picked": 0, "plays": 0, "dmg": 0, "ward": 0}
+	return stats[id]
+
+
+## Credits each card play with the enemy damage and Firewall that follow it
+## until the next play or the enemy phase (status ticks and daemon rules that
+## fire later are not credited, so this undercounts slow cards).
+static func tally_plays(c: Combat, stats: Dictionary) -> void:
+	var cur: Dictionary = {}
+	for e in c.events:
+		match e["t"]:
+			"play":
+				cur = _stat(stats, str(e["card"]).split("#")[0].trim_suffix("+"))
+				cur["plays"] += 1
+			"enemy_phase", "turn_start":
+				cur = {}
+			"damage":
+				if not cur.is_empty() and str(e["target"]).begins_with("e"):
+					cur["dmg"] += int(e["amount"]) + int(e["blocked"])
+			"ward":
+				if not cur.is_empty() and e["target"] == "player":
+					cur["ward"] += int(e["amount"])
 
 
 static func _choose_node(run: RunState, options: Array) -> int:
@@ -153,7 +194,7 @@ static func card_value(c: CardDef, upgraded: bool = false) -> float:
 			"plant", "relay":
 				v += n * 0.8
 			"handshake", "sequence":
-				v += 3.0
+				v += 1.5  # needs its partner in the same turn
 			"damage":
 				v += n * float(e.get("hits", 1)) * aoe
 			"damage_per_ward", "damage_per_status":
@@ -179,7 +220,7 @@ static func card_value(c: CardDef, upgraded: bool = false) -> float:
 			"rally":
 				v += 1.0 + n * 1.5
 			"heal":
-				v += n * 0.7
+				v += n * 1.2  # HP carries between fights
 			"lose_hp":
 				v -= n * 0.6
 			"add_card":

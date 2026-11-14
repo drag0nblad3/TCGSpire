@@ -54,6 +54,7 @@ func test_intents_classify_moves() -> void:
 		{"op": "apply", "status": "weaken", "stacks": 1}, {"op": "apply", "status": "might", "stacks": 2, "to": "self"}]}]
 	en.move_idx = 0
 	en.statuses = {"might": 1}
+	en.dmg_mult = 1.0
 	var items := Intents.of(c, en)
 	eq(items.map(func(i: Dictionary) -> String: return i["kind"]), ["attack", "ward", "debuff", "buff"])
 	eq(items[0]["value"], 5, "might should be included")
