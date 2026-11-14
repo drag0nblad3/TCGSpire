@@ -5,7 +5,7 @@ extends SceneTree
 ##                   [out=/tmp/shot.png] [frames=30] [plays=2] [seed=1] [theme=archive] [end_turn=1] [give=sparring_dummy,drone_swarm]
 ## Under --headless it still runs (smoke test for script errors) but writes no image.
 
-const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "pack_open", "pack_shelf", "pack_premium", "pack_crew", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume", "records", "exploits", "ice", "deep", "daily", "signal_result", "weekly", "weekly_map", "login", "tutorial", "coach", "map_walls", "map_jump", "foil"]
+const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "pack_open", "pack_shelf", "pack_premium", "pack_crew", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume", "records", "exploits", "ice", "deep", "daily", "signal_result", "weekly", "weekly_map", "login", "tutorial", "coach", "map_walls", "map_jump", "foil", "lethal"]
 
 
 func _initialize() -> void:
@@ -26,6 +26,13 @@ func _initialize() -> void:
 		main.apply_theme(opts["theme"])
 	var screens: Array = SCREENS if opts["screen"] == "all" else [opts["screen"]]
 	for scr in screens:
+		# Overlays (rules, menus, inspector) live on the root: clear the last screen's.
+		for n in root.get_children():
+			if n != main and n is Control:
+				n.free()
+		for n in main.get_children():
+			if n is DeckOverlay:
+				n.free()
 		_go(main, scr, int(opts["seed"]), str(opts.get("card", "flare_volley")))
 		for i in 3:
 			await process_frame
@@ -239,6 +246,13 @@ func _go(main: Control, scr: String, seed_in: int, inspect_card: String = "flare
 		"combat":
 			main.run.enter(main.run.available_nodes()[0])  # floor 1: shows the soft-entry hint
 			main._start_combat({"type": "fight", "encounter": "wisp_court"})
+		"lethal":
+			# Combat where the incoming hit would flatline you: red hint and pulsing panels.
+			main.run.enter(main.run.available_nodes()[0])
+			main._start_combat({"type": "fight", "encounter": "wisp_court"})
+			main._combat.player.hp = 4
+			main._combat.player.ward = 0
+			main._screen._rebuild()
 		"crew":
 			main.run = RunState.start(db, main.profile, RunState.default_picks(db, main.profile, "noise"), seed_in, 0, "noise")
 			main._start_combat({"type": "boss", "encounter": "chrome_a1b"})
@@ -255,7 +269,7 @@ func _go(main: Control, scr: String, seed_in: int, inspect_card: String = "flare
 			main.get("_screen").collection_pressed.emit()
 			main.get("_screen")._show_detail("drone_swarm")
 		"reward":
-			main._show_reward(["+15 gold", "Found Bone Dice"], ["bone_dice"], main.run.reward_choices("elite"))
+			main._show_reward(["+15 creds", "Recovered implant: Loaded Dice"], ["bone_dice"], main.run.reward_choices("elite"))
 		"signal_result":
 			# A Signal that paid a random mod, an upgrade, an implant and a subroutine, with the header info open.
 			main.run.clauses = db.contracts.keys().slice(0, 2)

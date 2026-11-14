@@ -21,6 +21,12 @@ var base_only := false
 var _problem: Label
 var _begin: Button
 var _filter := "all"
+## Library order: crew (default), cost, rarity or newest (most recently added first).
+var _sort := "crew"
+var _search := ""
+const SORTS := ["crew", "cost", "rarity", "newest"]
+## Four cards across a phone screen, big enough to read.
+const ZOOM := 1.24
 var _grid: HFlowContainer
 var _header: Label
 
@@ -57,8 +63,15 @@ func _ready() -> void:
 		_problem = UiKit.label("", 14, Palette.HP, true)
 		v.add_child(_problem)
 		v.add_child(_loadout_row())
-	# Wraps onto a second row on narrow screens instead of pushing the page wider.
-	var filters := UiKit.flow(6)
+	# One row you can swipe sideways, so no filter ends up alone on a second line.
+	var filter_scroll := ScrollContainer.new()
+	filter_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	filter_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	filter_scroll.custom_minimum_size.y = 48
+	filter_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var filters := UiKit.hbox(6)
+	filters.alignment = BoxContainer.ALIGNMENT_BEGIN
+	filter_scroll.add_child(filters)
 	for f in FILTERS:
 		if pick_mode and f in targets:
 			continue
@@ -77,7 +90,25 @@ func _ready() -> void:
 			for state in ["normal", "hover", "pressed", "focus"]:
 				filter.add_theme_color_override("icon_" + state + "_color", accent)
 		filters.add_child(filter)
-	v.add_child(filters)
+	v.add_child(filter_scroll)
+	var tools := UiKit.hbox(8)
+	var search := LineEdit.new()
+	search.placeholder_text = "Search name or text"
+	search.clear_button_enabled = true
+	search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	search.custom_minimum_size.y = 44
+	search.add_theme_font_size_override("font_size", 16)
+	search.text_changed.connect(func(t: String) -> void:
+		_search = t.strip_edges().to_lower()
+		_refresh())
+	tools.add_child(search)
+	var sort_b := UiKit.button(_sort_label(), func() -> void: pass, Vector2(170, 44), 15)
+	sort_b.pressed.connect(func() -> void:
+		_sort = SORTS[(SORTS.find(_sort) + 1) % SORTS.size()]
+		sort_b.text = _sort_label()
+		_refresh())
+	tools.add_child(sort_b)
+	v.add_child(tools)
 	var inner := UiKit.scroll(v)
 	_grid = UiKit.flow(10)
 	inner.add_child(_grid)
@@ -92,6 +123,7 @@ func _ready() -> void:
 		_begin = UiKit.button("Begin run", func() -> void:
 			if Jobs.check(db, job, picks, profile.starter_picks(db), targets) == "":
 				picks_confirmed.emit(picks.duplicate()), Vector2(220, 60), 22)
+		UiKit.primary(_begin)
 		bottom.add_child(_begin)
 	v.add_child(bottom)
 	_refresh()
@@ -146,13 +178,37 @@ func _ids() -> Array:
 	var ids := db.ids_where(func(c: CardDef) -> bool:
 		return c.rarity not in ["starter", "curse"] and (_filter == "all" or c.is_of(_filter) or (_filter == "upgradable" and _copies_ready(c.id))) \
 			and (not pick_mode or (profile.collection.owns(c.id) and not c.banned_by(targets))))
+	if _search != "":
+		ids = ids.filter(func(id: String) -> bool:
+			var c := db.card(id)
+			return c.name.to_lower().contains(_search) or db.instance(id).text().to_lower().contains(_search))
 	var order := CardDef.RARITIES
+	# Owned cards in the order they first arrived (the collection keeps insertion order).
+	var arrival := {}
+	var owned_keys: Array = profile.collection.counts.keys()
+	for i in owned_keys.size():
+		arrival[owned_keys[i]] = i
 	ids.sort_custom(func(a: String, b: String) -> bool:
-		var ca := db.card(a)
-		var cb := db.card(b)
-		# Cards new to the collection lead the list until you've seen them.
-		return [0 if profile.unseen.has(a) else 1, ca.faction, order.find(ca.rarity), ca.cost, a] < [0 if profile.unseen.has(b) else 1, cb.faction, order.find(cb.rarity), cb.cost, b])
+		return _sort_key(a, order, arrival) < _sort_key(b, order, arrival))
 	return ids
+
+
+func _sort_label() -> String:
+	return "Sort: " + {"crew": "Crew", "cost": "Cost", "rarity": "Rarity", "newest": "Newest"}[_sort]
+
+
+func _sort_key(id: String, order: Array, arrival: Dictionary) -> Array:
+	var c := db.card(id)
+	# Cards new to the collection lead the list until you've seen them.
+	var fresh := 0 if profile.unseen.has(id) else 1
+	match _sort:
+		"cost":
+			return [fresh, c.cost, c.faction, order.find(c.rarity), id]
+		"rarity":
+			return [fresh, -order.find(c.rarity), c.faction, c.cost, id]
+		"newest":
+			return [fresh, -int(arrival.get(id, -1)), c.faction, id]
+	return [fresh, c.faction, order.find(c.rarity), c.cost, id]
 
 
 ## Owns enough copies for the next firmware level (rep/dust may still be short).
@@ -189,7 +245,7 @@ func _refresh() -> void:
 		inst.foil = int(col.foils.get(id, 0)) > 0
 		if profile.firmware_mods.has(id) and not base_only:
 			inst.mod = db.mod(profile.firmware_mods[id])
-		var cv := CardView.new().setup(inst)
+		var cv := CardView.new().setup(inst, ZOOM)
 		cv.lift_selected = false
 		var n := col.count(id)
 		var stars := "*".repeat(profile.mastery_tier(db, id))

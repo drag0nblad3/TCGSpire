@@ -114,23 +114,63 @@ static func corner_pos(node: CanvasItem, w: float, margin: float = 16.0) -> Vect
 	return Vector2(node.get_viewport_rect().size.x - w - margin - float(ins["right"]), margin + float(ins["top"]))
 
 
+## A short message that slides down from the top as a full-width banner, then slides away.
+## It ignores input, so it never blocks a tap.
 static func toast(host: Node, text: String, seconds: float = 2.2) -> void:
 	# Only one toast at a time: a new one replaces the old.
 	for n in host.get_children():
 		if n.has_meta("toast"):
 			n.queue_free()
-	var l := label(text, 16, Palette.TEXT, true)
-	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	var p := panel(l, Color(Palette.PANEL_BG, 0.97))
+	var l := label(text, 17, Palette.TEXT, true)
+	l.custom_minimum_size.x = 0
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var p := panel(l, Color(Palette.PANEL_BG, 0.98))
 	p.set_meta("toast", true)
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sb: StyleBoxFlat = p.get_theme_stylebox("panel")
-	sb.border_color = Color(Palette.ENERGY, 0.7)
-	sb.set_border_width_all(2)
+	sb.border_color = Color(Palette.ENERGY, 0.8)
+	sb.border_width_bottom = 3
+	sb.set_corner_radius_all(0)
+	sb.corner_radius_bottom_left = 14
+	sb.corner_radius_bottom_right = 14
 	host.add_child(p)
-	p.position = Vector2(60, 150)
 	p.z_index = 50
+	var w: float = (host as CanvasItem).get_viewport_rect().size.x if host is CanvasItem else 720.0
+	var top := float(safe_insets(host as CanvasItem)["top"]) if host is CanvasItem else 0.0
+	p.custom_minimum_size.x = w - 24
+	p.size = Vector2(w - 24, 0)
+	p.reset_size()
+	p.position = Vector2(12, -p.size.y - 8)
 	var tw := p.create_tween()
+	tw.tween_property(p, "position:y", top, 0.22).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tw.tween_interval(seconds)
-	tw.tween_property(p, "modulate:a", 0.0, 0.4)
+	tw.tween_property(p, "position:y", -p.size.y - 8, 0.25).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	tw.tween_callback(p.queue_free)
+
+
+## Main action on a screen: solid accent fill and dark text, so it stands out from the
+## outlined secondary buttons around it.
+static func primary(b: Button) -> Button:
+	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+		var sb := StyleBoxFlat.new()
+		sb.set_corner_radius_all(Palette.RADIUS)
+		sb.set_content_margin_all(10)
+		sb.bg_color = Palette.ENERGY
+		if state == "hover":
+			sb.bg_color = Palette.ENERGY.lightened(0.15)
+		elif state == "pressed":
+			sb.bg_color = Palette.ENERGY.darkened(0.25)
+		elif state == "disabled":
+			sb.bg_color = Color(Palette.ENERGY, 0.25)
+		elif state == "focus":
+			sb.draw_center = false
+		sb.border_color = Palette.ENERGY.lightened(0.35)
+		if state != "focus":
+			sb.set_border_width_all(maxi(Palette.BORDER, 2))
+		sb.shadow_color = Color(Palette.ENERGY, 0.35)
+		sb.shadow_size = 0 if state in ["disabled", "focus"] else 10
+		b.add_theme_stylebox_override(state, sb)
+	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color"]:
+		b.add_theme_color_override(state, Palette.CARD_BG)
+	b.add_theme_color_override("font_disabled_color", Color(Palette.CARD_BG, 0.6))
+	return b

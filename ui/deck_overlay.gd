@@ -55,6 +55,8 @@ func _ready() -> void:
 				shown = src.copy()
 				shown.mod = _mod
 		var cv := CardView.new().setup(shown)
+		if _preview_upgrade and ok:
+			cv.before_text = src.text()
 		cv.playable = not _pickable or ok
 		if _pickable and cv.playable:
 			cv.pressed.connect(func(_v: CardView) -> void: _close(i))
@@ -64,7 +66,7 @@ func _ready() -> void:
 			cell.add_child(cv)
 			var why := ""
 			if _preview_upgrade:
-				why = src.level_up_text() if ok else ("Fully upgraded." if src.upgraded else ("Max the rest of your deck to v2 first." if src.fw >= src.fw_scale.size() - 1 and src.def.rarity != "curse" and not src.def.upgrade.is_empty() else "Can't be upgraded."))
+				why = _upgrade_note(src, shown) if ok else ("Fully upgraded." if src.upgraded else ("Max the rest of your deck to v2 first." if src.fw >= src.fw_scale.size() - 1 and src.def.rarity != "curse" and not src.def.upgrade.is_empty() else "Can't be upgraded."))
 			else:
 				why = CardMods.describe(_mod) if ok else ("Has %s." % src.mod_name() if not src.mod.is_empty() else "Doesn't fit.")
 			var l := UiKit.label(why, 12, Palette.UPGRADED if ok else Palette.TEXT_DIM, true)
@@ -74,6 +76,17 @@ func _ready() -> void:
 		else:
 			grid.add_child(cv)
 	v.add_child(UiKit.button(_button, func() -> void: _close(-1)))
+
+
+## Short line under an upgrade preview. The card already shows changed numbers as 6→8,
+## so only changes the card can't show (keywords, cost, new effects) are spelled out.
+func _upgrade_note(src: CardInstance, shown: CardInstance) -> String:
+	var only_numbers := CardView.diff_text(src.text(), shown.text()) != shown.text()
+	if src.fw < src.fw_scale.size() - 1:
+		return "v%d: numbers +%d%%" % [src.fw + 1, roundi((float(src.fw_scale[src.fw + 1]) - 1.0) * 100)]
+	if only_numbers and src.cost() == shown.cost():
+		return "Recompile (+)"
+	return src.level_up_text()
 
 
 func _close(i: int) -> void:

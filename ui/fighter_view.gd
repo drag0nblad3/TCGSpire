@@ -31,6 +31,8 @@ var flash := 0.0
 var firewall_flash := 0.0
 var virus_flash := 0.0
 var aimed := false
+## Lethal turn warning: a red pulse on the panel (you) or on the enemies that would do it.
+var danger := false
 var daemon_art: Texture2D
 var daemon_faction := "neutral"
 var offline := false
@@ -142,6 +144,12 @@ func _draw() -> void:
 		panel.border_color = Color(heat, 0.45 + charge * 0.45)
 		panel.shadow_color = Color(heat, 0.16 + charge * 0.25)
 		panel.shadow_size = 12
+	if danger and not targetable:
+		var beat := 0.5 + 0.5 * sin(t * 6.0)
+		panel.border_color = Color(Palette.HP, 0.6 + 0.4 * beat)
+		panel.set_border_width_all(3)
+		panel.shadow_color = Color(Palette.HP, 0.18 + 0.22 * beat)
+		panel.shadow_size = 14
 	draw_style_box(panel, Rect2(Vector2.ZERO, size))
 	if targetable:
 		_draw_target()

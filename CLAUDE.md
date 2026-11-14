@@ -14,7 +14,7 @@ Original design only: don't copy cards, names, characters or look from existing 
   bot picks/offers and plays/damage/Firewall per play; writes `report.tsv` in `out`. ~10 min for every card at n=80 on 4 cores. Low plays/run = bot blind spot.
 - `scripts/sim_matrix.sh` — the standard balance check Tyler wants: 150 runs per cell, new heat 0-1, experienced 1-3, veteran 2-5, max 4-6.
 - `scripts/shot.sh screen=<name|all> out=/tmp/x.png [plays=2] [end_turn=1] [theme=archive]` — real render to PNG (xvfb).
-  Screens: hub map combat reward rest shop event collection picker pack pack_open pack_shelf pack_premium pack_crew weekly weekly_map login signal_result ice deep end inspect rules jobs rig perk tinker crew firmware recompile menu settings resume tutorial coach foil. Uses a throwaway profile.
+  Screens: hub map combat reward rest shop event collection picker pack pack_open pack_shelf pack_premium pack_crew weekly weekly_map login signal_result ice deep end inspect rules jobs rig perk tinker crew firmware recompile menu settings resume tutorial coach foil lethal. Uses a throwaway profile.
 - Godot binary: `godot` on PATH, or set `GODOT=/path/to/godot`. Cloud sessions: download
   `Godot_v4.4.1-stable_linux.x86_64.zip` from the godotengine GitHub releases.
 

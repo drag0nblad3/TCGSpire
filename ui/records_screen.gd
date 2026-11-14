@@ -77,8 +77,7 @@ func _binders() -> void:
 	var cfg: Dictionary = db.balance.get("binders", {})
 	for f in Jobs.board(db) + ["neutral"]:
 		var head := UiKit.hbox(10)
-		if f != "neutral":
-			head.add_child(Symbols.badge(f, 32))
+		head.add_child(Symbols.badge(f, 32))
 		var name_l := UiKit.label(Lexicon.faction(f), 19, Palette.faction(f) if f != "neutral" else Palette.TEXT)
 		name_l.add_theme_font_override("font", Palette.display())
 		head.add_child(name_l)
@@ -89,35 +88,47 @@ func _binders() -> void:
 			if r.get("card_back", false) and f != "neutral":
 				reward += ", card back, title"
 			var mark := "Done" if page["done"] else "%d / %d" % [page["have"], page["need"]]
-			var row := UiKit.hbox(10)
+			# Name, count and reward on one line, the bar full width under it.
+			var row := UiKit.vbox(4, BoxContainer.ALIGNMENT_BEGIN)
+			var top := UiKit.hbox(10)
+			top.alignment = BoxContainer.ALIGNMENT_BEGIN
+			var name_r := UiKit.label("%s  %s" % [page["name"], mark], 15, Palette.ENERGY if page["done"] else Palette.TEXT)
+			name_r.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+			name_r.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			top.add_child(name_r)
+			top.add_child(UiKit.label(("Paid: " if page.get("claimed", false) else "Pays ") + reward, 13, Palette.UPGRADED if page["done"] else Palette.TEXT_DIM))
+			row.add_child(top)
 			var bar := ProgressBar.new()
-			bar.custom_minimum_size = Vector2(220, 14)
+			bar.custom_minimum_size = Vector2(0, 10)
+			bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			bar.show_percentage = false
 			bar.max_value = maxi(int(page["need"]), 1)
 			bar.value = int(page["have"])
-			var name_r := UiKit.label("%s  %s" % [page["name"], mark], 14, Palette.ENERGY if page["done"] else Palette.TEXT)
-			name_r.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-			name_r.custom_minimum_size.x = 170
-			var reward_l := UiKit.label(reward, 13, Palette.TEXT_DIM)
-			reward_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-			row.alignment = BoxContainer.ALIGNMENT_BEGIN
-			row.add_child(name_r)
 			row.add_child(bar)
-			row.add_child(reward_l)
 			_list.add_child(row)
 
 
 func _exploits() -> void:
 	var ids: Array = db.exploits.keys()
 	ids.sort()
-	_line("%d / %d exploits logged. Five unlock the glitch card back." % [profile.exploits.size(), ids.size()], 15, Palette.TEXT_DIM)
+	_line("%d / %d exploits logged. Five unlock the glitch card back. Each one decrypts a lore file." % [profile.exploits.size(), ids.size()], 15, Palette.TEXT_DIM)
+	# Logged first, then the rest by how close they are.
+	ids.sort_custom(func(a: String, b: String) -> bool:
+		return [0 if profile.exploits.has(a) else 1, -_exploit_progress(a), a] < [0 if profile.exploits.has(b) else 1, -_exploit_progress(b), b])
 	for id in ids:
 		var x: Dictionary = db.exploits[id]
 		var got := profile.exploits.has(id)
 		var have := Records.life_stat(db, profile, str(x["stat"]))
 		_line(("%s  ·  %s" % [x["name"], x["text"]]) if got else ("%s  ·  %s  (%d / %d)" % [x["name"], x["text"], mini(have, int(x["at_least"])), int(x["at_least"])]),
 			16, Palette.UPGRADED if got else Palette.TEXT)
-		_line(str(x["lore"]) if got else "[encrypted]", 13, Palette.TEXT_DIM)
+		if got:
+			_line(str(x["lore"]), 13, Palette.TEXT_DIM)
+
+
+## 0..1 toward an exploit's goal, for sorting the locked ones.
+func _exploit_progress(id: String) -> float:
+	var x: Dictionary = db.exploits[id]
+	return minf(1.0, float(Records.life_stat(db, profile, str(x["stat"]))) / maxf(1.0, float(x["at_least"])))
 
 
 ## ICE database: every sentry, decoded after a few fights. Unknown ones stay hidden.
