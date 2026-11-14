@@ -116,6 +116,8 @@ Original design only: don't copy cards, names, characters or look from existing 
   as a prerelease (tag `build-<run>-<sha>`) with a direct download link, and also keeps it as the run artifact.
 - Signing: `signing/debug.keystore` (pass "android") is committed on purpose so every APK has the same signature
   and installs over the last one. Never regenerate it, or phones must uninstall (losing the save).
+- Game icon: `node tools/icon/make_icon.js` redraws `icon.png` and the Android adaptive layers in `assets/icon/` (foreground/background/monochrome,
+  432px, art kept inside the 66dp safe circle). `pick=<design>` swaps design, `out=/tmp/x` renders every design for review.
 - `export_presets.cfg` includes `data/**/*.json` (data files aren't resources); keep that filter.
 - Cloud sessions can't reach dl.google.com, so there's no real SDK there. A stand-in apksigner can be
   built from `com.android.tools.build:apksig` on Maven Central (v2 signing only, Android 7+).
