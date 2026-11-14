@@ -348,9 +348,9 @@ func test_implant_daemon_hp_mult_scales_base_hp() -> void:
 	var d := _fight(["server_farm"])
 	d.summon("A", 3)
 	eq(d.units[0].hp, 3, "Server Farm leaves daemon HP alone")
-	d.energy = 0
+	d.summon("B", 2)
 	d.crash_daemon(d.units[0])
-	eq(d.energy, 1, "RAM when a daemon shuts down")
+	eq(d.units[0].hp, 3, "the other daemons gain 1 HP when one shuts down")
 
 
 func test_implant_with_daemon_bonus_still_fires_triggers() -> void:
