@@ -9,6 +9,9 @@ Original design only: don't copy cards, names, characters or look from existing 
 - `scripts/sim.sh [n=200] [deck=a,b] [enc=mites,golem]` — bot plays seeded fights, one line per encounter.
 - `scripts/sim.sh mode=run [n=100] [heat] [job=ember|all] [profile=new|experienced|veteran|max] [acts=1]` — bot plays whole runs: win %, avg floor,
   top killers; `acts=1` adds per-act death share and turns per normal/elite/boss fight. `profile=experienced`/`veteran` = save after 10/39 bot runs with likely spending, `max` = everything owned/bought (`meta/profile_bot.gd`). Default heat per profile: new 0, experienced 1, veteran 3, max 6.
+- `scripts/card_sim.sh [n=60] [profile=new] [heat] [cards=a,b] [jobs=4] [out=/tmp/card_sim]` — per-card balance: 2 copies of each pack card
+  forced into the starter picks on its crew's job, scored by floor reached vs seed-paired baseline runs (`rel` = vs crew median), plus
+  bot picks/offers and plays/damage/Firewall per play; writes `report.tsv` in `out`. ~10 min for every card at n=80 on 4 cores. Low plays/run = bot blind spot.
 - `scripts/sim_matrix.sh` — the standard balance check Tyler wants: 150 runs per cell, new heat 0-1, experienced 1-3, veteran 2-5, max 4-6.
 - `scripts/shot.sh screen=<name|all> out=/tmp/x.png [plays=2] [end_turn=1] [theme=archive]` — real render to PNG (xvfb).
   Screens: hub map combat reward rest shop event collection picker pack pack_open pack_shelf pack_premium pack_crew weekly weekly_map login signal_result end inspect rules jobs rig perk tinker crew firmware recompile menu settings resume tutorial coach foil. Uses a throwaway profile.
