@@ -61,6 +61,16 @@ func _initialize() -> void:
 			if opts["end_turn"] == "1":
 				main.get("_screen")._on_end_turn()
 				await _idle(main.get("_screen"))
+			if opts.get("inspect_enemy", "0") == "1":
+				# Hold on the first enemy with a few statuses on it: the inspect pop-up.
+				var ics = main.get("_screen")
+				var foe: Fighter = ics.combat.living(ics.combat.enemies)[0]
+				foe.statuses["burn"] = 1
+				foe.statuses["brittle"] = 1
+				foe.statuses["weaken"] = 3
+				ics._inspect_fighter(ics._views[foe.id])
+				for f in 20:
+					await process_frame
 		for i in int(opts["frames"]):
 			await process_frame
 		if DisplayServer.get_name() != "headless":

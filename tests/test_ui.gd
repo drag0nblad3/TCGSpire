@@ -205,3 +205,52 @@ func test_upgrade_diff_marks_changed_numbers() -> void:
 	eq(CardView.diff_text("Deal 4 damage. Apply 3 Virus.", "Deal 5 damage. Apply 3 Virus."), "Deal 4→5 damage. Apply 3 Virus.", "unchanged numbers stay plain")
 	eq(CardView.diff_text("Deal 6 damage.", "Deal 6 damage. Draw 1 card."), "Deal 6 damage. Draw 1 card.", "new wording falls back to the new text")
 	eq(CardView.diff_text("Gain 5 Firewall.", "Gain 5 Firewall."), "Gain 5 Firewall.", "no change, no arrow")
+
+
+func test_fighter_inspect_lists_statuses_and_taps_closed() -> void:
+	var root: Window = (Engine.get_main_loop() as SceneTree).root
+	var c := make_combat(["jab", "jab", "jab", "jab", "jab"], "mites")
+	c.start()
+	var cs := CombatScreen.new().setup(c, null)
+	cs.step_scale = 0.0
+	root.add_child(cs)
+	if cs._hand_row == null:
+		cs._ready()
+	var foe: Fighter = c.enemies[0]
+	foe.statuses["burn"] = 2
+	foe.statuses["brittle"] = 1
+	var view: FighterView = cs._views[foe.id]
+	var rows := FighterInspector.rows(view)
+	check(rows.any(func(r: Array) -> bool: return str(r[0]).begins_with(Lexicon.status("burn"))), "burn row")
+	check(rows.any(func(r: Array) -> bool: return str(r[0]) == "Next move"), "intent row")
+	cs._on_enemy_pressed(view, 0)
+	check(not cs.get_children().any(func(n: Node) -> bool: return n.has_meta("toast")), "inspect is a pop-up, not a toast")
+	var fi := FighterInspector.new()
+	fi._view = view
+	root.add_child(fi)
+	if fi.get_child_count() == 0:
+		fi._ready()
+	fi.gui_input.emit(_press(Vector2(40, 40), true))
+	fi.gui_input.emit(_press(Vector2(41, 40), false))
+	check(fi.is_queued_for_deletion(), "a tap closes the inspect pop-up")
+	fi.free()
+	cs.free()
+
+
+func test_toast_fits_and_taps_away() -> void:
+	var root: Window = (Engine.get_main_loop() as SceneTree).root
+	var host := Control.new()
+	root.add_child(host)
+	var long_text := "\n".join(["A line of status text that has to wrap across the banner width."].map(func(s: String) -> String: return s).duplicate())
+	long_text = "\n".join([long_text, long_text, long_text, long_text])
+	UiKit.toast(host, long_text, 3.0)
+	var p: Control = null
+	for n in host.get_children():
+		if n.has_meta("toast"):
+			p = n
+	check(p != null, "toast added")
+	check(p.size.y < 400.0, "toast stays a banner (was %d px tall)" % int(p.size.y))
+	p.gui_input.emit(_press(Vector2(20, 10), true))
+	p.gui_input.emit(_press(Vector2(20, 10), false))
+	eq(p.mouse_filter, Control.MOUSE_FILTER_IGNORE, "a tapped toast stops catching taps while it leaves")
+	host.free()

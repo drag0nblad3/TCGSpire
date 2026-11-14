@@ -76,6 +76,10 @@ func _ready() -> void:
 		else:
 			grid.add_child(cv)
 	v.add_child(UiKit.button(_button, func() -> void: _close(-1)))
+	if not _pickable:
+		# Just a look at a pile: any tap (not a scroll) closes it.
+		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		UiKit.tap_to_close(self, func() -> void: _close(-1))
 
 
 ## Short line under an upgrade preview. The card already shows changed numbers as 6→8,

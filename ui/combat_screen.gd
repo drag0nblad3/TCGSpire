@@ -356,7 +356,7 @@ func _show_pile(which: String) -> void:
 func _inspect_fighter(v: FighterView) -> void:
 	if v == null:
 		return
-	UiKit.toast(self, v.describe(), 3.5)
+	FighterInspector.show_for(self, v)
 
 
 # --- input ----------------------------------------------------------------------
