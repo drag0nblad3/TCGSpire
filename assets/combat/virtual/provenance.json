@@ -1,0 +1,218 @@
+{
+  "kiln_mother": {
+    "source": "85a36190-d625-4418-a842-b30708d244a2",
+    "crop": [
+      14,
+      58,
+      498,
+      478
+    ]
+  },
+  "undertow_broker": {
+    "source": "85a36190-d625-4418-a842-b30708d244a2",
+    "crop": [
+      526,
+      58,
+      1010,
+      478
+    ]
+  },
+  "chief_surgeon": {
+    "source": "85a36190-d625-4418-a842-b30708d244a2",
+    "crop": [
+      1038,
+      58,
+      1522,
+      478
+    ]
+  },
+  "zero_prime": {
+    "source": "85a36190-d625-4418-a842-b30708d244a2",
+    "crop": [
+      14,
+      530,
+      498,
+      965
+    ]
+  },
+  "hive_overseer": {
+    "source": "85a36190-d625-4418-a842-b30708d244a2",
+    "crop": [
+      526,
+      530,
+      1010,
+      965
+    ]
+  },
+  "dj_feedback": {
+    "source": "85a36190-d625-4418-a842-b30708d244a2",
+    "crop": [
+      1038,
+      530,
+      1522,
+      965
+    ]
+  },
+  "furnace_king": {
+    "source": "d5c57734-b4c6-46c5-b12d-65ea2e3d3d5e",
+    "crop": [
+      14,
+      58,
+      498,
+      478
+    ]
+  },
+  "tidal_exchange": {
+    "source": "d5c57734-b4c6-46c5-b12d-65ea2e3d3d5e",
+    "crop": [
+      526,
+      58,
+      1010,
+      478
+    ]
+  },
+  "gene_saint": {
+    "source": "d5c57734-b4c6-46c5-b12d-65ea2e3d3d5e",
+    "crop": [
+      1038,
+      58,
+      1522,
+      478
+    ]
+  },
+  "the_absence": {
+    "source": "d5c57734-b4c6-46c5-b12d-65ea2e3d3d5e",
+    "crop": [
+      14,
+      530,
+      498,
+      965
+    ]
+  },
+  "chrome_queen": {
+    "source": "d5c57734-b4c6-46c5-b12d-65ea2e3d3d5e",
+    "crop": [
+      526,
+      530,
+      1010,
+      965
+    ]
+  },
+  "the_broadcast": {
+    "source": "d5c57734-b4c6-46c5-b12d-65ea2e3d3d5e",
+    "crop": [
+      1038,
+      530,
+      1522,
+      965
+    ]
+  },
+  "kiln_heart": {
+    "source": "c8a3cc59-f0db-4d8a-b719-65d612ac0219",
+    "crop": [
+      14,
+      58,
+      498,
+      478
+    ]
+  },
+  "drowned_market": {
+    "source": "c8a3cc59-f0db-4d8a-b719-65d612ac0219",
+    "crop": [
+      526,
+      58,
+      1010,
+      478
+    ]
+  },
+  "mother_vat": {
+    "source": "c8a3cc59-f0db-4d8a-b719-65d612ac0219",
+    "crop": [
+      1038,
+      58,
+      1522,
+      478
+    ]
+  },
+  "zero_point": {
+    "source": "c8a3cc59-f0db-4d8a-b719-65d612ac0219",
+    "crop": [
+      14,
+      530,
+      498,
+      965
+    ]
+  },
+  "hive_throne": {
+    "source": "c8a3cc59-f0db-4d8a-b719-65d612ac0219",
+    "crop": [
+      526,
+      530,
+      1010,
+      965
+    ]
+  },
+  "dead_air": {
+    "source": "c8a3cc59-f0db-4d8a-b719-65d612ac0219",
+    "crop": [
+      1038,
+      530,
+      1522,
+      965
+    ]
+  },
+  "hollow_monarch": {
+    "source": "86e11d34-2d37-4e53-b364-2deac7a0fa6b",
+    "crop": [
+      14,
+      58,
+      498,
+      478
+    ]
+  },
+  "cinder_colossus": {
+    "source": "86e11d34-2d37-4e53-b364-2deac7a0fa6b",
+    "crop": [
+      526,
+      58,
+      1010,
+      478
+    ]
+  },
+  "the_unwritten": {
+    "source": "86e11d34-2d37-4e53-b364-2deac7a0fa6b",
+    "crop": [
+      1038,
+      58,
+      1522,
+      478
+    ]
+  },
+  "storm_regent": {
+    "source": "86e11d34-2d37-4e53-b364-2deac7a0fa6b",
+    "crop": [
+      14,
+      530,
+      498,
+      965
+    ]
+  },
+  "root_kernel": {
+    "source": "86e11d34-2d37-4e53-b364-2deac7a0fa6b",
+    "crop": [
+      526,
+      530,
+      1010,
+      965
+    ]
+  },
+  "last_mirror": {
+    "source": "86e11d34-2d37-4e53-b364-2deac7a0fa6b",
+    "crop": [
+      1038,
+      530,
+      1522,
+      965
+    ]
+  }
+}
