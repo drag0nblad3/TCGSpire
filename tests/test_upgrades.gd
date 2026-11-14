@@ -201,12 +201,21 @@ func test_v5_rig_refunds_discounted_ranks_and_new_purchases_at_price_paid() -> v
 		"rig": {"chassis": 2, "thermal_runaway": 1},
 	}, db)
 	check(p.buy_rig(db, "chassis"), "buys rank three at the restored price")
-	eq(p.rep_of("bloom"), 20, "new rank costs 180")
+	eq(p.rep_of("bloom"), 30, "new rank costs 170")
 	var reloaded := Profile.from_dict(p.to_dict(), db)
 	reloaded.reset_rig(db)
-	eq(reloaded.rep, {"bloom": 275, "ember": 310}, "refunds 75 + 180 and 300")
+	eq(reloaded.rep, {"bloom": 275, "ember": 310}, "refunds 75 + 170 + 30 left, and 300")
 	reloaded.reset_rig(db)
 	eq(reloaded.rep, {"bloom": 275, "ember": 310}, "refund adjustment applies once")
+
+
+func test_v10_rig_refunds_old_prices_and_new_ranks_at_new_price() -> void:
+	var p := Profile.from_dict({"version": 10, "rep": {"bloom": 170}, "rig": {"chassis": 2}}, db)
+	check(p.buy_rig(db, "chassis"), "rank three at the new price")
+	eq(p.rep_of("bloom"), 0, "rank three costs 170")
+	var reloaded := Profile.from_dict(p.to_dict(), db)
+	reloaded.reset_rig(db)
+	eq(reloaded.rep, {"bloom": 30 + 90 + 170}, "old ranks refund what they cost")
 
 
 func test_moved_rig_perks_keep_ranks_and_refunds_in_the_original_faction() -> void:

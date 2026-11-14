@@ -164,8 +164,10 @@ static func validate(p: Dictionary) -> Array[String]:
 		if v is Array and (scope != "rig" or v.size() != int(p.get("max_rank", 0))):
 			errs.append("%s: mod '%s' lists one total per rank (rig perks only)" % [where, k])
 	if scope == "rig":
-		if int(p.get("max_rank", 0)) < 1 or int(p.get("cost", 0)) < 1:
-			errs.append("%s: rig perks need max_rank and cost >= 1" % where)
+		var costs: Variant = p.get("cost", [])
+		if int(p.get("max_rank", 0)) < 1 or not costs is Array or costs.size() != int(p.get("max_rank", 0)) \
+				or costs.any(func(c: Variant) -> bool: return int(c) < 1):
+			errs.append("%s: rig perks need max_rank >= 1 and a cost per rank (each >= 1)" % where)
 		if p.has("pickup") or (p.has("triggers") and not p.get("capstone", false)):
 			errs.append("%s: rig perks use mods only (capstones may add triggers)" % where)
 	for trig in p.get("triggers", []):
