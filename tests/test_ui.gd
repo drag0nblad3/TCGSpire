@@ -273,3 +273,10 @@ func test_toast_fits_and_taps_away() -> void:
 	p.gui_input.emit(_press(Vector2(20, 10), false))
 	eq(p.mouse_filter, Control.MOUSE_FILTER_IGNORE, "a tapped toast stops catching taps while it leaves")
 	host.free()
+
+
+func test_hub_heat_total_stacks_levels() -> void:
+	check(HubScreen.heat_total(db, 0) == "", "heat 0 has no total")
+	var t3 := HubScreen.heat_total(db, 3)
+	check(t3.contains("+73% HP") and t3.contains("repair 30% less") and t3.contains("1 more crew"), "heat 3 total compounds: " + t3)
+	check(HubScreen.heat_total(db, 6).contains("double-cross"), "heat 6 names the double cross")
