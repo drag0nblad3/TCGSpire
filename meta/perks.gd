@@ -28,6 +28,7 @@ const MODS := {
 	"start_mods": "Random mods at run start",
 	"start_perks": "Random subroutines at run start",
 	"enemy_hp_pct": "Enemy HP",
+	"enemy_dmg_pct": "Enemy damage",
 	"rep_pct": "Rep from the job",
 	"perk_choices": "Subroutine choices",
 	"remove_discount": "Cheaper program deletion",
@@ -139,6 +140,8 @@ static func describe_mod(k: String, v: float) -> String:
 			return "If you breach at least one Core, the run pays %d more Data cache%s." % [int(v), "" if int(v) == 1 else "s"]
 		"enemy_hp_pct":
 			return "Enemies have %d%% %s HP." % [absi(roundi(v * 100)), "less" if v < 0 else "more"]
+		"enemy_dmg_pct":
+			return "Enemies deal %d%% %s damage." % [absi(roundi(v * 100)), "less" if v < 0 else "more"]
 	return "?"
 
 

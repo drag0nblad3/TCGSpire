@@ -240,7 +240,7 @@ func combat_opts() -> Dictionary:
 		"second_wind": int(perk_mod("second_wind")),
 		"enemy_hp_mult": maxf(heat_mult("enemy_hp_pct") * (1.0 + perk_mod("enemy_hp_pct")), 0.5) * act_start_mult("enemy_hp_pct") * deep_mult("enemy_hp_pct"),
 		"enemy_might": int(heat_mod("enemy_might", 0)),
-		"enemy_dmg_mult": maxf(heat_mult("enemy_dmg_pct"), 0.5) * act_start_mult("enemy_dmg_pct") * deep_mult("enemy_dmg_pct"),
+		"enemy_dmg_mult": maxf(heat_mult("enemy_dmg_pct") * (1.0 + perk_mod("enemy_dmg_pct")), 0.5) * act_start_mult("enemy_dmg_pct") * deep_mult("enemy_dmg_pct"),
 	}
 
 

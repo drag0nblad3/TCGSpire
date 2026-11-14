@@ -691,3 +691,14 @@ func test_boot_firewall_cred_stash_and_short_capstone_text() -> void:
 	c.end_turn()
 	eq(c.player.ward, 3, "and again every turn")
 	eq(Perks.describe(db.perks["thermal_runaway"]), "+1 RAM on each of your first 3 turns.", "short capstone text")
+
+
+func test_absolute_zero_boosts_you_and_softens_enemy_hits() -> void:
+	var base := float(_run().combat_opts()["enemy_dmg_mult"])
+	profile.rig = {"absolute_zero": 1}
+	var r := _run()
+	check(absf(float(r.combat_opts()["enemy_dmg_mult"]) - base * 0.9) < 0.001, "enemies deal 10% less damage")
+	var c := r.start_combat("mites")
+	c.start()
+	eq(c.player.status("might"), 1, "Boost 1 every fight")
+	check(Perks.describe(db.perks["absolute_zero"]).contains("10% less damage"), "text")
