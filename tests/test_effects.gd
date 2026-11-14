@@ -49,7 +49,20 @@ func test_burn_ticks_and_decays() -> void:
 	c.enemies[0].add_status("burn", 3)
 	Statuses.on_turn_start(c, c.enemies[0])
 	eq(c.enemies[0].hp, 27)
-	eq(c.enemies[0].status("burn"), 2)
+	eq(c.enemies[0].status("burn"), 1, "3 loses half, rounded up")
+	Statuses.on_turn_start(c, c.enemies[0])
+	eq(c.enemies[0].status("burn"), 0, "1 runs out")
+
+
+func test_patch_halves_and_patch_notes_slows_it() -> void:
+	c.player.hp = 10
+	c.player.add_status("regen", 6)
+	Statuses.on_turn_end(c, c.player)
+	eq(c.player.hp, 16)
+	eq(c.player.status("regen"), 3, "6 loses half")
+	c.talismans.append(db.talismans["patch_notes"])
+	Statuses.on_turn_end(c, c.player)
+	eq(c.player.status("regen"), 2, "Patch Notes: only 1 stack per turn")
 
 
 func test_brittle_and_might_modify_attacks() -> void:
@@ -138,7 +151,7 @@ func test_rule_burn_does_not_decay() -> void:
 	eq(c.enemies[0].status("burn"), 3, "kept while Burnworm runs")
 	c.units.clear()
 	c.end_turn()
-	eq(c.enemies[0].status("burn"), 2, "decays again once it is gone")
+	eq(c.enemies[0].status("burn"), 1, "halves again once it is gone")
 
 
 func test_rule_bonuses() -> void:

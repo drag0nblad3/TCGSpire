@@ -283,8 +283,8 @@ static func _enemy_status_value(c: Combat, f: Fighter, st: String, stacks: float
 		return 0.0
 	match st:
 		"burn":
-			# Ticks stacks, stacks-1, ... but never more than its HP.
-			return minf(stacks * (stacks + 1.0) / 2.0 + f.status("burn") * 0.5, float(f.hp)) * 0.7
+			# Halves each tick (s + s/2 + ...), so about twice the stacks, never more than its HP.
+			return minf(stacks * 2.0 + f.status("burn") * 0.5, float(f.hp)) * 0.7
 		"brittle":
 			var attacks := c.hand.filter(func(k: CardInstance) -> bool: return k.def.type == "attack").size()
 			return stacks * (1.0 + attacks * 1.5) if f.status("brittle") == 0 else stacks * 1.2

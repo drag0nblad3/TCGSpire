@@ -5,7 +5,7 @@ extends SceneTree
 ##                   [out=/tmp/shot.png] [frames=30] [plays=2] [seed=1] [theme=archive] [end_turn=1] [give=sparring_dummy,drone_swarm]
 ## Under --headless it still runs (smoke test for script errors) but writes no image.
 
-const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "pack_open", "pack_shelf", "pack_premium", "pack_crew", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume", "records", "exploits", "ice", "deep", "daily", "signal_result", "weekly", "weekly_map", "login", "tutorial", "coach", "map_walls", "map_jump", "foil", "lethal"]
+const SCREENS := ["hub", "hub_heat", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "pack_open", "pack_shelf", "pack_premium", "pack_crew", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume", "records", "exploits", "ice", "deep", "daily", "signal_result", "weekly", "weekly_map", "login", "tutorial", "coach", "map_walls", "map_jump", "foil", "lethal"]
 
 
 func _initialize() -> void:
@@ -102,13 +102,17 @@ func _idle(cs) -> void:
 
 func _go(main: Control, scr: String, seed_in: int, inspect_card: String = "flare_volley") -> void:
 	var db: CardDB = main.db
-	if scr not in ["hub", "collection", "picker", "pack", "pack_open", "pack_shelf", "pack_premium", "pack_crew", "inspect", "rules", "jobs", "rig", "firmware", "resume", "records", "exploits", "ice", "tutorial", "coach", "foil", "weekly", "weekly_map", "login"]:
+	if scr not in ["hub", "hub_heat", "collection", "picker", "pack", "pack_open", "pack_shelf", "pack_premium", "pack_crew", "inspect", "rules", "jobs", "rig", "firmware", "resume", "records", "exploits", "ice", "tutorial", "coach", "foil", "weekly", "weekly_map", "login"]:
 		var p: Profile = main.profile
 		main.run = RunState.start(db, p, RunState.default_picks(db, p), seed_in)
 		main.run.add_talisman("oak_token")
 		main.run.add_talisman("ember_charm")
 	match scr:
 		"hub":
+			main.show_hub()
+		"hub_heat":
+			main.profile.max_heat = 3
+			main.profile.stats["runs"] = 8
 			main.show_hub()
 		"tutorial":
 			main.start_tutorial()

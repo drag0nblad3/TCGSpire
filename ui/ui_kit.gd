@@ -3,7 +3,12 @@ extends RefCounted
 ## Tiny helpers so screens are built in a few lines of code (no .tscn files).
 
 
+## Smallest text size a label may use: anything asked for below it is raised to it (readable on phones).
+const MIN_TEXT := 16
+
+
 static func label(text: String, font_size: int = 16, col: Color = Palette.TEXT, wrap: bool = false) -> Label:
+	font_size = maxi(font_size, MIN_TEXT)
 	var l := Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", font_size)
