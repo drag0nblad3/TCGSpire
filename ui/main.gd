@@ -1104,7 +1104,7 @@ func _show_deep_choice() -> void:
 	var parts := UiKit.screen(16)
 	var v: VBoxContainer = parts[1]
 	v.add_child(UiKit.label("The Deep Stack" if run.deep == 0 else "Depth %d cleared" % run.deep, 34, Palette.ENERGY))
-	var body := UiKit.label("The job is done and the win is yours. Below the last Core the Stack keeps going. Each layer down, sentries get +%d%% HP and +%d%% damage on top of the last. Nothing down there pays packs or rep: only your depth record. Flatlining keeps the win." % [
+	var body := UiKit.label("The job is done and the win is yours. Below the last Core the Stack keeps going. Each layer down, sentries get +%d%% HP and +%d%% damage on top of the last. Each Core down there still pays a crew cache, but no rep, and your depth goes on your record. Flatlining keeps the win." % [
 		roundi(float(cfg.get("enemy_hp_pct", 0.0)) * 100), roundi(float(cfg.get("enemy_dmg_pct", 0.0)) * 100)], 16, Palette.TEXT, true)
 	body.custom_minimum_size.x = 560
 	v.add_child(body)

@@ -78,7 +78,7 @@ Original design only: don't copy cards, names, characters or look from existing 
   classifies a move effect. One uncommon Interrupt program per crew (spread is now 9 uncommons); they await art (`test_card_art` allowlist).
 - Deep Stack (`balance.deep_stack`, `Records.deep_unlocked`: a win at `unlock_heat`+): normal jobs only (`RunState.deep_ok`). After the final Core
   the run waits (`deep_pending`) for `descend()` (new last-act map, enemy HP/damage compound per `deep` layer) or `jack_out()`. The win is banked
-  first; deep layers pay no packs/rep/acts, only `stats.best_depth`. The run bot always jacks out.
+  first; each deep Core still pays a crew pack (`deep_cores`), but no rep/act XP; depth sets `stats.best_depth`. The run bot always jacks out.
 - ICE database (Records screen "ICE" tab): `RunState.ice` counts enemies per fight (`Records.tally_ice`), folded into `Profile.ice` at run end;
   `balance.ice_db.reveal` fights decode an entry (moves + `data/ice_lore.json` line; every enemy needs one, `Records.validate`).
 - Combat animation: `CombatScreen._play_events` replays `combat.events` step by step (input blocked);

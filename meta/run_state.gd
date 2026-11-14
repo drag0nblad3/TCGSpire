@@ -36,6 +36,8 @@ var over := false
 var deep_ok := false
 var deep := 0
 var deep_pending := false
+## Deep Stack Cores breached; each still pays a crew pack (Profile.run_pack_list).
+var deep_cores := 0
 var card_plays: Dictionary = {}
 var remove_cost := 0
 var outcome_counter := 0
@@ -353,6 +355,8 @@ func finish_combat(c: Combat) -> Dictionary:
 	if kind == "boss":
 		if deep == 0:
 			acts_cleared += 1
+		else:
+			deep_cores += 1
 		rewards["talisman"] = roll_talisman("boss", rng.fork("boss_t:%d" % (act + deep)))
 		if act < total_acts():
 			_next_act()
@@ -685,7 +689,7 @@ const SAVED := ["seed_value", "hp", "max_hp", "gold", "floor_num", "heat", "tali
 	"combats_won", "elites_won", "boss_won", "act", "acts_cleared", "double_crossed", "over", "card_plays",
 	"remove_cost", "outcome_counter", "locked_talismans", "perks", "rig", "firmware", "firmware_mods",
 	"mods_installed", "job", "banned", "tally", "clauses", "daily", "weekly", "weekly_mods", "implant_activations",
-	"deep_ok", "deep", "deep_pending", "ice"]
+	"deep_ok", "deep", "deep_pending", "deep_cores", "ice"]
 
 
 func to_dict() -> Dictionary:

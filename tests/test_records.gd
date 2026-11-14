@@ -187,3 +187,15 @@ func test_deep_stack_waits_after_the_final_core_then_scales() -> void:
 	check(r.over and r.boss_won, "jacking out keeps the win")
 	p.finish_run(db, r)
 	eq(int(p.stats["best_depth"]), 1)
+
+
+func test_deep_stack_cores_still_pay_a_pack() -> void:
+	var p := Profile.new_player(db)
+	var r := RunState.start(db, p, RunState.default_picks(db, p), 3)
+	r.acts_cleared = r.total_acts()
+	r.boss_won = true
+	var base := Profile.run_packs(db, r)
+	r.deep = 2
+	r.deep_cores = 2
+	eq(Profile.run_packs(db, r), base + 2 * int(db.balance.get("run_rewards", {}).get("packs_per_boss", 1)))
+	eq(RunState.from_dict(db, r.to_dict()).deep_cores, 2, "saved")
