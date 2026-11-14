@@ -220,7 +220,7 @@ static func card_value(c: CardDef, upgraded: bool = false) -> float:
 			"rally":
 				v += 1.0 + n * 1.5
 			"heal":
-				v += n * 0.7
+				v += n * 1.2  # HP carries between fights
 			"lose_hp":
 				v -= n * 0.6
 			"add_card":

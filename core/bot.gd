@@ -178,7 +178,8 @@ static func _effect_value(c: Combat, e: Dictionary, target: Fighter, ward: int) 
 		"heal":
 			return minf(n, c.player.max_hp - c.player.hp) * 0.9
 		"lose_hp":
-			return -n * (0.5 + 1.0 * (1.0 - float(c.player.hp) / maxf(c.player.max_hp, 1.0)))
+			# HP lost stays lost for the rest of the run.
+			return -n * (1.2 + 1.5 * (1.0 - float(c.player.hp) / maxf(c.player.max_hp, 1.0)))
 		"cleanse":
 			return Statuses.debuffs(c.player).size() * 3.0
 		"add_card":
@@ -207,6 +208,18 @@ static func _summon_value(c: Combat, e: Dictionary) -> float:
 		v *= 0.2
 	if flags.has("thorns"):
 		v += float(flags["thorns"]) * c.living(c.enemies).size()
+	# Triggers that debuff every enemy: price them on the live enemies, not a flat guess.
+	for trig in rule.get("triggers", []):
+		var on := str(trig.get("on", ""))
+		if on not in ["turn_start", "turn_end"]:
+			continue
+		var times := float(mini(hp, 4) - (1 if on == "turn_start" else 0))
+		for fx in trig.get("effects", []):
+			if fx.get("op", "") == "apply" and fx.get("to", "") == "all_enemies":
+				var live := 0.0
+				for f in c.living(c.enemies):
+					live += _enemy_status_value(c, f, str(fx.get("status", "")), float(fx.get("stacks", 1)))
+				v += maxf(live - 1.8 * float(fx.get("stacks", 1)), 0.0) * times
 	return v
 
 
@@ -259,7 +272,8 @@ static func _self_status_value(c: Combat, st: String, stacks: float) -> float:
 		"might":
 			return stacks * 2.5
 		"regen":
-			return minf(stacks * (stacks + 1.0) / 2.0, c.player.max_hp - c.player.hp) * 0.8
+			# Repairs damage taken later this fight too, not only what is missing now.
+			return minf(stacks * (stacks + 1.0) / 2.0, c.player.max_hp - c.player.hp + c.incoming_damage()) * 0.8
 		"thorns":
 			var hits := 0
 			for f in c.living(c.enemies):

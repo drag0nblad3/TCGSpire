@@ -95,7 +95,7 @@ func test_bone_saw_nerve_lash_partnership_both_orders() -> void:
 
 func test_refresh_preserves_simple_staples_and_unique_names() -> void:
 	eq(db.card("tidewall").effects, [{"op":"ward", "amount":12.0}])
-	eq(db.card("second_wind").effects, [{"op":"draw", "amount":2.0}])
+	eq(db.card("second_wind").effects, [{"op":"ward", "amount":3.0}, {"op":"draw", "amount":2.0}])
 	eq(db.card("molten_shield").name, "Heat Sink")
 	eq(db.card("heat_sink").name, "Thermal Reservoir")
 	var names := {}
