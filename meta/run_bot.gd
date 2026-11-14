@@ -194,7 +194,7 @@ static func card_value(c: CardDef, upgraded: bool = false) -> float:
 			"plant", "relay":
 				v += n * 0.8
 			"handshake", "sequence":
-				v += 3.0
+				v += 1.5  # needs its partner in the same turn
 			"damage":
 				v += n * float(e.get("hits", 1)) * aoe
 			"damage_per_ward", "damage_per_status":

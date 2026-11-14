@@ -219,7 +219,7 @@ static func _summon_value(c: Combat, e: Dictionary) -> float:
 				var live := 0.0
 				for f in c.living(c.enemies):
 					live += _enemy_status_value(c, f, str(fx.get("status", "")), float(fx.get("stacks", 1)))
-				v += maxf(live - 1.8 * float(fx.get("stacks", 1)), 0.0) * times
+				v += maxf(live - 3.0 * float(fx.get("stacks", 1)), 0.0) * times
 	return v
 
 

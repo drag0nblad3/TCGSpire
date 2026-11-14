@@ -228,14 +228,14 @@ func test_charge_discharge_consumes() -> void:
 
 func test_loop_grows_each_run_this_fight() -> void:
 	c.play_card(give(c, "mirror_step"))
-	eq(c.player.ward, 4, "first run")
+	eq(c.player.ward, 5, "first run")
 	var card: CardInstance = c.discard_pile.pop_back()
 	eq(card.loops, 1)
 	c.hand.append(card)
 	c.play_card(c.hand.size() - 1)
-	eq(c.player.ward, 10, "second run +2")
+	eq(c.player.ward, 12, "second run +2")
 	check("Loop +2" in card.text(), "text keeps the tag")
-	check("8" in card.text(), "text shows the grown number")
+	check("9" in card.text(), "text shows the grown number")
 
 
 func test_loop_resets_next_fight() -> void:

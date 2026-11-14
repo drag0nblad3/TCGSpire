@@ -95,7 +95,7 @@ static func _effect_value(fx: Dictionary) -> float:
 		"heal":
 			return n * 0.8
 		"apply":
-			return float(fx.get("stacks", 1)) * 1.8
+			return float(fx.get("stacks", 1)) * (3.0 if fx.get("to", "") == "all_enemies" else 1.8)
 		"draw":
 			return n * 3.5
 		"energy":
