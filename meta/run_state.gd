@@ -197,7 +197,7 @@ func perk_mod(key: String) -> float:
 	for pid in perks:
 		v += float(db.perks.get(pid, {}).get("mods", {}).get(key, 0.0))
 	for pid in rig:
-		v += float(db.perks.get(pid, {}).get("mods", {}).get(key, 0.0)) * int(rig[pid])
+		v += Perks.mod_at(db.perks.get(pid, {}), key, int(rig[pid]))
 	for tid in talismans:
 		v += float(db.talismans.get(tid, {}).get("mods", {}).get(key, 0.0))
 	for m in Weekly.mods_of(db, weekly_mods):
@@ -233,6 +233,7 @@ func combat_opts() -> Dictionary:
 		"start_ward": int(perk_mod("start_ward")),
 		"ward_retention": perk_mod("ward_retention"),
 		"daemon_death_damage": int(perk_mod("daemon_death_damage")),
+		"manual_crash": perk_mod("manual_crash") > 0,
 		"enemy_hp_mult": maxf(heat_mult("enemy_hp_pct") * (1.0 + perk_mod("enemy_hp_pct")), 0.5) * act_start_mult("enemy_hp_pct") * deep_mult("enemy_hp_pct"),
 		"enemy_might": int(heat_mod("enemy_might", 0)),
 		"enemy_dmg_mult": maxf(heat_mult("enemy_dmg_pct"), 0.5) * act_start_mult("enemy_dmg_pct") * deep_mult("enemy_dmg_pct"),

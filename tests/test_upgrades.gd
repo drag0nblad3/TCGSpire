@@ -171,7 +171,7 @@ func test_rig_costs_rep_and_refunds() -> void:
 	check(profile.buy_rig(db, "chassis"), "rank 2")
 	eq(profile.rep_of("bloom"), 0)
 	var r := _run()
-	eq(r.max_hp, int(db.balance["player"]["max_hp"]) + 2 * int(db.perks["chassis"]["mods"]["max_hp"]), "rig max hp")
+	eq(r.max_hp, int(db.balance["player"]["max_hp"]) + 25, "rig max hp")
 	profile.reset_rig(db)
 	eq(profile.rep_of("bloom"), r1 + r2, "refund")
 	eq(profile.rig, {})
@@ -605,3 +605,42 @@ func test_hive_link_explodes_once_for_each_destroyed_daemon() -> void:
 	eq(c.units[0].hp, 8, "blast leaves other daemons unharmed")
 	c.deal_damage(drone, 1)
 	eq(second.hp, 30 - blast, "a dead daemon can't explode twice")
+
+
+func test_tiered_rig_mods_list_the_total_at_each_rank() -> void:
+	var base := int(db.balance["player"]["max_hp"])
+	for rank in [1, 2, 3]:
+		profile.rig["chassis"] = rank
+		profile.rig["field_clinic"] = rank
+		var r := _run()
+		eq(r.max_hp, base + [10, 25, 45][rank - 1], "Reinforced Chassis +10/+15/+20")
+		eq(int(r.perk_mod("combat_heal")), [3, 6, 10][rank - 1], "Field Clinic repairs 3/6/10")
+	check(Perks.describe(db.perks["chassis"], 2).contains("+25"), "rig text shows the rank total")
+
+
+func test_hive_link_blasts_on_refresh_and_can_shut_down_daemons() -> void:
+	profile.rig["hive_link"] = 1
+	var c := _run().start_combat("mites")
+	c.start()
+	var blast := int(db.perks["hive_link"]["mods"]["daemon_death_damage"])
+	eq(blast, 5, "Hive Link blasts for 5")
+	check(c.manual_crash, "Hive Link unlocks the shut down button")
+	var first: Fighter = c.enemies[0]
+	first.hp = 30
+	first.ward = 0
+	c.summon("Drone", 3)
+	eq(first.hp, 30, "running a new daemon doesn't blast")
+	c.summon("Drone", 3)
+	eq(first.hp, 30 - blast, "refreshing a running daemon blasts")
+	check(c.shutdown_daemon(0), "shut down your own daemon")
+	eq(c.units.size(), 0, "the daemon is gone")
+	eq(first.hp, 30 - 2 * blast, "shutting down blasts too")
+	check(not c.can_shutdown(), "nothing left to shut down")
+
+
+func test_shut_down_needs_hive_link() -> void:
+	var c := _run().start_combat("mites")
+	c.start()
+	c.summon("Drone", 3)
+	check(not c.can_shutdown(), "no button without Hive Link")
+	check(not c.shutdown_daemon(0), "and no shut down")

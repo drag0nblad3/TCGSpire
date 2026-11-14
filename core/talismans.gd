@@ -29,8 +29,8 @@ const LABEL := {
 	"turn_end": "End of turn",
 	"card_played": "When you play a card",
 	"kill": "When you crash an enemy",
-	"daemon_closed": "When one of your daemons shuts down",
-	"closed": "When this daemon shuts down or is re-run",
+	"daemon_closed": "When one of your daemons is destroyed or refreshed",
+	"closed": "When this daemon is destroyed or refreshed",
 	"loop": "When a Loop program grows",
 	"reshuffle": "When your discard shuffles back into your draw pile",
 }
@@ -135,7 +135,7 @@ static func describe(t: Dictionary) -> String:
 			when = "When you play %s %s" % ["an" if tn[0].to_lower() in "aeiou" else "a", tn]
 		if trig.has("every"):
 			var noun: String = {"card_played": "cards you play", "turn_start": "turns", "turn_end": "turns", "kill": "crashed enemies",
-				"daemon_closed": "daemons that shut down", "reshuffle": "reshuffles"}.get(on, "times")
+				"daemon_closed": "daemons destroyed or refreshed", "reshuffle": "reshuffles"}.get(on, "times")
 			if trig.has("card_type"):
 				noun = "%ss you play" % Lexicon.type_name(str(trig["card_type"]))
 			when = "Every %d %s" % [int(trig["every"]), noun]

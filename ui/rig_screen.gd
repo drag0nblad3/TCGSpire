@@ -65,7 +65,10 @@ func _row(id: String) -> Control:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	info.add_child(title)
 	var cap: bool = p.get("capstone", false)
-	var d := UiKit.label(("Now: " + Perks.describe(p, rank)) if rank > 0 else (("Unlocks: " if cap else "Per rank: ") + Perks.describe(p, 1)), 14, Palette.TEXT_DIM, true)
+	var text := ("Now: " + Perks.describe(p, rank)) if rank > 0 else (("Unlocks: " if cap else ("Rank 1: " if Perks.tiered(p) else "Per rank: ")) + Perks.describe(p, 1))
+	if rank > 0 and rank < maxr and Perks.tiered(p):
+		text += "\nNext: " + Perks.describe(p, rank + 1)
+	var d := UiKit.label(text, 14, Palette.TEXT_DIM, true)
 	d.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	d.custom_minimum_size.x = 0
 	d.size_flags_horizontal = Control.SIZE_EXPAND_FILL

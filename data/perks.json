@@ -13,7 +13,7 @@
 {"id":"ablative_casing","scope":"run","name":"Ablative Casing","pickup":[{"op":"max_hp","amount":10}]},
 {"id":"packet_hop","scope":"run","name":"Packet Hop","mods":{"jumps":2}},
 {"id":"clean_room","scope":"run","name":"Clean Room","pickup":[{"op":"remove_card","amount":2}]},
-{"id":"chassis","scope":"rig","faction":"bloom","name":"Reinforced Chassis","max_rank":3,"cost":15,"mods":{"max_hp":3}},
+{"id":"chassis","scope":"rig","faction":"bloom","name":"Reinforced Chassis","max_rank":3,"cost":15,"mods":{"max_hp":[10,25,45]}},
 {"id":"cred_stash","scope":"rig","faction":"void","name":"Cred Stash","max_rank":3,"cost":10,"mods":{"start_gold":15}},
 {"id":"cooling_loop","scope":"rig","faction":"bloom","name":"Cooling Loop","max_rank":3,"cost":15,"mods":{"rest_heal_pct":0.1}},
 {"id":"fence_network","scope":"rig","faction":"tide","name":"Fence Network","max_rank":3,"cost":15,"mods":{"shop_discount_pct":0.1}},
@@ -33,7 +33,7 @@
 {"id":"patch_notes","scope":"run","name":"Patch Notes","pickup":[{"op":"upgrade","amount":1},{"op":"mod","amount":1}]},
 {"id":"signal_override","scope":"rig","faction":"ember","name":"Signal Override","max_rank":3,"cost":10,"mods":{"event_rerolls":1}},
 {"id":"reward_reroute","scope":"rig","faction":"tide","name":"Reward Reroute","max_rank":3,"cost":15,"mods":{"reward_rerolls":1}},
-{"id":"field_clinic","scope":"rig","faction":"bloom","name":"Field Clinic","max_rank":3,"cost":20,"mods":{"combat_heal":1}},
+{"id":"field_clinic","scope":"rig","faction":"bloom","name":"Field Clinic","max_rank":3,"cost":20,"mods":{"combat_heal":[3,6,10]}},
 {"id":"ghost_routing","scope":"rig","faction":"void","name":"Ghost Routing","max_rank":2,"cost":20,"mods":{"jumps":1}},
 {"id":"wider_menu","scope":"rig","faction":"void","name":"Wider Menu","max_rank":3,"cost":20,"mods":{"perk_choices":1}},
 {"id":"hardpoint","scope":"rig","faction":"chrome","name":"Hardpoints","max_rank":3,"cost":15,"mods":{"max_hp":3,"daemon_hp":1}},
@@ -42,6 +42,6 @@
 {"id":"liquidity_engine","scope":"rig","faction":"tide","capstone":true,"name":"Liquidity Engine","max_rank":1,"cost":250,"mods":{"hand_size":1,"ward_retention":0.3}},
 {"id":"regrowth_protocol","scope":"rig","faction":"bloom","capstone":true,"name":"Regrowth Protocol","max_rank":1,"cost":250,"mods":{"max_hp":15,"combat_heal":4}},
 {"id":"absolute_zero","scope":"rig","faction":"void","capstone":true,"name":"Absolute Zero","max_rank":1,"cost":250,"mods":{"enemy_hp_pct":-0.15}},
-{"id":"hive_link","scope":"rig","faction":"chrome","capstone":true,"name":"Hive Link","max_rank":1,"cost":250,"mods":{"daemon_death_damage":8}},
+{"id":"hive_link","scope":"rig","faction":"chrome","capstone":true,"name":"Hive Link","max_rank":1,"cost":250,"mods":{"daemon_death_damage":5,"manual_crash":1}},
 {"id":"dead_air_protocol","scope":"rig","faction":"noise","capstone":true,"name":"Dead Air","max_rank":1,"cost":250,"triggers":[{"on":"combat_start","effects":[{"op":"apply","status":"brittle","stacks":2,"to":"all_enemies"},{"op":"apply","status":"weaken","stacks":2,"to":"all_enemies"}]}]}
 ]

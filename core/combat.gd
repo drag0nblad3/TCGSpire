@@ -40,6 +40,8 @@ var perks: Array = []
 var start_ward := 0
 var ward_retention := 0.0
 var daemon_death_damage := 0
+## Hive Link: you may shut down your own daemons on your turn (shutdown_daemon).
+var manual_crash := false
 var _unit_counter := 0
 var _enemy_counter := 0
 ## Difficulty modifiers from the encounter's act and RunState.combat_opts.
@@ -54,7 +56,7 @@ var daemon_hp_mult := 1.0
 
 ## deck: Array of CardInstance (copied, not mutated). hp < 0 means full HP.
 ## opts (all optional): max_hp, talismans (Array of ids), perks (Array of perk dicts),
-## start_ward, ward_retention, daemon_death_damage, enemy_hp_mult, enemy_might, enemy_dmg_mult, extra_energy, extra_hand, extra_slots,
+## start_ward, ward_retention, daemon_death_damage, manual_crash, enemy_hp_mult, enemy_might, enemy_dmg_mult, extra_energy, extra_hand, extra_slots,
 ## daemon_hp. Implants add their "daemon": {"hp": n} on top.
 static func create(db_in: CardDB, deck: Array, encounter_id: String, rng_in: GameRng, hp: int = -1, opts: Dictionary = {}) -> Combat:
 	var c := Combat.new()
@@ -82,6 +84,7 @@ static func create(db_in: CardDB, deck: Array, encounter_id: String, rng_in: Gam
 	c.start_ward = int(opts.get("start_ward", 0))
 	c.ward_retention = clampf(float(opts.get("ward_retention", 0.0)), 0.0, 1.0)
 	c.daemon_death_damage = int(opts.get("daemon_death_damage", 0))
+	c.manual_crash = bool(opts.get("manual_crash", false))
 	c.player = Fighter.make("player", "You", max_hp)
 	if hp > 0:
 		c.player.hp = mini(hp, max_hp)
@@ -370,7 +373,7 @@ func crash_daemon(u: Fighter) -> void:
 	_daemon_closed(u)
 
 
-## A daemon left the board (crashed or ran out): Hive Link's blast.
+## A daemon left the board (crashed or ran out): its own "closed" rule, then the payoffs.
 func _daemon_closed(u: Fighter) -> void:
 	# The daemon's own "closed" rule (Botnet Lease's parting blast).
 	for trig in u.rule.get("triggers", []):
@@ -380,6 +383,24 @@ func _daemon_closed(u: Fighter) -> void:
 		for e in trig.get("effects", []):
 			Effects.resolve(self, e, player, null)
 		_check_end()
+	_daemon_payoffs(u)
+
+
+## Player action (Hive Link): shut down one of your own daemons. Same as it running out.
+func can_shutdown() -> bool:
+	return manual_crash and phase == Phase.PLAYER and not units.is_empty() and not is_over()
+
+
+func shutdown_daemon(idx: int) -> bool:
+	if not can_shutdown() or idx < 0 or idx >= units.size():
+		return false
+	crash_daemon(units[idx])
+	return true
+
+
+## "Destroyed or refreshed" payoffs: implants on daemon_closed and Hive Link's blast.
+## Fire when a daemon leaves the board and when re-running it tops it back up.
+func _daemon_payoffs(u: Fighter) -> void:
 	if not is_over():
 		Talismans.fire(self, "daemon_closed", {"daemon": u})
 		_check_end()
@@ -431,6 +452,7 @@ func summon(unit_name: String, hp: int, rule: Dictionary = {}) -> bool:
 			u.hp = maxi(u.hp, hp)
 			u.rule = rule
 			emit("refresh", {"target": u.id, "hp": u.hp})
+			_daemon_payoffs(u)
 			return true
 	if units.size() >= board_slots:
 		return false

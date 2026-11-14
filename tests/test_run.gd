@@ -372,6 +372,11 @@ func test_implant_daemon_closed_and_reshuffle_triggers() -> void:
 	c.crash_daemon(c.units[0])
 	eq(c.player.hp, 24, "repair when a daemon shuts down")
 	eq(c.hand.size(), 1, "and draw")
+	c.draw_pile = db.make_deck(["jab", "jab"])
+	c.summon("B", 3)
+	c.summon("B", 3)
+	eq(c.player.hp, 28, "refreshing a daemon repairs too")
+	eq(c.hand.size(), 3, "and draws")
 	c.discard_pile = db.make_deck(["jab"])
 	c.energy = 0
 	c.draw(1)
