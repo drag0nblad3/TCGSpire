@@ -33,6 +33,7 @@ const OPS := {
 	"amplify": ["status", "mult", "to"],
 	"strip": ["to"],
 	"sacrifice": ["effect", "mult", "to"],
+	"interrupt": ["kinds", "effects", "to"],
 }
 
 ## Loop: any effect below may carry "loop": n (a card keyword shown as "Loop +n").
@@ -165,6 +166,16 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 		"lose_hp":
 			for t in targets(c, e, src, target, "self"):
 				_lose_hp(c, t, n, src)
+		"interrupt":
+			# Cancels the named parts of each target's next move; "effects" pay off once per enemy cut.
+			for t in targets(c, e, src, target, "target"):
+				var cut: Array = Intents.matching(t, e.get("kinds", []))
+				if cut.is_empty():
+					continue
+				t.interrupted.append_array(cut)
+				c.emit("interrupt", {"target": t.id, "kinds": cut})
+				for fx in e.get("effects", []):
+					resolve(c, fx, src, t)
 		_:
 			push_error("Unknown effect op: %s" % op)
 
@@ -324,6 +335,13 @@ static func _describe(e: Dictionary) -> String:
 			return "%s %s %s." % [word, whose, st2]
 		"strip":
 			return "Strip all helpful statuses from %s." % ("ALL enemies" if to == "all_enemies" else "the target")
+		"interrupt":
+			var names: Array = e.get("kinds", []).map(func(k: String) -> String: return Lexicon.intent(k))
+			var txt2 := "Interrupt %s%s." % [" or ".join(names), " on ALL enemies" if to == "all_enemies" else ""]
+			var bonus: Array = e.get("effects", [])
+			if not bonus.is_empty():
+				txt2 += " If it cancels: %s" % " ".join(bonus.map(func(fx: Dictionary) -> String: return describe(fx)))
+			return txt2
 		"sacrifice":
 			var m3 := float(e.get("mult", 1.0))
 			var x := "its HP" if m3 == 1.0 else "%sx its HP" % (str(int(m3)) if m3 == int(m3) else str(m3))
@@ -359,6 +377,16 @@ static func validate(e: Dictionary, where: String) -> Array[String]:
 		for fx in e.get("effects", []):
 			errs.append_array(validate(fx, where))
 			if fx.get("op", "") in ["handshake", "sequence", "cooldown", "compile", "relay_cashout"]:
+				errs.append("%s: nested program condition" % where)
+	if op == "interrupt":
+		if e.get("kinds", []).is_empty():
+			errs.append("%s: interrupt names no intent" % where)
+		for k in e.get("kinds", []):
+			if k not in Intents.INTERRUPTIBLE:
+				errs.append("%s: interrupt can't cancel '%s'" % [where, k])
+		for fx in e.get("effects", []):
+			errs.append_array(validate(fx, where))
+			if fx.get("op", "") in ["handshake", "sequence", "cooldown", "compile", "relay_cashout", "interrupt"]:
 				errs.append("%s: nested program condition" % where)
 	if op == "sequence":
 		if e.get("types", []).is_empty():

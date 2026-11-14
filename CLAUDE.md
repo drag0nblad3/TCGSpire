@@ -14,7 +14,7 @@ Original design only: don't copy cards, names, characters or look from existing 
   bot picks/offers and plays/damage/Firewall per play; writes `report.tsv` in `out`. ~10 min for every card at n=80 on 4 cores. Low plays/run = bot blind spot.
 - `scripts/sim_matrix.sh` — the standard balance check Tyler wants: 150 runs per cell, new heat 0-1, experienced 1-3, veteran 2-5, max 4-6.
 - `scripts/shot.sh screen=<name|all> out=/tmp/x.png [plays=2] [end_turn=1] [theme=archive]` — real render to PNG (xvfb).
-  Screens: hub map combat reward rest shop event collection picker pack pack_open pack_shelf pack_premium pack_crew weekly weekly_map login signal_result end inspect rules jobs rig perk tinker crew firmware recompile menu settings resume tutorial coach foil. Uses a throwaway profile.
+  Screens: hub map combat reward rest shop event collection picker pack pack_open pack_shelf pack_premium pack_crew weekly weekly_map login signal_result ice deep end inspect rules jobs rig perk tinker crew firmware recompile menu settings resume tutorial coach foil. Uses a throwaway profile.
 - Godot binary: `godot` on PATH, or set `GODOT=/path/to/godot`. Cloud sessions: download
   `Godot_v4.4.1-stable_linux.x86_64.zip` from the godotengine GitHub releases.
 
@@ -60,7 +60,7 @@ Original design only: don't copy cards, names, characters or look from existing 
   turns, -1 per hit taken, Purge moves (enemy damage `"to": "daemon"`) take their full number. Re-running a daemon
   that is up tops its HP back up. Daemon-only trigger `closed` fires when that daemon shuts down (ran out, hit, crashed); re-running a daemon with a `closed` rule restarts it instead (payoff fires, fresh HP): Botnet Lease. Scaling: `daemon_hp` (rig/subroutine mod, implant `"daemon": {"hp": n}`),
   `rally` (+HP to all daemons), Patch on a daemon (cards with `"target": "ally"`). In a daemon rule trigger, `"to": "this"` targets that daemon (Leech Line repairs itself).
-- Card pool: every crew (Street included) has 8 common / 8 uncommon / 5 rare / 2 mythic (`test_data` enforces it).
+- Card pool: every crew (Street included) has 8 common / 9 uncommon / 5 rare / 2 mythic (`test_data` enforces it).
   Joint ops (`data/cards/joint.json`, `"faction2"`): one per non-rival crew pair, on top of the spread. They count as
   both crews for job picks (`CardDef.is_of`), are banned if either crew is a target (`banned_by`), stay out of binders,
   and firmware is paid in the home crew's rep. Cards without an entry in `card_art.json` draw the procedural fallback.
@@ -73,6 +73,14 @@ Original design only: don't copy cards, names, characters or look from existing 
   date, one try, scored), weekly challenge (`meta/weekly.gd`: Monday-keyed job at balance.weekly.heat, rule modifiers
   from `data/weekly.json` (perk-shaped: mods/heat/triggers/pickup + text), own cards but no rig/firmware, first clear pays a premium pack,
   never unlocks heat), daily login bonus (`meta/login_bonus.gd`, balance.login: 6 scrap days, a normal pack on day 4, a premium pack on day 7, missed days never reset), quick scrap in pack opening (`Profile.quick_scrap`: only copies beyond the deck limit), glitch foils (`pack.foil_chance`, `shaders/glitch_foil.gdshader`), 3 saved loadouts per crew.
+- Interrupt (`interrupt` op: `kinds` from `Intents.INTERRUPTIBLE`, optional `effects` paid once per enemy cut): cancels only the named
+  intent kinds of the target's next move (`Fighter.interrupted`, cleared after the move); misses if the intent isn't there. `Intents.kind_of`
+  classifies a move effect. One uncommon Interrupt program per crew (spread is now 9 uncommons); they await art (`test_card_art` allowlist).
+- Deep Stack (`balance.deep_stack`, `Records.deep_unlocked`: a win at `unlock_heat`+): normal jobs only (`RunState.deep_ok`). After the final Core
+  the run waits (`deep_pending`) for `descend()` (new last-act map, enemy HP/damage compound per `deep` layer) or `jack_out()`. The win is banked
+  first; each deep Core still pays a crew pack (`deep_cores`), but no rep/act XP; depth sets `stats.best_depth`. The run bot always jacks out.
+- ICE database (Records screen "ICE" tab): `RunState.ice` counts enemies per fight (`Records.tally_ice`), folded into `Profile.ice` at run end;
+  `balance.ice_db.reveal` fights decode an entry (moves + `data/ice_lore.json` line; every enemy needs one, `Records.validate`).
 - Combat animation: `CombatScreen._play_events` replays `combat.events` step by step (input blocked);
   damage/ward/heal events carry `hp`/`ward` after the change for the bars. `step_scale = 0` in tests.
 - `data/` all content as JSON: `cards/<faction>.json` (one card per line), `enemies/`,
