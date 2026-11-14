@@ -46,12 +46,15 @@ func _ready() -> void:
 	_info_box.visible = false
 	add_child(_info_box)
 	if not run.talismans.is_empty():
-		var row := UiKit.hbox(6)
+		var row := TalismanView.strip(self)
 		for tid in run.talismans:
 			var tv := TalismanView.new().setup(tid, run.db)
-			tv.pressed.connect(func(id: String) -> void: toggle_info("implant:" + id, TalismanView.text(run.db, id)))
+			tv.run_context = run
+			tv.pressed.connect(func(_id: String) -> void: tv.inspect())
+			if tid in run.implant_recent:
+				tv.activate()
 			row.add_child(tv)
-		add_child(row)
+		run.implant_recent.clear()
 
 
 var _info: Label

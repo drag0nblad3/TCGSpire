@@ -19,6 +19,8 @@ var combat: Combat
 var run: RunState
 var _selected := -1
 var _event_cursor := 0
+var _implant_views: Dictionary = {}
+var _implant_tracker := ImplantTracker.new()
 var _busy := false
 
 var _floor_label: Label
@@ -71,12 +73,13 @@ func _ready() -> void:
 	piles.add_child(UiKit.button("?", func() -> void: Rules.open(self, "Turn flow"), Vector2(52, 46), 20))
 	col.add_child(piles)
 	if not combat.talismans.is_empty():
-		var trow := UiKit.hbox(6)
+		var trow := TalismanView.strip(col)
 		for t in combat.talismans:
 			var tv := TalismanView.new().setup(t["id"], combat.db)
-			tv.pressed.connect(func(id: String) -> void: UiKit.toast(self, TalismanView.text(combat.db, id)))
+			tv.tracker = _implant_tracker
+			_implant_views[t["id"]] = tv
+			tv.pressed.connect(func(_id: String) -> void: tv.inspect())
 			trow.add_child(tv)
-		col.add_child(trow)
 	var board := PanelContainer.new()
 	board.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	board.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -135,6 +138,11 @@ func _ready() -> void:
 	add_child(_fx)
 	_fx.draw.connect(_draw_target_line)
 
+	for event in combat.events:
+		_present_implant_event(event, false)
+	for id in _implant_tracker.counts:
+		if _implant_views.has(id) and step_scale > 0.0:
+			_implant_views[id].activate()
 	_event_cursor = combat.events.size()
 	_rebuild()
 	_deal_in(combat.hand.size())
@@ -458,6 +466,7 @@ func _play_events(played: CardView) -> int:
 	while _event_cursor < combat.events.size():
 		var e: Dictionary = combat.events[_event_cursor]
 		_event_cursor += 1
+		_present_implant_event(e, step_scale > 0.0)
 		if step_scale > 0.0:
 			GameAudio.play(GameAudio.event_cue(e))
 		var v: FighterView = _views.get(str(e.get("target", "")))
@@ -748,3 +757,16 @@ func _spacer() -> Control:
 	var s := Control.new()
 	s.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	return s
+
+func _present_implant_event(event: Dictionary, animate: bool = true) -> void:
+	var had_daemons := not _implant_tracker.daemons.is_empty()
+	_implant_tracker.consume(event)
+	if animate and not had_daemons and not _implant_tracker.daemons.is_empty():
+		for view in _implant_views.values():
+			if view.definition.get("flags_while_daemon", false):
+				view.activate()
+	var id := str(event.get("id", ""))
+	if animate and event.get("t", "") == "talisman" and _implant_views.has(id):
+		_implant_views[id].activate()
+	for view in _implant_views.values():
+		view.queue_redraw()

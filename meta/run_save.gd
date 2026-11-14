@@ -7,7 +7,7 @@ extends RefCounted
 ## a fight restarts from its first turn) | {"screen": "reward", ...} | {"screen": "perks", ...}.
 ## Stored with var_to_str so ints stay ints (JSON would turn them into floats).
 
-const VERSION := 1
+const VERSION := 2
 const DEFAULT_PATH := "user://run.save"
 
 
@@ -30,7 +30,7 @@ static func load_run(db: CardDB, path: String = DEFAULT_PATH) -> Dictionary:
 	if not FileAccess.file_exists(path):
 		return {}
 	var v: Variant = str_to_var(FileAccess.get_file_as_string(path))
-	if not (v is Dictionary) or int(v.get("version", 0)) != VERSION or not (v.get("run") is Dictionary):
+	if not (v is Dictionary) or int(v.get("version", 0)) not in [1, VERSION] or not (v.get("run") is Dictionary):
 		push_warning("Unreadable run save at %s, ignoring it" % path)
 		return {}
 	return {"run": RunState.from_dict(db, v["run"]), "resume": v.get("resume", {"screen": "map"})}

@@ -14,6 +14,9 @@ var gold := 0
 var floor_num := 0
 var heat := 0
 var talismans: Array = []
+## Saved map-trigger counts; recent pulses are presentation-only and consumed once.
+var implant_activations: Dictionary = {}
+var implant_recent: Array = []
 var map: RunMap
 var node_id := -1
 var jumps_used := 0  # jump charges spent this act
@@ -462,6 +465,7 @@ func add_talisman(id: String) -> void:
 	if id == "" or id in talismans or not db.talismans.has(id):
 		return
 	talismans.append(id)
+	implant_recent.append(id)
 	for o in db.talismans[id].get("pickup", []):
 		RunOutcomes.apply(self, o)
 
@@ -644,7 +648,7 @@ func summary() -> String:
 const SAVED := ["seed_value", "hp", "max_hp", "gold", "floor_num", "heat", "talismans", "node_id", "path", "jumps_used",
 	"combats_won", "elites_won", "boss_won", "act", "acts_cleared", "double_crossed", "over", "card_plays",
 	"remove_cost", "outcome_counter", "locked_talismans", "perks", "rig", "firmware", "firmware_mods",
-	"mods_installed", "job", "banned", "tally", "clauses", "daily", "weekly", "weekly_mods"]
+	"mods_installed", "job", "banned", "tally", "clauses", "daily", "weekly", "weekly_mods", "implant_activations"]
 
 
 func to_dict() -> Dictionary:

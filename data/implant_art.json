@@ -1,0 +1,752 @@
+{
+  "ember_charm": {
+    "atlas": 1,
+    "region": [
+      0,
+      0,
+      250,
+      250
+    ],
+    "motion": "spark",
+    "accent": "#ef8736",
+    "hotspot": [
+      0.5,
+      0.5
+    ]
+  },
+  "oak_token": {
+    "atlas": 1,
+    "region": [
+      250,
+      0,
+      250,
+      250
+    ],
+    "motion": "slide",
+    "accent": "#57c7dc",
+    "hotspot": [
+      0.5,
+      0.5
+    ]
+  },
+  "flint_shard": {
+    "atlas": 1,
+    "region": [
+      500,
+      0,
+      250,
+      250
+    ],
+    "motion": "spark",
+    "accent": "#f2b73d",
+    "hotspot": [
+      0.32,
+      0.76
+    ]
+  },
+  "pocket_seed": {
+    "atlas": 1,
+    "region": [
+      750,
+      0,
+      250,
+      250
+    ],
+    "motion": "pulse",
+    "accent": "#9cbc35",
+    "hotspot": [
+      0.52,
+      0.36
+    ]
+  },
+  "copper_ring": {
+    "atlas": 1,
+    "region": [
+      1000,
+      0,
+      250,
+      250
+    ],
+    "motion": "ring",
+    "accent": "#d99b59",
+    "hotspot": [
+      0.5,
+      0.5
+    ]
+  },
+  "lucky_coin": {
+    "atlas": 1,
+    "region": [
+      0,
+      250,
+      250,
+      250
+    ],
+    "motion": "signal",
+    "accent": "#e9bd50",
+    "hotspot": [
+      0.5,
+      0.5
+    ]
+  },
+  "tide_pendant": {
+    "atlas": 1,
+    "region": [
+      250,
+      250,
+      250,
+      250
+    ],
+    "motion": "ring",
+    "accent": "#6aabeb",
+    "hotspot": [
+      0.51,
+      0.49
+    ]
+  },
+  "war_drum": {
+    "atlas": 1,
+    "region": [
+      500,
+      250,
+      250,
+      250
+    ],
+    "motion": "ring",
+    "accent": "#df64a3",
+    "hotspot": [
+      0.39,
+      0.41
+    ]
+  },
+  "bone_dice": {
+    "atlas": 1,
+    "region": [
+      750,
+      250,
+      250,
+      250
+    ],
+    "motion": "signal",
+    "accent": "#dfb563",
+    "hotspot": [
+      0.57,
+      0.62
+    ]
+  },
+  "spiked_collar": {
+    "atlas": 1,
+    "region": [
+      1000,
+      250,
+      250,
+      250
+    ],
+    "motion": "spark",
+    "accent": "#ee8a47",
+    "hotspot": [
+      0.5,
+      0.7
+    ]
+  },
+  "phoenix_feather": {
+    "atlas": 1,
+    "region": [
+      0,
+      500,
+      250,
+      250
+    ],
+    "motion": "pulse",
+    "accent": "#b699d5",
+    "hotspot": [
+      0.5,
+      0.5
+    ]
+  },
+  "everbloom": {
+    "atlas": 1,
+    "region": [
+      250,
+      500,
+      250,
+      250
+    ],
+    "motion": "pulse",
+    "accent": "#a4c64b",
+    "hotspot": [
+      0.5,
+      0.5
+    ]
+  },
+  "first_light": {
+    "atlas": 1,
+    "region": [
+      500,
+      500,
+      250,
+      250
+    ],
+    "motion": "signal",
+    "accent": "#f8c457",
+    "hotspot": [
+      0.48,
+      0.5
+    ]
+  },
+  "crown_of_embers": {
+    "atlas": 1,
+    "region": [
+      750,
+      500,
+      250,
+      250
+    ],
+    "motion": "vent",
+    "accent": "#ef8135",
+    "hotspot": [
+      0.52,
+      0.28
+    ]
+  },
+  "heart_of_tides": {
+    "atlas": 1,
+    "region": [
+      1000,
+      500,
+      250,
+      250
+    ],
+    "motion": "pulse",
+    "accent": "#4dcce5",
+    "hotspot": [
+      0.5,
+      0.6
+    ]
+  },
+  "storm_capacitor": {
+    "atlas": 1,
+    "region": [
+      0,
+      750,
+      250,
+      250
+    ],
+    "motion": "spark",
+    "accent": "#e9b63b",
+    "hotspot": [
+      0.5,
+      0.5
+    ]
+  },
+  "seed_pouch": {
+    "atlas": 1,
+    "region": [
+      250,
+      750,
+      250,
+      250
+    ],
+    "motion": "pulse",
+    "accent": "#adc841",
+    "hotspot": [
+      0.36,
+      0.56
+    ]
+  },
+  "iron_will": {
+    "atlas": 1,
+    "region": [
+      500,
+      750,
+      250,
+      250
+    ],
+    "motion": "slide",
+    "accent": "#56cee4",
+    "hotspot": [
+      0.48,
+      0.58
+    ]
+  },
+  "echo_shell": {
+    "atlas": 1,
+    "region": [
+      750,
+      750,
+      250,
+      250
+    ],
+    "motion": "ring",
+    "accent": "#b69bd8",
+    "hotspot": [
+      0.5,
+      0.5
+    ]
+  },
+  "ember_brazier": {
+    "atlas": 1,
+    "region": [
+      1000,
+      750,
+      250,
+      250
+    ],
+    "motion": "vent",
+    "accent": "#ed8a51",
+    "hotspot": [
+      0.5,
+      0.49
+    ]
+  },
+  "hunters_mark": {
+    "atlas": 1,
+    "region": [
+      0,
+      1000,
+      250,
+      250
+    ],
+    "motion": "scan",
+    "accent": "#ed795f",
+    "hotspot": [
+      0.4,
+      0.47
+    ]
+  },
+  "quill_of_fate": {
+    "atlas": 1,
+    "region": [
+      250,
+      1000,
+      250,
+      250
+    ],
+    "motion": "ring",
+    "accent": "#f2bd49",
+    "hotspot": [
+      0.5,
+      0.5
+    ]
+  },
+  "living_armor": {
+    "atlas": 1,
+    "region": [
+      500,
+      1000,
+      250,
+      250
+    ],
+    "motion": "slide",
+    "accent": "#a8c66c",
+    "hotspot": [
+      0.5,
+      0.5
+    ]
+  },
+  "void_heart": {
+    "atlas": 1,
+    "region": [
+      750,
+      1000,
+      250,
+      250
+    ],
+    "motion": "pulse",
+    "accent": "#b181ce",
+    "hotspot": [
+      0.5,
+      0.5
+    ]
+  },
+  "gilded_scale": {
+    "atlas": 1,
+    "region": [
+      1000,
+      1000,
+      250,
+      250
+    ],
+    "motion": "signal",
+    "accent": "#e6be55",
+    "hotspot": [
+      0.5,
+      0.43
+    ]
+  },
+  "ceramic_casing": {
+    "atlas": 2,
+    "region": [
+      0,
+      0,
+      250,
+      250
+    ],
+    "motion": "slide",
+    "accent": "#77adc2",
+    "hotspot": [
+      0.5,
+      0.5
+    ]
+  },
+  "watchdog_chip": {
+    "atlas": 2,
+    "region": [
+      250,
+      0,
+      250,
+      250
+    ],
+    "motion": "scan",
+    "accent": "#72d5dd",
+    "hotspot": [
+      0.5,
+      0.5
+    ]
+  },
+  "swap_file": {
+    "atlas": 2,
+    "region": [
+      500,
+      0,
+      250,
+      250
+    ],
+    "motion": "slide",
+    "accent": "#e6ac62",
+    "hotspot": [
+      0.5,
+      0.5
+    ]
+  },
+  "fence_ledger": {
+    "atlas": 2,
+    "region": [
+      750,
+      0,
+      250,
+      250
+    ],
+    "motion": "signal",
+    "accent": "#dfb457",
+    "hotspot": [
+      0.5,
+      0.5
+    ]
+  },
+  "heartbeat_monitor": {
+    "atlas": 2,
+    "region": [
+      1000,
+      0,
+      250,
+      250
+    ],
+    "motion": "pulse",
+    "accent": "#a2c653",
+    "hotspot": [
+      0.5,
+      0.58
+    ]
+  },
+  "tick_counter": {
+    "atlas": 2,
+    "region": [
+      0,
+      250,
+      250,
+      250
+    ],
+    "motion": "ring",
+    "accent": "#dd68aa",
+    "hotspot": [
+      0.5,
+      0.5
+    ]
+  },
+  "scrap_sieve": {
+    "atlas": 2,
+    "region": [
+      250,
+      250,
+      250,
+      250
+    ],
+    "motion": "slide",
+    "accent": "#e6b64c",
+    "hotspot": [
+      0.5,
+      0.5
+    ]
+  },
+  "afterburner": {
+    "atlas": 2,
+    "region": [
+      500,
+      250,
+      250,
+      250
+    ],
+    "motion": "vent",
+    "accent": "#ef8f3d",
+    "hotspot": [
+      0.45,
+      0.66
+    ]
+  },
+  "cold_storage": {
+    "atlas": 2,
+    "region": [
+      750,
+      250,
+      250,
+      250
+    ],
+    "motion": "pulse",
+    "accent": "#66cee1",
+    "hotspot": [
+      0.5,
+      0.5
+    ]
+  },
+  "skip_tracer": {
+    "atlas": 2,
+    "region": [
+      1000,
+      250,
+      250,
+      250
+    ],
+    "motion": "scan",
+    "accent": "#b68cd2",
+    "hotspot": [
+      0.62,
+      0.35
+    ]
+  },
+  "skeleton_key": {
+    "atlas": 2,
+    "region": [
+      0,
+      500,
+      250,
+      250
+    ],
+    "motion": "slide",
+    "accent": "#bd91cf",
+    "hotspot": [
+      0.5,
+      0.5
+    ]
+  },
+  "uplink_relay": {
+    "atlas": 2,
+    "region": [
+      250,
+      500,
+      250,
+      250
+    ],
+    "motion": "signal",
+    "accent": "#65cedd",
+    "hotspot": [
+      0.5,
+      0.5
+    ]
+  },
+  "spool_buffer": {
+    "atlas": 2,
+    "region": [
+      500,
+      500,
+      250,
+      250
+    ],
+    "motion": "ring",
+    "accent": "#e262a2",
+    "hotspot": [
+      0.5,
+      0.51
+    ]
+  },
+  "pressure_valve": {
+    "atlas": 2,
+    "region": [
+      750,
+      500,
+      250,
+      250
+    ],
+    "motion": "ring",
+    "accent": "#e99546",
+    "hotspot": [
+      0.5,
+      0.5
+    ]
+  },
+  "crash_reporter": {
+    "atlas": 2,
+    "region": [
+      1000,
+      500,
+      250,
+      250
+    ],
+    "motion": "signal",
+    "accent": "#e9c261",
+    "hotspot": [
+      0.63,
+      0.51
+    ]
+  },
+  "patch_notes": {
+    "atlas": 2,
+    "region": [
+      0,
+      750,
+      250,
+      250
+    ],
+    "motion": "pulse",
+    "accent": "#a8cd52",
+    "hotspot": [
+      0.5,
+      0.5
+    ]
+  },
+  "grafted_host": {
+    "atlas": 2,
+    "region": [
+      250,
+      750,
+      250,
+      250
+    ],
+    "motion": "pulse",
+    "accent": "#96ba50",
+    "hotspot": [
+      0.5,
+      0.5
+    ]
+  },
+  "ghost_route": {
+    "atlas": 2,
+    "region": [
+      500,
+      750,
+      250,
+      250
+    ],
+    "motion": "signal",
+    "accent": "#c196d6",
+    "hotspot": [
+      0.5,
+      0.5
+    ]
+  },
+  "recursion_core": {
+    "atlas": 2,
+    "region": [
+      750,
+      750,
+      250,
+      250
+    ],
+    "motion": "ring",
+    "accent": "#d86eaf",
+    "hotspot": [
+      0.5,
+      0.5
+    ]
+  },
+  "lease_extender": {
+    "atlas": 2,
+    "region": [
+      1000,
+      750,
+      250,
+      250
+    ],
+    "motion": "slide",
+    "accent": "#6ed5e2",
+    "hotspot": [
+      0.5,
+      0.5
+    ]
+  },
+  "static_field": {
+    "atlas": 2,
+    "region": [
+      0,
+      1000,
+      250,
+      250
+    ],
+    "motion": "spark",
+    "accent": "#dc79b1",
+    "hotspot": [
+      0.45,
+      0.43
+    ]
+  },
+  "collectors_rig": {
+    "atlas": 2,
+    "region": [
+      250,
+      1000,
+      250,
+      250
+    ],
+    "motion": "signal",
+    "accent": "#dbb35b",
+    "hotspot": [
+      0.5,
+      0.5
+    ]
+  },
+  "server_farm": {
+    "atlas": 2,
+    "region": [
+      500,
+      1000,
+      250,
+      250
+    ],
+    "motion": "scan",
+    "accent": "#64b8dc",
+    "hotspot": [
+      0.5,
+      0.5
+    ]
+  },
+  "ring_buffer": {
+    "atlas": 2,
+    "region": [
+      750,
+      1000,
+      250,
+      250
+    ],
+    "motion": "ring",
+    "accent": "#66cbd8",
+    "hotspot": [
+      0.5,
+      0.5
+    ]
+  },
+  "inside_contact": {
+    "atlas": 2,
+    "region": [
+      1000,
+      1000,
+      250,
+      250
+    ],
+    "motion": "signal",
+    "accent": "#dbb55a",
+    "hotspot": [
+      0.6,
+      0.53
+    ]
+  }
+}
