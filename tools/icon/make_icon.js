@@ -235,7 +235,7 @@ const svg = (inner, vb = `0 0 ${S} ${S}`) =>
 
 module.exports = { FG, BG, svg, S, fgOf };
 
-const DEFAULT = 'sigil';
+const DEFAULT = 'fan';
 
 // Themed-icon layer (Android 13+): solid white where the foreground is bright
 // (neon lines, white cores); dark glass fills and soft halos drop out.
