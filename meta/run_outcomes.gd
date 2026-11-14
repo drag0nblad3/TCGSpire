@@ -28,7 +28,7 @@ static func apply(run: RunState, o: Dictionary) -> String:
 	match str(o.get("op", "")):
 		"gold":
 			run.gold = maxi(run.gold + n, 0)
-			return "%+d gold" % n
+			return "%+d creds" % n
 		"heal":
 			var amt := n if not o.has("pct") else int(run.max_hp * float(o["pct"]))
 			var before := run.hp

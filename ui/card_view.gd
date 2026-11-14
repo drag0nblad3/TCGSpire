@@ -57,6 +57,8 @@ var reveal_progress := 1.0:
 		queue_redraw()
 var _reveal_tween: Tween
 var _holo: ColorRect
+## Upgrade preview: the card's text before the change. Numbers that differ show as "6→8".
+var before_text := ""
 ## Draw scale: the card is laid out at SIZE and drawn zoomed (hand cards in combat).
 var zoom := 1.0
 var _tap := Tap.new()
@@ -99,6 +101,31 @@ func _process(_dt: float) -> void:
 			inspected.emit(self)
 	if card != null and (face_down or card.def.rarity in ["rare", "mythic"]):
 		queue_redraw()  # animate the sigil on rares and card backs
+
+
+## "Deal 6→8 damage." when `new_text` differs from `old_text` only in its numbers;
+## otherwise `new_text` unchanged.
+static func diff_text(old_text: String, new_text: String) -> String:
+	var re := RegEx.create_from_string("\\d+")
+	var a := re.search_all(old_text)
+	var b := re.search_all(new_text)
+	if a.size() != b.size() or a.is_empty():
+		return new_text
+	if re.sub(old_text, "#", true) != re.sub(new_text, "#", true):
+		return new_text
+	var out := ""
+	var cursor := 0
+	var changed := false
+	for i in b.size():
+		out += new_text.substr(cursor, b[i].get_start() - cursor)
+		if a[i].get_string() != b[i].get_string():
+			out += "%s→%s" % [a[i].get_string(), b[i].get_string()]
+			changed = true
+		else:
+			out += b[i].get_string()
+		cursor = b[i].get_end()
+	out += new_text.substr(cursor)
+	return out if changed else new_text
 
 
 ## Largest font size (max..min) at which `text` fits in width x height.
@@ -210,6 +237,11 @@ func _draw() -> void:
 	# Rules text, auto-sized to fit the text box.
 	var box := Rect2(rect.position + Vector2(6, 94), Vector2(SIZE.x - 12, SIZE.y - 94 - 16))
 	var txt := card.text()
+	if before_text != "":
+		var merged := diff_text(before_text, txt)
+		if merged != txt:
+			txt = merged
+			ink = Palette.UPGRADED
 	var fs := fit_size(font, txt, box.size.x, box.size.y, 15, 7)
 	var th := font.get_multiline_string_size(txt, HORIZONTAL_ALIGNMENT_CENTER, box.size.x, fs).y
 	var y0 := box.position.y + maxf((box.size.y - th) / 2.0, 0.0) + font.get_ascent(fs)
@@ -317,13 +349,13 @@ static func back_color() -> Color:
 
 
 ## Flip animation: squash to 0 width, swap face, expand back.
-func flip_reveal() -> void:
+func flip_reveal(half: float = 0.12) -> void:
 	var tw := create_tween()
-	tw.tween_property(self, "scale:x", 0.0, 0.12)
+	tw.tween_property(self, "scale:x", 0.0, half).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	tw.tween_callback(func() -> void:
 		face_down = false
 		reveal_reward())
-	tw.tween_property(self, "scale:x", 1.0, 0.12)
+	tw.tween_property(self, "scale:x", 1.0, half).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 
 
 ## One-shot reveal on reward offers and pack flips, never on ordinary hand rebuilds.

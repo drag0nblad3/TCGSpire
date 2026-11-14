@@ -35,11 +35,14 @@ func setup(db_in: CardDB, p: Profile, saved: String = "") -> HubScreen:
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var parts := UiKit.screen(14)
+	var parts := UiKit.screen(10, BoxContainer.ALIGNMENT_BEGIN)
 	add_child(parts[0])
-	var v: VBoxContainer = parts[1]
+	var outer: VBoxContainer = parts[1]
+	# Everything scrolls except the tab bar pinned to the bottom.
+	var v := UiKit.scroll(outer)
+	v.add_theme_constant_override("separation", 14)
 	var logo := Control.new()
-	logo.custom_minimum_size = Vector2(140, 140)
+	logo.custom_minimum_size = Vector2(120, 120)
 	logo.draw.connect(func() -> void:
 		var t := Time.get_ticks_msec() / 1000.0
 		Sigil.draw(logo, logo.size / 2, 58.0, "tcg-spire-logo", Palette.ENERGY, t)
@@ -78,7 +81,6 @@ func _ready() -> void:
 		rep.add_child(UiKit.label("%s %d" % [Jobs.rep_name(db, f), profile.rep_of(f)], 14, Palette.faction(f)))
 		reps.add_child(rep)
 	v.add_child(reps)
-	v.add_child(UiKit.label("Rep: each crew pays its own on its jobs. Spend it on rig upgrades and firmware.", 13, Palette.TEXT_DIM, true))
 	v.add_child(_login_panel())
 
 	var heat_row := UiKit.hbox(16)
@@ -93,18 +95,26 @@ func _ready() -> void:
 	_set_heat(heat)
 
 	if saved_run != "":
-		v.add_child(UiKit.button("Resume run\n%s" % saved_run, func() -> void: resume_pressed.emit(), Vector2(300, 84), 20))
+		v.add_child(UiKit.primary(UiKit.button("Resume run\n%s" % saved_run, func() -> void: resume_pressed.emit(), Vector2(420, 96), 22)))
 		v.add_child(UiKit.button("Abandon run", func() -> void: abandon_pressed.emit(), Vector2(300, 48), 16))
 	else:
 		if first_time():
 			var tut := UiKit.button("New here? Play the tutorial", func() -> void: tutorial_pressed.emit(), Vector2(300, 64), 18)
 			tut.add_theme_color_override("font_color", Palette.UPGRADED)
 			v.add_child(tut)
-		v.add_child(UiKit.button("Take a job\nStart a new run", func() -> void: start_pressed.emit(heat), Vector2(300, 88), 22))
-		v.add_child(UiKit.label("What a run pays", 17, Palette.ENERGY))
+		v.add_child(UiKit.primary(UiKit.button("Take a job\nStart a new run", func() -> void: start_pressed.emit(heat), Vector2(420, 104), 26)))
+		# Payout details fold away behind a button; the hub stays scannable.
 		_rewards_label = UiKit.label("", 14, Palette.TEXT, true)
-		_rewards_label.custom_minimum_size.x = 560
-		v.add_child(_rewards_label)
+		_rewards_label.custom_minimum_size.x = 600
+		var pays_box := UiKit.panel(_rewards_label)
+		pays_box.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		pays_box.visible = false
+		var pays := UiKit.button("What a run pays  ?", func() -> void: pass, Vector2(240, 44), 15)
+		pays.pressed.connect(func() -> void:
+			pays_box.visible = not pays_box.visible
+			pays.text = "Hide payouts" if pays_box.visible else "What a run pays  ?")
+		v.add_child(pays)
+		v.add_child(pays_box)
 		_set_heat(heat)
 	if saved_run == "":
 		var d := Records.daily(db, Records.today())
@@ -125,16 +135,31 @@ Play again for score · new in %dd" % [int(ws["best"]), Weekly.days_left(Records
 		ch_row.add_child(db_btn)
 		ch_row.add_child(wk_btn)
 		v.add_child(ch_row)
-	v.add_child(_collector_panel())
-	var rig_row := UiKit.hbox(12)
-	rig_row.add_child(UiKit.button("Rig upgrades\nPermanent bonuses", func() -> void: rig_pressed.emit(), Vector2(200, 68), 16))
-	rig_row.add_child(UiKit.button("Records\nStats and sets", func() -> void: records_pressed.emit(), Vector2(200, 68), 16))
-	v.add_child(rig_row)
-	var row := UiKit.hbox(12)
-	row.add_child(UiKit.button("Tutorial", func() -> void: tutorial_pressed.emit(), Vector2(130, 52), 16))
-	row.add_child(UiKit.button("Rules", func() -> void: Rules.open(self), Vector2(130, 52), 16))
-	row.add_child(UiKit.button("Menu", func() -> void: menu_pressed.emit(), Vector2(130, 52), 16))
-	v.add_child(row)
+	v.add_child(_collector_hints())
+	outer.add_child(_tab_bar())
+
+
+## Bottom tab bar: the places you go between runs. Menu holds Settings, Rules and the tutorial.
+func _tab_bar() -> Control:
+	var bar := UiKit.hbox(6)
+	var ready := profile.ready_to_flash(db).size()
+	var lib := CollectionScreen.library_progress(db, profile)
+	var tabs := [
+		["Caches", str(profile.packs_unopened) if profile.packs_unopened > 0 else "none", packs_pressed, profile.packs_unopened > 0, profile.packs_unopened > 0],
+		["Library", ("%d NEW" % profile.unseen.size()) if not profile.unseen.is_empty() else (("%d ready" % ready) if ready > 0 else "%d/%d" % lib), collection_pressed, true, not profile.unseen.is_empty() or ready > 0],
+		["Rig", "upgrades", rig_pressed, true, false],
+		["Records", "sets", records_pressed, true, false],
+		["Menu", "more", menu_pressed, true, false],
+	]
+	for t in tabs:
+		var b := UiKit.button("%s\n%s" % [t[0], t[1]], func() -> void: (t[2] as Signal).emit(), Vector2(128, 70), 16)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.disabled = not t[3]
+		if t[4]:
+			for state in ["font_color", "font_hover_color", "font_focus_color"]:
+				b.add_theme_color_override(state, Palette.UPGRADED)
+		bar.add_child(b)
+	return bar
 
 
 ## Daily login bonus: the 7-day track (claimed, today, ahead) and a Claim button while today's is open.
@@ -174,38 +199,16 @@ func first_time() -> bool:
 	return not bool(profile.settings.get("tutorial_done", false)) and int(profile.stats.get("runs", 0)) == 0
 
 
-## Collecting front and center: packs, shards, library progress, upgrades waiting, the next binder.
-func _collector_panel() -> Control:
-	var box := UiKit.vbox(6)
-	var lib := CollectionScreen.library_progress(db, profile)
-	var ready := profile.ready_to_flash(db).size()
-	var crews := profile.packs_unopened - profile.pack_count(Packs.PREMIUM) - profile.pack_count(Packs.NORMAL)
-	var kinds: Array[String] = []
-	for part in [[profile.pack_count(Packs.PREMIUM), "premium"], [crews, "crew"], [profile.pack_count(Packs.NORMAL), "normal"]]:
-		if int(part[0]) > 0:
-			kinds.append("%d %s" % part)
-	var mix := " · ".join(kinds) if not kinds.is_empty() else "Card packs"
-	var pk := UiKit.button("Open %s (%d)\n%s · shards %d / %d" % [Palette.w("packs").to_lower(), profile.packs_unopened, mix, profile.pack_shards, Profile.shards_per_pack(db)],
-		func() -> void: packs_pressed.emit(), Vector2(300, 72), 20)
-	pk.disabled = profile.packs_unopened <= 0
-	box.add_child(pk)
-	var extra: Array[String] = []
-	if not profile.unseen.is_empty():
-		extra.append("%d NEW" % profile.unseen.size())
-	if ready > 0:
-		extra.append("%d ready to flash" % ready)
-	var lib_b := UiKit.button("Program library %d / %d\n%s" % [lib[0], lib[1], " · ".join(extra) if not extra.is_empty() else "Your cards: browse, craft, upgrade"],
-		func() -> void: collection_pressed.emit(), Vector2(300, 72), 18)
-	if not profile.unseen.is_empty():
-		for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
-			lib_b.add_theme_color_override(state, Palette.UPGRADED)
-	box.add_child(lib_b)
+## Collecting hints under the challenges: cache odds and the next binder (the buttons live in the tab bar).
+func _collector_hints() -> Control:
+	var lines: Array[String] = []
+	if profile.packs_unopened > 0:
+		lines.append("%d unopened %s · shards %d / %d" % [profile.packs_unopened, Palette.w("packs").to_lower(), profile.pack_shards, Profile.shards_per_pack(db)])
+	lines.append(PackArt.odds_line(db, profile, Packs.NORMAL))
 	var goal := _next_binder()
-	var lines: Array[String] = [PackArt.odds_line(db, profile, Packs.NORMAL)]
 	if goal != "":
 		lines.append(goal)
-	box.add_child(UiKit.label("\n".join(lines), 14, Palette.UPGRADED, true))
-	return box
+	return UiKit.label("\n".join(lines), 14, Palette.UPGRADED, true)
 
 
 ## The unclaimed binder page closest to done: "Next binder: Burner rares 3 / 4".

@@ -106,6 +106,9 @@ func _open_menu() -> void:
 		return
 	var active_run := run != null and not run.over
 	var entries: Array = [["Resume" if active_run else "Close", null], ["Settings", _open_settings]]
+	if _screen is HubScreen:
+		entries.append(["Rules", func() -> void: Rules.open(_screen)])
+		entries.append(["Tutorial", start_tutorial])
 	var cheats := _cheat_entries()
 	if not cheats.is_empty():
 		entries.append(["Cheats", _open_cheats.bind(cheats)])
@@ -231,58 +234,35 @@ func _profile_cheat_done(message: String) -> void:
 
 
 func _open_settings() -> void:
-	var speed := int(profile.settings.get("anim_speed", 0))
-	get_tree().root.add_child(GameMenu.new().setup("Settings", [
-		["Music: %s" % ("Muted" if profile.settings.get("music_muted", false) else "On"), func() -> void:
-			profile.settings["music_muted"] = not bool(profile.settings.get("music_muted", false))
-			_update_audio_settings()],
-		["Music volume: %d%%" % roundi(float(profile.settings.get("music_volume", 0.4)) * 100), func() -> void:
-			var level := roundi(float(profile.settings.get("music_volume", 0.4)) * 5)
-			profile.settings["music_volume"] = float((level + 1) % 6) / 5.0
-			_update_audio_settings()],
-		["Sound effects: %s" % ("Muted" if profile.settings.get("sfx_muted", false) else "On"), func() -> void:
-			profile.settings["sfx_muted"] = not bool(profile.settings.get("sfx_muted", false))
-			_update_audio_settings()],
-		["Effects volume: %d%%" % roundi(float(profile.settings.get("sfx_volume", 0.6)) * 100), func() -> void:
-			var level := roundi(float(profile.settings.get("sfx_volume", 0.6)) * 5)
-			profile.settings["sfx_volume"] = float((level + 1) % 6) / 5.0
-			_update_audio_settings()],
-		["Test sound", func() -> void:
-			GameAudio.play("ward")
-			_open_settings()],
-		["Look: %s" % Themes.ALL[Palette.theme_id]["name"], func() -> void:
-			profile.settings["theme"] = Themes.next_after(Palette.theme_id)
-			_save()
+	var st := SettingsScreen.new().setup(profile.settings)
+	st.closed.connect(_open_menu)
+	st.changed.connect(_on_setting_changed.bind(st))
+	get_tree().root.add_child(st)
+
+
+func _on_setting_changed(key: String, st: SettingsScreen) -> void:
+	_save()
+	match key:
+		"theme":
 			apply_theme(profile.settings["theme"])
 			if run == null:
 				show_hub()
 			elif _resume.get("screen", "") == "map":
 				show_map()
-			_open_settings()],
-		["Animations: %s" % ANIM_SPEEDS[clampi(speed, 0, ANIM_SPEEDS.size() - 1)][1], func() -> void:
-			profile.settings["anim_speed"] = (speed + 1) % ANIM_SPEEDS.size()
-			_save()
+			# Rebuild the overlay so it picks up the new look.
+			st.queue_free()
+			_open_settings()
+		"anim_speed":
 			if _screen is CombatScreen:
 				(_screen as CombatScreen).step_scale = anim_speed()
-			_open_settings()],
-		["Testing cheats: %s" % ("On" if profile.settings.get("cheats", false) else "Off"), func() -> void:
-			profile.settings["cheats"] = not bool(profile.settings.get("cheats", false))
-			_save()
+		"cheats":
 			if run == null:
 				_menu_btn.visible = _is_profile_cheat_screen(_screen)
-			_open_settings()],
-		["Done", _open_menu],
-	]))
-
-
-func _update_audio_settings() -> void:
-	if is_instance_valid(GameAudio.instance):
-		GameAudio.instance.configure(profile.settings)
-	if is_instance_valid(GameMusic.instance):
-		GameMusic.instance.configure(profile.settings)
-	_save()
-	GameAudio.play("tap")
-	_open_settings()
+		_:
+			if is_instance_valid(GameAudio.instance):
+				GameAudio.instance.configure(profile.settings)
+			if is_instance_valid(GameMusic.instance):
+				GameMusic.instance.configure(profile.settings)
 
 
 ## "Layer 2 · Node 17 · HP 40/60" for the hub's resume button, or "" if no saved run.
@@ -413,10 +393,10 @@ func _show_pages(pages: Array, i: int, on_done: Callable, alt_text: String = "",
 		v.add_child(UiKit.label(str(l), 18, Palette.TEXT, true))
 	var last := i == pages.size() - 1
 	if last and alt.is_valid():
-		v.add_child(UiKit.button(alt_text, alt, Vector2(300, 64), 20))
+		v.add_child(UiKit.primary(UiKit.button(alt_text, alt, Vector2(300, 64), 20)))
 		v.add_child(UiKit.button("Back to hub", on_done, Vector2(300, 56), 17))
 	else:
-		v.add_child(UiKit.button("Start practice fight" if last else "Next", on_done if last else _show_pages.bind(pages, i + 1, on_done, alt_text, alt), Vector2(300, 64), 20))
+		v.add_child(UiKit.primary(UiKit.button("Start practice fight" if last else "Next", on_done if last else _show_pages.bind(pages, i + 1, on_done, alt_text, alt), Vector2(300, 64), 20)))
 		v.add_child(UiKit.button("Skip tutorial", func() -> void:
 			profile.settings["tutorial_done"] = true
 			_save()
@@ -424,52 +404,77 @@ func _show_pages(pages: Array, i: int, on_done: Callable, alt_text: String = "",
 	_show(parts[0])
 
 
-## Job board: every run is a job for one faction (see Jobs).
+## Job board: every run is a job for one faction (see Jobs). Each crew is a compact card
+## (emblem, pay, targets); tap it to open the full payout and bonus clauses and take the job.
 func _show_jobs(heat: int) -> void:
-	var parts := UiKit.screen(16)
-	var v: VBoxContainer = parts[1]
-	v.add_child(UiKit.label("Job board", 32, Palette.ENERGY))
-	v.add_child(UiKit.label("Pick a crew to work for. This starts a new run: next you choose the programs (cards) to bring.", 15, Palette.TEXT_DIM, true))
+	var parts := UiKit.screen(12, BoxContainer.ALIGNMENT_BEGIN)
+	var outer: VBoxContainer = parts[1]
+	outer.add_child(UiKit.label("Job board", 32, Palette.ENERGY))
+	outer.add_child(UiKit.label("Pick a crew to work for. Tap a job for its full pay and bonuses.", 15, Palette.TEXT_DIM, true))
+	var v := UiKit.scroll(outer)
 	var n := profile.starter_picks(db)
 	# Same board until the next run ends, so browsing doesn't reroll the targets.
 	var board_rng := GameRng.new(int(profile.stats.get("runs", 0)) * 7919 + heat)
+	var details: Array = []
 	for offer in Jobs.offers(db, heat, board_rng):
 		var f: String = offer["client"]
 		var clauses := Records.roll_clauses(db, board_rng.fork("clauses:" + f))
 		var j := Jobs.info(db, f)
 		var against: Array = offer["targets"].map(func(x: String) -> String: return Lexicon.faction(x))
-		var b := UiKit.button("", _show_picker.bind(heat, f, offer["targets"], clauses), Vector2(640, 250), 15)
-		var margin := MarginContainer.new()
-		margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		for side in ["left", "right", "top", "bottom"]:
-			margin.add_theme_constant_override("margin_" + side, 12)
-		b.add_child(margin)
-		var row := UiKit.hbox(16)
-		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		margin.add_child(row)
+		var pay := Jobs.payout_preview(db, profile, f, heat, offer["targets"].size() - Jobs.banned(db, f).size())
+		var row := UiKit.hbox(14)
+		row.alignment = BoxContainer.ALIGNMENT_BEGIN
 		row.add_child(Symbols.badge(f, 54))
-		var copy := UiKit.vbox(4)
+		var copy := UiKit.vbox(3, BoxContainer.ALIGNMENT_BEGIN)
 		copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		copy.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(copy)
-		var lines := [
+		var summary := [
 			[j.get("client", f) + "  /  " + Lexicon.faction(f), 19, Palette.faction(f)],
-			[j.get("job", ""), 15, Palette.TEXT],
-			["Load %d+ %s programs · Against: %s (banned)" % [Jobs.required(db, f, n), Lexicon.faction(f), " + ".join(against)], 14, Palette.TEXT_DIM],
-			["Pays %s · You have %d" % [Jobs.rep_name(db, f), profile.rep_of(f)], 14, Palette.faction(f)]]
+			["Pays +%d %s · %s" % [pay["rep"], Jobs.rep_name(db, f), cache_line(pay)], 14, Palette.TEXT],
+			["Against %s · load %d+ %s" % [" + ".join(against), Jobs.required(db, f, n), Lexicon.faction(f)], 14, Palette.TEXT_DIM]]
+		for line in summary:
+			copy.add_child(_left_label(line[0], line[1], line[2]))
+		var more := UiKit.vbox(4, BoxContainer.ALIGNMENT_BEGIN)
+		more.visible = false
+		more.add_child(_left_label(j.get("job", ""), 15, Palette.TEXT))
+		more.add_child(_left_label("You have %d %s" % [profile.rep_of(f), Jobs.rep_name(db, f)], 14, Palette.faction(f)))
 		for l in HubScreen.payout_lines(db, profile, f, heat, offer["targets"].size() - Jobs.banned(db, f).size()):
-			lines.append([l, 14, Palette.TEXT])
+			more.add_child(_left_label(l, 14, Palette.TEXT))
 		for id in clauses:
-			lines.append(["Bonus " + Records.clause_text(db, id, heat, f), 13, Palette.UPGRADED])
-		for line in lines:
-			var label := UiKit.label(line[0], line[1], line[2])
-			label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-			copy.add_child(label)
-		v.add_child(b)
-	v.add_child(UiKit.button("Back", show_hub, Vector2(200, 56)))
+			more.add_child(_left_label("Bonus " + Records.clause_text(db, id, heat, f), 13, Palette.UPGRADED))
+		more.add_child(UiKit.primary(UiKit.button("Take this job", _show_picker.bind(heat, f, offer["targets"], clauses), Vector2(260, 56), 18)))
+		copy.add_child(more)
+		details.append(more)
+		var card := UiKit.panel(row)
+		var sb: StyleBoxFlat = card.get_theme_stylebox("panel")
+		sb.border_color = Color(Palette.faction(f), 0.6)
+		sb.set_border_width_all(2)
+		card.mouse_filter = Control.MOUSE_FILTER_STOP
+		var tap := Tap.new()
+		card.gui_input.connect(func(event: InputEvent) -> void:
+			if tap.feed(event) == "tap":
+				GameAudio.play("tap")
+				var open := not more.visible
+				for d in details:
+					d.visible = false
+				more.visible = open)
+		v.add_child(card)
+	outer.add_child(UiKit.button("Back", show_hub, Vector2(200, 56)))
 	_show(parts[0])
+
+
+## "3 crew caches + Zero-day" style summary of a full clear's caches, for the job cards.
+static func cache_line(pay: Dictionary) -> String:
+	var kinds: Array = pay.get("pack_list", [])
+	return "%d cache%s on a full clear" % [kinds.size(), "" if kinds.size() == 1 else "s"]
+
+
+func _left_label(text: String, font_size: int, col: Color) -> Label:
+	var label := UiKit.label(text, font_size, col)
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return label
 
 
 func _show_picker(heat: int, job: String = "", targets: Array = [], clauses: Array = []) -> void:
@@ -542,7 +547,7 @@ func _show_weekly() -> void:
 	v.add_child(UiKit.label(reward, 15, Palette.ENERGY, true))
 	if int(st["tries"]) > 0:
 		v.add_child(UiKit.label("Tries this week: %d · best score %d" % [int(st["tries"]), int(st["best"])], 14, Palette.TEXT_DIM))
-	v.add_child(UiKit.button("Load programs", _show_weekly_picker.bind(w), Vector2(300, 68), 20))
+	v.add_child(UiKit.primary(UiKit.button("Load programs", _show_weekly_picker.bind(w), Vector2(300, 68), 20)))
 	v.add_child(UiKit.button("Back", show_hub, Vector2(200, 56)))
 	_show(parts[0])
 
@@ -582,7 +587,7 @@ func _show_pack_shelf() -> void:
 		grid.add_child(tile)
 	v.add_child(grid)
 	v.add_child(UiKit.label(PackArt.odds_line(db, profile, owned[0]), 14, PackArt.tint(owned[0]), true))
-	v.add_child(UiKit.button("Open a %s" % PackArt.title(db, owned[0]), func() -> void: _show_pack(owned[0]), Vector2(260, 60)))
+	v.add_child(UiKit.primary(UiKit.button("Open a %s" % PackArt.title(db, owned[0]), func() -> void: _show_pack(owned[0]), Vector2(260, 60))))
 	v.add_child(UiKit.button("Back", show_hub, Vector2(160, 52)))
 	_show(parts[0])
 
@@ -596,7 +601,7 @@ func _show_pack(kind: String = "") -> void:
 		kind = owned[0]
 	var pulled := profile.open_pack(db, GameRng.new(int(Time.get_ticks_usec())), kind)
 	_save()
-	var parts := UiKit.screen(18)
+	var parts := UiKit.screen(14)
 	var v: VBoxContainer = parts[1]
 	var head := UiKit.hbox(10)
 	head.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -609,7 +614,12 @@ func _show_pack(kind: String = "") -> void:
 	if Packs.crew_of(kind) != "":
 		hot_text = "Only %s programs. %s" % [Lexicon.faction(Packs.crew_of(kind)), hot_text]
 	v.add_child(UiKit.label(hot_text, 14, Palette.TEXT_DIM, true))
-	var grid := UiKit.flow(12)
+	# Big cards in a 2 x 2 grid: the reveal is the moment, so it gets the screen.
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 18)
+	grid.add_theme_constant_override("v_separation", 10)
+	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	var views: Array = []
 	var summary := UiKit.label("", 16, Palette.UPGRADED, true)
 	var revealed := [0]
@@ -628,19 +638,17 @@ func _show_pack(kind: String = "") -> void:
 	for p in pulled:
 		var inst := db.instance(p["id"])
 		inst.foil = p["foil"]
-		var cv := CardView.new().setup(inst)
+		var cv := CardView.new().setup(inst, PACK_ZOOM)
 		cv.face_down = true
 		cv.hot = p.get("hot", false)
 		cv.pressed.connect(func(view: CardView) -> void:
 			if view.face_down:
-				GameAudio.play(db.instance(p["id"]).def.rarity)
-				view.flip_reveal()
-				on_reveal.call(view, p))
+				_reveal_pack_card(view, p, on_reveal))
 		views.append(cv)
 		var cell := UiKit.vbox(6, BoxContainer.ALIGNMENT_BEGIN)
-		cell.custom_minimum_size.y = CardView.SIZE.y + 46
+		cell.custom_minimum_size.y = CardView.SIZE.y * PACK_ZOOM + 46
 		cell.add_child(cv)
-		var sb := UiKit.button("", func() -> void: pass, Vector2(CardView.SIZE.x, 40), 14)
+		var sb := UiKit.button("", func() -> void: pass, Vector2(CardView.SIZE.x * PACK_ZOOM, 40), 15)
 		sb.visible = false
 		sb.tooltip_text = "Turn this copy into %s. You keep %d." % [Palette.w("dust").to_lower(), Profile.deck_limit(db)]
 		sb.pressed.connect(func() -> void:
@@ -665,11 +673,13 @@ func _show_pack(kind: String = "") -> void:
 	v.add_child(grid)
 	v.add_child(summary)
 	v.add_child(UiKit.label(PackArt.odds_line(db, profile, kind), 14, Palette.TEXT_DIM, true))
-	v.add_child(UiKit.button("Reveal all", func() -> void:
+	var reveal_all := UiKit.button("Reveal all", func() -> void: pass)
+	reveal_all.pressed.connect(func() -> void:
+		reveal_all.disabled = true
 		for k in views.size():
 			if views[k].face_down:
-				views[k].flip_reveal()
-				on_reveal.call(views[k], pulled[k])))
+				_reveal_pack_card(views[k], pulled[k], on_reveal, k * 0.18))
+	v.add_child(UiKit.primary(reveal_all))
 	var left := profile.pack_count(kind)
 	if left > 0:
 		v.add_child(UiKit.button("Next %s (%d left)" % [PackArt.title(db, kind), left], func() -> void: _show_pack(kind)))
@@ -683,6 +693,58 @@ func _show_pack(kind: String = "") -> void:
 		for k in views.size():
 			views[k].face_down = false
 			on_reveal.call(views[k], pulled[k])
+
+
+const PACK_ZOOM := 1.55
+
+
+## Flips one pack card slowly. A rare or better gets a burst of light in its rarity color
+## first, so the good pulls announce themselves before they turn over.
+func _reveal_pack_card(view: CardView, p: Dictionary, on_reveal: Callable, delay: float = 0.0) -> void:
+	if view.has_meta("revealing"):
+		return
+	view.set_meta("revealing", true)
+	var rarity := db.instance(p["id"]).def.rarity
+	var big := rarity in ["rare", "mythic"]
+	var tw := view.create_tween()
+	if delay > 0.0:
+		tw.tween_interval(delay)
+	if big:
+		tw.tween_callback(func() -> void: _rarity_burst(view, Palette.rarity(rarity), rarity == "mythic"))
+		tw.tween_interval(0.45)
+	tw.tween_callback(func() -> void:
+		GameAudio.play(rarity)
+		view.flip_reveal(0.22)
+		on_reveal.call(view, p))
+
+
+## Light rays and an expanding ring behind a pack card (rare: rarity color; mythic: bigger).
+func _rarity_burst(view: CardView, col: Color, mythic: bool) -> void:
+	var fx := Control.new()
+	fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fx.z_index = -1
+	fx.show_behind_parent = true
+	view.add_child(fx)
+	fx.size = view.size
+	var t := [0.0]
+	var reach := (1.0 if mythic else 0.75) * view.size.y
+	fx.draw.connect(func() -> void:
+		var c := fx.size / 2
+		var k: float = t[0]
+		var fade := 1.0 - k
+		for i in 12:
+			var a := TAU * i / 12.0 + k * 0.6
+			fx.draw_line(c, c + Vector2.from_angle(a) * reach * (0.4 + k * 0.6), Color(col, 0.55 * fade), 10.0 * fade + 2.0, true)
+		fx.draw_arc(c, reach * 0.3 + reach * 0.7 * k, 0, TAU, 48, Color(col, 0.9 * fade), 6.0, true)
+		fx.draw_circle(c, reach * 0.35 * (1.0 - k * 0.5), Color(col.lightened(0.5), 0.35 * fade)))
+	var tw := fx.create_tween()
+	tw.tween_method(func(x: float) -> void:
+		t[0] = x
+		fx.queue_redraw(), 0.0, 1.0, 1.1 if mythic else 0.8)
+	tw.tween_callback(fx.queue_free)
+	var pulse := view.create_tween()
+	pulse.tween_property(view, "scale", Vector2(1.08, 1.08), 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	pulse.tween_property(view, "scale", Vector2.ONE, 0.2)
 
 
 ## A short encrypted-packet break, owned by the pack screen so navigation cancels it.
@@ -834,9 +896,8 @@ func _show_reward(lines: Array, tals: Array, choices: Array, perks: Array = [], 
 	GameAudio.play("reward")
 	_save_run({"screen": "reward", "lines": lines, "tals": tals, "choices": choices, "perks": perks, "kind": kind})
 	var next := show_map if perks.is_empty() else _show_perk_pick.bind(perks)
-	var parts := UiKit.screen(20)
+	var parts := _run_screen(20)
 	var v: VBoxContainer = parts[1]
-	v.add_child(RunHeader.new().setup(run))
 	v.add_child(UiKit.label("Sentries crashed", 34, Palette.ENERGY))
 	for l in lines:
 		v.add_child(UiKit.label(l, 18))
@@ -865,9 +926,8 @@ func _show_reward(lines: Array, tals: Array, choices: Array, perks: Array = [], 
 ## After black sentries and Cores: load one of a few subroutines (run perks).
 func _show_perk_pick(choices: Array) -> void:
 	_save_run({"screen": "perks", "choices": choices})
-	var parts := UiKit.screen(18)
+	var parts := _run_screen(18)
 	var v: VBoxContainer = parts[1]
-	v.add_child(RunHeader.new().setup(run))
 	v.add_child(UiKit.label("Load a subroutine", 32, Palette.ENERGY))
 	v.add_child(UiKit.label("Pick one perk. Subroutines run in the background for the rest of this run.", 16, Palette.TEXT_DIM, true))
 	for pid in choices:
@@ -887,19 +947,31 @@ func _show_perk_pick(choices: Array) -> void:
 
 # --- rest / shop / event ----------------------------------------------------------
 
+## A run screen: the run bar pinned to the top, the content below it. Returns [root, content].
+func _run_screen(sep: int = 20, align: BoxContainer.AlignmentMode = BoxContainer.ALIGNMENT_CENTER) -> Array:
+	var parts := UiKit.screen(10, BoxContainer.ALIGNMENT_BEGIN)
+	var outer: VBoxContainer = parts[1]
+	outer.add_child(RunHeader.new().setup(run))
+	var v := UiKit.vbox(sep, align)
+	v.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	outer.add_child(v)
+	return [parts[0], v]
+
 func _show_rest() -> void:
 	_tint(Palette.NODE["rest"])
-	var parts := UiKit.screen(24)
+	var parts := _run_screen(24)
 	var v: VBoxContainer = parts[1]
-	v.add_child(RunHeader.new().setup(run))
 	v.add_child(UiKit.label(Palette.w("rest"), 30))
 	if Palette.w("rest_text") != "":
 		v.add_child(UiKit.label(Palette.w("rest_text"), 16, Palette.TEXT_DIM, true))
 	v.add_child(UiKit.label("Pick one:", 16, Palette.TEXT_DIM))
-	v.add_child(UiKit.button("Reboot\nHeal %d HP" % run.rest_heal_amount(), func() -> void:
+	var heal := run.rest_heal_amount()
+	var reboot := UiKit.button(("Reboot\nHeal %d HP" % heal) if heal > 0 else "Reboot\nAlready at full HP", func() -> void:
 		run.rest_heal()
 		GameAudio.play("heal")
-		show_map(), Vector2(320, 78), 20))
+		show_map(), Vector2(320, 78), 20)
+	reboot.disabled = heal <= 0
+	v.add_child(reboot)
 	v.add_child(UiKit.button("Recompile a program\nUpgrade one card for the rest of this run", func() -> void:
 		add_child(DeckOverlay.new().setup("Choose a program to recompile", run.deck, "Cancel", func(i: int) -> void:
 			if i >= 0 and run.upgrade_card(i):
@@ -935,9 +1007,8 @@ func _pick_mod_target(mid: String, on_pick: Callable) -> void:
 
 func _show_shop(shop: Dictionary) -> void:
 	_tint(Palette.NODE["shop"])
-	var parts := UiKit.screen(16, BoxContainer.ALIGNMENT_BEGIN)
+	var parts := _run_screen(16, BoxContainer.ALIGNMENT_BEGIN)
 	var v: VBoxContainer = parts[1]
-	v.add_child(RunHeader.new().setup(run))
 	v.add_child(UiKit.label(Palette.w("shop"), 30))
 	v.add_child(UiKit.label("The shop. Spend creds on programs, implants (passive bonuses) and mods.", 15, Palette.TEXT_DIM, true))
 	var cards := UiKit.flow(10)
@@ -988,9 +1059,8 @@ func _show_shop(shop: Dictionary) -> void:
 
 func _show_event(ev: Dictionary) -> void:
 	_tint(Palette.NODE["event"])
-	var parts := UiKit.screen(20)
+	var parts := _run_screen(20)
 	var v: VBoxContainer = parts[1]
-	v.add_child(RunHeader.new().setup(run))
 	var art := Control.new()
 	art.custom_minimum_size = Vector2(160, 160)
 	art.draw.connect(func() -> void:
@@ -1021,9 +1091,8 @@ func _show_event(ev: Dictionary) -> void:
 ## Result screen for a Signal, cache or subroutine. `gains` (see _run_gains) is shown, not just
 ## listed: new or changed programs as cards, implants and subroutines with their rules text.
 func _show_message(title: String, lines: Array, gains: Dictionary = {}) -> void:
-	var parts := UiKit.screen(20)
+	var parts := _run_screen(20)
 	var v: VBoxContainer = parts[1]
-	v.add_child(RunHeader.new().setup(run))
 	v.add_child(UiKit.label(title, 30))
 	for l in lines:
 		v.add_child(UiKit.label(str(l), 18, Palette.TEXT, true))
@@ -1039,7 +1108,7 @@ func _show_message(title: String, lines: Array, gains: Dictionary = {}) -> void:
 	for pid in gains.get("perks", []):
 		var p: Dictionary = db.perks[pid]
 		v.add_child(_info_panel("Subroutine: " + str(p["name"]), Perks.describe(p), Palette.ENERGY))
-	v.add_child(UiKit.button("Continue", show_map))
+	v.add_child(UiKit.primary(UiKit.button("Continue", show_map)))
 	_show(parts[0])
 
 
@@ -1109,9 +1178,9 @@ func _show_deep_choice() -> void:
 	body.custom_minimum_size.x = 560
 	v.add_child(body)
 	v.add_child(UiKit.label("Your record: depth %d   ·   HP %d/%d" % [int(profile.stats.get("best_depth", 0)), run.hp, run.max_hp], 15, Palette.TEXT_DIM))
-	v.add_child(UiKit.button("Go deeper (depth %d)" % next, func() -> void:
+	v.add_child(UiKit.primary(UiKit.button("Go deeper (depth %d)" % next, func() -> void:
 		run.descend()
-		show_map(), Vector2(360, 72), 22))
+		show_map(), Vector2(360, 72), 22)))
 	v.add_child(UiKit.button("Jack out with the win", func() -> void:
 		run.jack_out()
 		_end_run(), Vector2(360, 64)))
@@ -1121,15 +1190,81 @@ func _show_deep_choice() -> void:
 # --- end of run -------------------------------------------------------------------
 
 func _end_run(abandoned: bool = false) -> void:
+	# Who finished you: the enemies still standing when the fight was lost.
+	var killers: Array[String] = []
+	if not run.boss_won and not abandoned and _combat != null and _combat.phase == Combat.Phase.LOST:
+		for en: Fighter in _combat.living(_combat.enemies):
+			if en.name not in killers:
+				killers.append(en.name)
 	var lines := profile.finish_run(db, run)
 	_save()
 	if persist:
 		RunSave.clear(run_save_path)
-	var parts := UiKit.screen(16)
+	var parts := UiKit.screen(14)
 	var v: VBoxContainer = parts[1]
-	v.add_child(UiKit.label("Run won! You own the Stack." if run.boss_won else ("Run abandoned on node %d" if abandoned else "Flatlined: run over on node %d") % run.floor_num, 34, Palette.ENERGY if run.boss_won else Palette.HP))
-	v.add_child(UiKit.label("Fights won %d   Elites %d   Deck %d cards" % [run.combats_won, run.elites_won, run.deck.size()], 16, Palette.TEXT_DIM))
-	for l in lines:
-		v.add_child(UiKit.label(str(l), 17))
-	v.add_child(UiKit.button(Palette.w("camp"), show_hub, Vector2(360, 64)))
+	v.add_child(UiKit.label("Run won! You own the Stack." if run.boss_won else ("Run abandoned on node %d" if abandoned else "Flatlined: run over on node %d") % run.floor_num, 34, Palette.ENERGY if run.boss_won else Palette.HP, true))
+	if not killers.is_empty():
+		v.add_child(UiKit.label("Taken down by " + " and ".join(killers), 18, Palette.ENEMY, true))
+	var stats := UiKit.hbox(10)
+	for pair in [["Fights", run.combats_won], ["Elites", run.elites_won], ["Node", run.floor_num], ["Deck", run.deck.size()]]:
+		var cell := UiKit.vbox(0)
+		cell.add_child(UiKit.label(str(pair[1]), 26, Palette.TEXT))
+		cell.add_child(UiKit.label(str(pair[0]), 13, Palette.TEXT_DIM))
+		cell.custom_minimum_size.x = 110
+		stats.add_child(UiKit.panel(cell))
+	v.add_child(stats)
+	v.add_child(_path_strip())
+	var high := _run_highlights()
+	if not high.is_empty():
+		v.add_child(UiKit.label("Highlights", 18, Palette.ENERGY))
+		var hl := UiKit.label("\n".join(high), 16, Palette.TEXT, true)
+		v.add_child(hl)
+	if not lines.is_empty():
+		v.add_child(UiKit.label("Earned", 18, Palette.ENERGY))
+		var earned := UiKit.label("\n".join(lines.map(func(l: Variant) -> String: return str(l))), 16, Palette.UPGRADED, true)
+		earned.custom_minimum_size.x = 600
+		var box := UiKit.panel(earned)
+		box.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		v.add_child(box)
+	v.add_child(UiKit.primary(UiKit.button(Palette.w("camp"), show_hub, Vector2(360, 64))))
 	_show(parts[0])
+
+
+## The route this run took, one small node icon per stop (layers split by a gap).
+func _path_strip() -> Control:
+	var box := UiKit.vbox(6)
+	box.add_child(UiKit.label("Your route on layer %d" % run.act, 15, Palette.TEXT_DIM))
+	var row := UiKit.flow(4)
+	row.custom_minimum_size.x = 600
+	for id in run.path:
+		var n: Dictionary = run.map.node(id) if run.map != null and id >= 0 and id < run.map.nodes.size() else {}
+		if n.is_empty():
+			continue
+		var icon := Symbols.badge(str(n["type"]), 24)
+		icon.modulate = Palette.NODE[n["type"]]
+		row.add_child(icon)
+	if row.get_child_count() == 0:
+		return Control.new()
+	box.add_child(row)
+	return box
+
+
+## A few lines worth remembering: biggest hit, most-run program, peak Firewall, kills.
+func _run_highlights() -> Array[String]:
+	var t := run.tally
+	var out: Array[String] = []
+	if int(t.get("big_hit", 0)) > 0:
+		out.append("Biggest hit: %d damage" % int(t["big_hit"]))
+	var best := ""
+	var best_n := 0
+	for id in run.card_plays:
+		if int(run.card_plays[id]) > best_n and db.card(id) != null and db.card(id).rarity not in ["starter", "curse"]:
+			best = db.card(id).name
+			best_n = int(run.card_plays[id])
+	if best != "":
+		out.append("Most run program: %s (%d times)" % [best, best_n])
+	if int(t.get("max_ward", 0)) > 0:
+		out.append("Peak Firewall: %d" % int(t["max_ward"]))
+	if int(t.get("kills", 0)) > 0:
+		out.append("Sentries crashed: %d" % int(t["kills"]))
+	return out

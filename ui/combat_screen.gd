@@ -116,6 +116,7 @@ func _ready() -> void:
 	_end_btn.text = "End turn"
 	_end_btn.custom_minimum_size = Vector2(150, 56)
 	_end_btn.pressed.connect(_on_end_turn)
+	UiKit.primary(_end_btn)
 	bar.add_child(_end_btn)
 	col.add_child(bar)
 
@@ -240,6 +241,16 @@ func _rebuild() -> void:
 		_hint.text = "%s\nTap a highlighted enemy" % combat.hand[_selected].display_name()
 	else:
 		_hint.text = ("Incoming %d damage" % inc if inc > 0 else "No attacks incoming") + ("  ·  Firewall %d" % combat.player.ward if combat.player.ward > 0 else "")
+	# Lethal: what's coming beats your HP and Firewall together. Red hint, red pulse on you
+	# and on every enemy lining up an attack.
+	var lethal := combat.phase == Combat.Phase.PLAYER and inc > 0 and inc >= combat.player.hp + combat.player.ward and combat.player.hp > 0
+	_player_view.danger = lethal
+	for ev in _enemies_row.get_children():
+		if ev is FighterView:
+			(ev as FighterView).danger = lethal and combat.intent_damage((ev as FighterView).fighter) > 0
+	if lethal and _selected < 0:
+		_hint.text = ("LETHAL: %d incoming vs %d HP + %d Firewall" % [inc, combat.player.hp, combat.player.ward]) if combat.player.ward > 0 else ("LETHAL: %d incoming vs %d HP" % [inc, combat.player.hp])
+	_hint.add_theme_color_override("font_color", Palette.HP if lethal and _selected < 0 else Palette.TEXT_DIM)
 	if combat.hand.any(func(card: CardInstance) -> bool: return card.effects().any(func(e: Dictionary) -> bool: return e.get("op") == "sequence")):
 		var recent: Array = combat.played_types.slice(-2)
 		_hint.text += "\nSequence: " + (" → ".join(recent.map(func(t: String) -> String: return Lexicon.type_name(t))) if not recent.is_empty() else "—")
@@ -506,9 +517,12 @@ func _play_events(played: CardView) -> int:
 				if blocked > 0:
 					_float_text(v, "%d Firewall absorbed" % blocked, Palette.WARD, (-24 if damage > 0 else 0) + lift, true)
 				if damage > 0:
-					_float_text(v, "−%d HP" % damage, Palette.HP, (10 if blocked > 0 else 0) + lift, true)
+					# Bigger hits get bigger numbers and a harder shake.
+					_float_text(v, "−%d HP" % damage, Palette.HP, (10 if blocked > 0 else 0) + lift, true, clampi(20 + damage, 22, 40))
 				if v == _player_view and damage > 0:
-					_shake(6.0)
+					_shake(clampf(4.0 + damage * 0.5, 5.0, 16.0))
+				elif damage >= 12:
+					_shake(clampf(damage * 0.25, 3.0, 9.0))
 				await _wait(0.3 if more_hits or _combo_n > 0 else 0.16)
 			"ward":
 				if v != null:
@@ -716,10 +730,10 @@ func _banner(text: String, col: Color) -> void:
 	await _wait(0.45)
 
 
-func _float_text(v: Control, text: String, col: Color, dy: float = 0.0, chip: bool = false) -> void:
+func _float_text(v: Control, text: String, col: Color, dy: float = 0.0, chip: bool = false, font_size: int = 22) -> void:
 	if v == null or not is_instance_valid(v):
 		return
-	var l := UiKit.label(text, 22, col)
+	var l := UiKit.label(text, font_size, col)
 	l.add_theme_font_override("font", Palette.display())
 	l.add_theme_color_override("font_outline_color", Palette.CARD_BG)
 	l.add_theme_constant_override("outline_size", 6)

@@ -30,7 +30,9 @@ func _ready() -> void:
 	v.add_child(title)
 	if run.jumps_total() > 0:
 		v.add_child(JumpTracker.new().setup(run))
-	v.add_child(UiKit.label(_hint(), 15, Palette.TEXT_DIM))
+	var hint_row := UiKit.hbox(10)
+	hint_row.add_child(UiKit.label(_hint(), 15, Palette.TEXT_DIM, true))
+	v.add_child(hint_row)
 	var legend := UiKit.flow(12)
 	for kind in ["fight", "elite", "event", "rest", "shop", "treasure", "vault", "boss"]:
 		var item := UiKit.hbox(4)
@@ -39,6 +41,13 @@ func _ready() -> void:
 		item.add_child(icon)
 		item.add_child(UiKit.label("%s (%s)" % [NAMES[kind], PLAIN[kind]], 14, Palette.TEXT))
 		legend.add_child(item)
+	# The key folds away behind a button so the map gets the room.
+	legend.visible = false
+	var key_btn := UiKit.button("Key", func() -> void: pass, Vector2(76, 40), 15)
+	key_btn.pressed.connect(func() -> void:
+		legend.visible = not legend.visible
+		key_btn.text = "Hide key" if legend.visible else "Key")
+	hint_row.add_child(key_btn)
 	v.add_child(legend)
 	_scroll = ScrollContainer.new()
 	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -108,8 +117,31 @@ func _pos(id: int) -> Vector2:
 	return _node_pos(n["col"], n["cols"], n["row"])
 
 
+## Nodes you can still reach from where you stand (every node before the first move).
+func _reachable() -> Dictionary:
+	var out := {}
+	var frontier: Array = []
+	if run.node_id < 0:
+		for n in run.map.nodes:
+			out[n["id"]] = true
+		return out
+	frontier.append(run.node_id)
+	for jid in run.jump_moves():
+		frontier.append(jid)
+	while not frontier.is_empty():
+		var id: int = frontier.pop_back()
+		if out.has(id):
+			continue
+		out[id] = true
+		for nx in run.map.node(id)["next"]:
+			frontier.append(nx)
+	return out
+
+
 func _draw_map() -> void:
 	var avail := run.available_nodes()
+	var reach := _reachable()
+	var here_row := -1 if run.node_id < 0 else int(run.map.node(run.node_id)["row"])
 	var t := Time.get_ticks_msec() / 1000.0
 	var font := Palette.font()
 	var width := _canvas.size.x
@@ -133,6 +165,10 @@ func _draw_map() -> void:
 			var jitter := sin(t * 7.0 + phase) * sin(t * 4.3 + phase * 2.0)
 			var strength := clampf(0.48 + breathe * 0.30 + jitter * 0.05, 0.43, 0.83)
 			var col := Color(Palette.ENERGY if next_step else Palette.TEXT_DIM, strength)
+			# Routes you can no longer take fade back so the live ones read first.
+			var dead: bool = not on_path and (not reach.has(n["id"]) or not reach.has(nx) or int(n["row"]) < here_row)
+			if dead:
+				col = Color(Palette.TEXT_DIM, 0.16)
 			if on_path:
 				col = Palette.ENERGY
 			var wire := _wire(n["id"], nx)
@@ -140,7 +176,7 @@ func _draw_map() -> void:
 			if on_path:
 				_canvas.draw_polyline(wire, Color(Palette.ENERGY, 0.16), 10, true)
 			_canvas.draw_polyline(wire, col, 5 if on_path else 3, true)
-			if not on_path:
+			if not on_path and not dead:
 				_route_pulse(wire, fposmod(t * 0.24 + phase, 1.0), Color(Palette.ENERGY, 0.65 if next_step else 0.38))
 	_draw_walls()
 	# Jumps already taken stay on the trail as solid arcs.
@@ -171,11 +207,19 @@ func _draw_map() -> void:
 		var current: bool = n["id"] == run.node_id
 		if not is_avail and not visited and run.node_id >= 0 and n["row"] <= run.map.node(run.node_id)["row"]:
 			col = Color(col, 0.3)
+		elif not visited and not reach.has(n["id"]):
+			col = Color(col, 0.38)
 		if is_avail:
 			draw_glow(p, r + 8 + 2 * sin(t * 3.0), col)
+			# A ring that keeps rippling out from each place you can move to.
+			var ripple := fposmod(t * 0.9, 1.0)
+			_canvas.draw_arc(p, r + 6 + ripple * 22.0, 0, TAU, 40, Color(col, 0.7 * (1.0 - ripple)), 3, true)
 		_canvas.draw_style_box(_plate(Palette.CARD_BG, col, 3 if is_avail or current else 1), Rect2(p - Vector2.ONE * r, Vector2.ONE * r * 2))
 		Symbols.draw_on(_canvas, p, r * 0.75, n["type"], col)
 		# Labels and shapes make node types readable without relying on color.
+		# Labels sit on a small plate so route lines never run through the text.
+		var label_w := font.get_string_size(NAMES[n["type"]], HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x + 10
+		_canvas.draw_style_box(_plate(Color(Palette.CARD_BG, 0.92), Color(col, 0.0), 0), Rect2(p + Vector2(-label_w / 2, r + 3), Vector2(label_w, 19)))
 		_canvas.draw_string(font, p + Vector2(-55, r + 17), NAMES[n["type"]], HORIZONTAL_ALIGNMENT_CENTER, 110, 14, col)
 		if visited:
 			var c := p + Vector2(r - 1, -r + 1)

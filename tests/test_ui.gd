@@ -198,3 +198,10 @@ func test_hub_offers_tutorial_to_new_players() -> void:
 	p.settings["tutorial_done"] = true
 	check(not hub.first_time(), "done tutorial should hide the prompt")
 	hub.free()
+
+
+func test_upgrade_diff_marks_changed_numbers() -> void:
+	eq(CardView.diff_text("Deal 6 damage.", "Deal 8 damage."), "Deal 6→8 damage.", "changed number shows old→new")
+	eq(CardView.diff_text("Deal 4 damage. Apply 3 Virus.", "Deal 5 damage. Apply 3 Virus."), "Deal 4→5 damage. Apply 3 Virus.", "unchanged numbers stay plain")
+	eq(CardView.diff_text("Deal 6 damage.", "Deal 6 damage. Draw 1 card."), "Deal 6 damage. Draw 1 card.", "new wording falls back to the new text")
+	eq(CardView.diff_text("Gain 5 Firewall.", "Gain 5 Firewall."), "Gain 5 Firewall.", "no change, no arrow")
