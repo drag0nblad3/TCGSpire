@@ -6,8 +6,8 @@ extends Control
 signal closed
 signal changed
 
-const TABS := ["binders", "exploits", "daily", "style"]
-const TAB_NAMES := {"binders": "Binders", "exploits": "Exploit log", "daily": "Daily", "style": "Style"}
+const TABS := ["binders", "exploits", "ice", "daily", "style"]
+const TAB_NAMES := {"binders": "Binders", "exploits": "Exploits", "ice": "ICE", "daily": "Daily", "style": "Style"}
 
 var db: CardDB
 var profile: Profile
@@ -45,7 +45,7 @@ func _refresh() -> void:
 	for n in _tabs.get_children():
 		n.queue_free()
 	for t in TABS:
-		var b := UiKit.button(TAB_NAMES[t], _set_tab.bind(t), Vector2(150, 48), 15)
+		var b := UiKit.button(TAB_NAMES[t], _set_tab.bind(t), Vector2(122, 48), 15)
 		b.disabled = t == tab
 		_tabs.add_child(b)
 	for n in _list.get_children():
@@ -55,6 +55,8 @@ func _refresh() -> void:
 			_binders()
 		"exploits":
 			_exploits()
+		"ice":
+			_ice()
 		"daily":
 			_daily()
 		"style":
@@ -116,6 +118,43 @@ func _exploits() -> void:
 		_line(("%s  ·  %s" % [x["name"], x["text"]]) if got else ("%s  ·  %s  (%d / %d)" % [x["name"], x["text"], mini(have, int(x["at_least"])), int(x["at_least"])]),
 			16, Palette.UPGRADED if got else Palette.TEXT)
 		_line(str(x["lore"]) if got else "[encrypted]", 13, Palette.TEXT_DIM)
+
+
+## ICE database: every sentry, decoded after a few fights. Unknown ones stay hidden.
+func _ice() -> void:
+	var entries := Records.ice_entries(db, profile)
+	var need := Records.ice_reveal(db)
+	var decoded := entries.filter(func(e: Dictionary) -> bool: return e["state"] == "decoded").size()
+	_line("ICE database: %d / %d decoded. Fight a sentry %d times to decode its moves and file. Counts update when a run ends." % [decoded, entries.size(), need], 14, Palette.TEXT_DIM)
+	var group := "?"
+	var hidden := {}
+	for e in entries:
+		if e["state"] == "unknown":
+			hidden[e["faction"]] = int(hidden.get(e["faction"], 0)) + 1
+	for e in entries:
+		var f: String = e["faction"]
+		if f != group:
+			group = f
+			var head := UiKit.hbox(10)
+			if f != "":
+				head.add_child(Symbols.badge(f, 32))
+			var name_l := UiKit.label(Lexicon.faction(f) if f != "" else "The Stack", 19, Palette.faction(f) if f != "" else Palette.TEXT)
+			name_l.add_theme_font_override("font", Palette.display())
+			head.add_child(name_l)
+			_list.add_child(head)
+			if hidden.has(f):
+				_line("??? × %d not met yet" % int(hidden[f]), 14, Palette.TEXT_DIM)
+		var tag: String = {"elite": "  ·  black sentry", "boss": "  ·  Core"}.get(e["kind"], "")
+		if e["state"] == "unknown":
+			continue
+		_line("%s%s  ·  met %d  ·  crashed %d  ·  flatlined you %d" % [e["name"], tag, e["seen"], e["crashed"], e["lost"]],
+			16, Palette.UPGRADED if e["state"] == "decoded" else Palette.TEXT)
+		if e["state"] == "seen":
+			_line("[encrypted] %d more fight%s to decode." % [need - int(e["seen"]), "" if need - int(e["seen"]) == 1 else "s"], 13, Palette.TEXT_DIM)
+			continue
+		for m in e["moves"]:
+			_line("  " + str(m), 13)
+		_line(str(e["lore"]), 13, Palette.TEXT_DIM)
 
 
 func _daily() -> void:

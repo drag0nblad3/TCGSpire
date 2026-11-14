@@ -131,6 +131,16 @@ static func _effect_value(c: Combat, e: Dictionary, target: Fighter, ward: int) 
 				if extra > 0:
 					s += _self_status_value(c, st, extra) if f == c.player else _enemy_status_value(c, f, st, extra)
 			return s
+		"interrupt":
+			var s2 := 0.0
+			for f in (foes if to == "all_enemies" else ([target] if target != null else [])):
+				var cut: Array = Intents.matching(f, e.get("kinds", []))
+				if cut.is_empty():
+					continue
+				s2 += 2.0 * cut.size() + (c.intent_damage(f) * 1.1 if "attack" in cut else 0.0)
+				for fx in e.get("effects", []):
+					s2 += _effect_value(c, fx, f, ward)
+			return s2
 		"strip":
 			var s := 0.0
 			for f in (foes if to == "all_enemies" else ([target] if target != null else [])):

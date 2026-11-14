@@ -23,6 +23,8 @@ var factions: Dictionary = {}
 ## Contract bonus clauses (data/contracts.json) and Exploit log entries (data/exploits.json), by id.
 var contracts: Dictionary = {}
 var exploits: Dictionary = {}
+## ICE database lore lines (data/ice_lore.json), by enemy id.
+var ice_lore: Dictionary = {}
 ## Weekly challenge modifiers (data/weekly.json), by id.
 var weekly: Dictionary = {}
 var errors: Array[String] = []
@@ -69,6 +71,7 @@ static func load_from(root: String) -> CardDB:
 	for d in db._read_array(root + "/weekly.json"):
 		db.weekly[str(d.get("id", ""))] = d
 	db.encounters = db._read_dict(root + "/encounters.json")
+	db.ice_lore = db._read_dict(root + "/ice_lore.json")
 	db.balance = db._read_dict(root + "/balance.json")
 	db.errors.append_array(db.validate())
 	return db

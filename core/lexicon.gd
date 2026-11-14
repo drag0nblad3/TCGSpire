@@ -44,6 +44,15 @@ const FACTION := {"neutral": "Street", "ember": "Burner", "tide": "Flux", "bloom
 const TYPE := {"attack": "Exploit", "skill": "Script", "unit": "Daemon", "power": "Rootkit"}
 
 
+## Enemy intent kinds, as Interrupt programs name them.
+const INTENT := {"attack": "Attack", "purge": "Purge", "ward": "Firewall", "buff": "Upgrade", "debuff": "Infect",
+	"heal": "Repair", "summon": "Call", "curse": "Malware"}
+
+
+static func intent(k: String) -> String:
+	return str(INTENT.get(k, k.capitalize()))
+
+
 static func term(k: String) -> String:
 	return str(TERMS.get(k, k))
 
