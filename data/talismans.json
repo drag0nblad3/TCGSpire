@@ -46,7 +46,7 @@
 {"id":"lease_extender","name":"Lease Extender","rarity":"uncommon","faction":"chrome","daemon":{"hp_mult":1.5}},
 {"id":"static_field","name":"Static Field","rarity":"rare","faction":"noise","flags":{"debuff_bonus":1}},
 {"id":"collectors_rig","name":"Collector's Rig","rarity":"rare","mods":{"reward_choices":1,"bonus_packs":1}},
-{"id":"server_farm","name":"Server Farm","rarity":"boss","faction":"chrome","daemon":{"hp_mult":2.0},"triggers":[{"on":"daemon_closed","effects":[{"op":"energy","amount":1}]}]},
+{"id":"server_farm","name":"Server Farm","rarity":"boss","faction":"chrome","mods":{"board_slots":1},"triggers":[{"on":"daemon_closed","effects":[{"op":"energy","amount":1}]}]},
 {"id":"ring_buffer","name":"Ring Buffer","rarity":"boss","faction":"tide","flags":{"keep_ward":1}},
 {"id":"inside_contact","name":"Inside Contact","rarity":"boss","mods":{"perk_choices":1,"rep_pct":0.25,"jumps":1}}
 ]

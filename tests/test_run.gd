@@ -347,10 +347,21 @@ func test_implant_daemon_hp_mult_scales_base_hp() -> void:
 	eq(c.units[0].hp, 7, "3 x 1.5 rounded up, then +2")
 	var d := _fight(["server_farm"])
 	d.summon("A", 3)
-	eq(d.units[0].hp, 6, "double base HP")
+	eq(d.units[0].hp, 3, "Server Farm leaves daemon HP alone")
 	d.energy = 0
 	d.crash_daemon(d.units[0])
 	eq(d.energy, 1, "RAM when a daemon shuts down")
+
+
+func test_implant_with_daemon_bonus_still_fires_triggers() -> void:
+	db.talismans["_hp_and_trigger"] = {"id": "_hp_and_trigger", "rarity": "boss", "daemon": {"hp": 1},
+		"triggers": [{"on": "daemon_closed", "effects": [{"op": "energy", "amount": 1}]}]}
+	var c := _fight(["_hp_and_trigger"])
+	db.talismans.erase("_hp_and_trigger")
+	c.summon("A", 3)
+	c.energy = 0
+	c.crash_daemon(c.units[0])
+	eq(c.energy, 1, "a daemon bonus key doesn't hide the implant's triggers")
 
 
 func test_implant_daemon_closed_and_reshuffle_triggers() -> void:
@@ -373,7 +384,7 @@ func test_implant_mods_feed_run_numbers() -> void:
 	r.add_talisman("ghost_route")
 	eq(r.jumps_total(), 1, "implant grants a jump")
 	r.add_talisman("server_farm")
-	eq(int(r.combat_opts()["extra_slots"]), 0, "no daemon slot lost")
+	eq(int(r.combat_opts()["extra_slots"]), 1, "a fourth daemon slot")
 	r.add_talisman("collectors_rig")
 	r.acts_cleared = 0
 	var base := Profile.run_packs(db, r)
