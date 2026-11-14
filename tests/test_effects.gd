@@ -415,3 +415,11 @@ func test_interrupt_purge_saves_the_daemon() -> void:
 	Effects.resolve(c, {"op": "interrupt", "kinds": ["purge"], "to": "all_enemies"}, c.player, null)
 	c.end_turn()
 	eq(c.units.size(), 1, "daemon survived the purge")
+
+
+func test_lagged_cannot_be_offered_in_stacks() -> void:
+	check(not Effects.validate({"op": "apply", "status": "stall", "stacks": 2}, "x").is_empty(), "2 Lagged refused")
+	check(not Effects.validate({"op": "apply", "status": "stall", "stacks": 1, "loop": 1}, "x").is_empty(), "Looping Lagged refused")
+	check(not Effects.validate({"op": "amplify", "status": "stall"}, "x").is_empty(), "Amplify Lagged refused")
+	check(Effects.validate({"op": "apply", "status": "stall", "stacks": 1}, "x").is_empty(), "one Lagged is fine")
+	check(not Effects.describe({"op": "apply", "status": "stall", "stacks": 1}).contains("1"), "Lagged text has no count")
