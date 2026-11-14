@@ -25,7 +25,7 @@ func setup(id: String, db: CardDB, big_in: bool = false) -> TalismanView:
 	_active_texture = ImplantArt.texture_for(id, true)
 	_art = ImplantArt.regions().get(id, {})
 	custom_minimum_size = Vector2(92, 108) if big else Vector2(52, 68)
-	mouse_filter = Control.MOUSE_FILTER_STOP
+	mouse_filter = Control.MOUSE_FILTER_PASS  # PASS so a drag still scrolls the implant strip
 	tooltip_text = text(db, id)
 	set_process(false)
 	return self

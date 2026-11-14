@@ -56,10 +56,15 @@ func _ready() -> void:
 	_canvas = Control.new()
 	_canvas.custom_minimum_size = Vector2(0, ROW_H * (run.map.rows.size() + 0.6))
 	_canvas.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# PASS, not the default STOP: the ScrollContainer only drag-scrolls on touch if the
+	# press and motion events bubble up to it after the canvas has looked at them.
+	_canvas.mouse_filter = Control.MOUSE_FILTER_PASS
 	_canvas.draw.connect(_draw_map)
 	_canvas.gui_input.connect(_on_canvas_input)
 	_scroll.add_child(_canvas)
 	# Scroll so the current row is visible (map is drawn bottom-up).
+	if not is_inside_tree():
+		return  # built outside a running tree (tests)
 	await get_tree().process_frame
 	var row := 0 if run.node_id < 0 else int(run.map.node(run.node_id)["row"])
 	_scroll.scroll_vertical = int(_node_pos(0, 1, row).y - _scroll.size.y * 0.6)
