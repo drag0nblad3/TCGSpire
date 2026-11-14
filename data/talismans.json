@@ -35,7 +35,7 @@
 {"id":"cold_storage","name":"Cold Storage","rarity":"rare","faction":"tide","mods":{"ward_retention":0.25}},
 {"id":"skip_tracer","name":"Skip Tracer","rarity":"uncommon","faction":"void","run":[{"on":"jump","outcomes":[{"op":"heal","amount":6},{"op":"gold","amount":20}]}]},
 {"id":"skeleton_key","name":"Skeleton Key","rarity":"rare","faction":"void","run":[{"on":"vault","outcomes":[{"op":"upgrade","amount":2}]}]},
-{"id":"uplink_relay","name":"Uplink Relay","rarity":"common","faction":"chrome","mods":{"board_slots":1}},
+{"id":"uplink_relay","name":"Uplink Relay","rarity":"common","faction":"chrome","mods":{"board_slots":1,"start_ward":4}},
 {"id":"spool_buffer","name":"Spool Buffer","rarity":"rare","faction":"noise","triggers":[{"on":"loop","every":3,"effects":[{"op":"draw","amount":1},{"op":"energy","amount":1}]}]},
 {"id":"pressure_valve","name":"Pressure Valve","rarity":"rare","faction":"ember","flags":{"burn_no_decay":1},"flags_while_daemon":true},
 {"id":"crash_reporter","name":"Crash Reporter","rarity":"uncommon","faction":"chrome","triggers":[{"on":"daemon_closed","effects":[{"op":"draw","amount":2}]}]},
