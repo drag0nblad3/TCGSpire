@@ -194,7 +194,13 @@ static func _summon_value(c: Combat, e: Dictionary) -> float:
 	var flags: Dictionary = rule.get("flags", {})
 	for u in c.units:
 		if u.name == str(e.get("name", "")):
-			return DaemonRules.value({"hp": 1, "rule": rule}) * maxf(float(hp - u.hp), 0.0) * 0.6
+			# Re-running a daemon with a "closed" rule restarts it: the payoff lands now.
+			var now := 0.0
+			for trig in rule.get("triggers", []):
+				if trig.get("on", "") == "closed":
+					for fx in trig.get("effects", []):
+						now += _effect_value(c, fx, null, c.player.ward)
+			return now + DaemonRules.value({"hp": 1, "rule": rule}) * maxf(float(hp - u.hp), 0.0) * 0.6
 	if c.units.size() >= c.board_slots:
 		return 0.0
 	var v := DaemonRules.value(e, c.daemon_hp)
@@ -208,6 +214,15 @@ static func _summon_value(c: Combat, e: Dictionary) -> float:
 		v *= 0.2
 	if flags.has("thorns"):
 		v += float(flags["thorns"]) * c.living(c.enemies).size()
+	# Damage to ALL enemies from a rule lands later and only on who is still up:
+	# price it on the live enemy count, at a discount for the delay.
+	var aoe: Array = []
+	for trig in rule.get("triggers", []):
+		if trig.get("effects", []).any(func(fx: Dictionary) -> bool: return fx.get("op", "") == "damage" and fx.get("to", "") == "all_enemies"):
+			aoe.append(trig)
+	if not aoe.is_empty():
+		var part := DaemonRules.value({"hp": e.get("hp", 1), "rule": {"triggers": aoe}}, c.daemon_hp)
+		v += part * (float(c.living(c.enemies).size()) / 1.4 * 0.7 - 1.0)
 	# Triggers that debuff every enemy: price them on the live enemies, not a flat guess.
 	for trig in rule.get("triggers", []):
 		var on := str(trig.get("on", ""))

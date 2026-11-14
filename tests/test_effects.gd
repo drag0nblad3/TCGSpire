@@ -353,3 +353,24 @@ func test_loop_trigger_fires_implants() -> void:
 	check(c.play_card(c.hand.size() - 1, 0), "played a Loop program")
 	eq(card.loops, 2, "Recursion Core adds a step")
 	check(c.player.ward >= ward + 2, "Tick Counter Firewall")
+
+
+func test_closed_rule_fires_when_the_daemon_runs_out_or_is_crashed() -> void:
+	c.play_card(give(c, "botnet_lease"))
+	var hp: int = c.enemies[0].hp
+	c.crash_daemon(c.units[0])
+	eq(c.enemies[0].hp, hp - 8, "parting blast on crash")
+	c.play_card(give(c, "botnet_lease"))
+	hp = c.enemies[0].hp
+	c.play_card(give(c, "botnet_lease"))
+	eq(c.enemies[0].hp, hp - 8, "re-running restarts it: blast now")
+	eq(c.units.size(), 1)
+	eq(c.units[0].hp, 3, "fresh lease")
+	c.crash_daemon(c.units[0])
+	c.play_card(give(c, "botnet_lease"))
+	c.units[0].hp = 1
+	c.enemies[0].hp = 30
+	hp = c.enemies[0].hp
+	c.end_turn()
+	eq(c.units.size(), 0, "ran out at turn start")
+	eq(c.enemies[0].hp, hp - 3 - 8, "drip at turn end, then the blast")

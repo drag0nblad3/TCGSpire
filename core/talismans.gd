@@ -30,6 +30,7 @@ const LABEL := {
 	"card_played": "When you play a card",
 	"kill": "When you crash an enemy",
 	"daemon_closed": "When one of your daemons shuts down",
+	"closed": "When this daemon shuts down or is re-run",
 	"loop": "When a Loop program grows",
 	"reshuffle": "When your discard shuffles back into your draw pile",
 }
