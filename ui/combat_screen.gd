@@ -609,6 +609,7 @@ func _play_events(played: CardView) -> Array:
 				var fv: FighterView = _views.get(str(e["target"]))
 				if fv != null and is_instance_valid(fv):
 					_float_text(fv, "Refreshed", Palette.ENERGY)
+					fv.shown_ward = int(e.get("ward", fv.fighter.ward))
 				await _wait(0.12)
 			"death":
 				if v != null:
@@ -617,6 +618,9 @@ func _play_events(played: CardView) -> Array:
 						_float_text(v, "Daemon crashed", Palette.HP, 8, true)
 					var tw := v.create_tween()
 					tw.tween_property(v, "modulate", Color(Palette.HP, 0.0), 0.35)
+				await _wait(0.3)
+			"second_wind":
+				_float_text(_player_view, "Second Wind", Palette.UPGRADED, -40, true)
 				await _wait(0.3)
 			"daemon_explosion":
 				_float_text(v, "Detonate", Palette.HP)
@@ -654,7 +658,7 @@ func _play_events(played: CardView) -> Array:
 					u = Fighter.make(str(e["target"]), str(e["name"]), int(e["hp"]))
 				var nv := _add_unit_view(u)
 				nv.shown_hp = int(e["hp"])
-				nv.shown_ward = 0
+				nv.shown_ward = int(e.get("ward", 0))
 				_pop_in(nv)
 				await _wait(0.2)
 			"spawn":

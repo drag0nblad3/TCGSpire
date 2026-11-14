@@ -42,6 +42,12 @@ var ward_retention := 0.0
 var daemon_death_damage := 0
 ## Hive Link: you may shut down your own daemons on your turn (shutdown_daemon).
 var manual_crash := false
+## Repair Drones: repair this much each time you run a daemon. Daemon Plating: Firewall a new daemon starts with.
+var daemon_heal := 0
+var daemon_ward := 0
+## Second Wind: once per fight, a hit that would flatline you leaves 1 HP and gives this much Firewall.
+var second_wind := 0
+var second_wind_used := false
 var _unit_counter := 0
 var _enemy_counter := 0
 ## Difficulty modifiers from the encounter's act and RunState.combat_opts.
@@ -85,6 +91,9 @@ static func create(db_in: CardDB, deck: Array, encounter_id: String, rng_in: Gam
 	c.ward_retention = clampf(float(opts.get("ward_retention", 0.0)), 0.0, 1.0)
 	c.daemon_death_damage = int(opts.get("daemon_death_damage", 0))
 	c.manual_crash = bool(opts.get("manual_crash", false))
+	c.daemon_heal = int(opts.get("daemon_heal", 0))
+	c.daemon_ward = int(opts.get("daemon_ward", 0))
+	c.second_wind = int(opts.get("second_wind", 0))
 	c.player = Fighter.make("player", "You", max_hp)
 	if hp > 0:
 		c.player.hp = mini(hp, max_hp)
@@ -349,11 +358,20 @@ func deal_damage(t: Fighter, amount: int, source_id: String = "", kind: String =
 	# A daemon's HP is turns, not toughness: any hit costs it 1. Only Purge takes more.
 	if units.has(t) and kind != "purge":
 		amount = 1
-	var blocked := mini(t.ward, amount)
+	# Daemon Firewall (Daemon Plating) only absorbs attacks: Purge, Virus and HP loss go straight through.
+	var blocked := mini(t.ward, amount) if not (units.has(t) and kind != "attack") else 0
 	t.ward -= blocked
 	var dealt := amount - blocked
 	t.hp = maxi(t.hp - dealt, 0)
+	var saved := t == player and t.hp <= 0 and second_wind > 0 and not second_wind_used
+	if saved:
+		second_wind_used = true
+		t.hp = 1
 	emit("damage", {"target": t.id, "amount": dealt, "blocked": blocked, "source": source_id, "kind": kind, "hp": t.hp, "ward": t.ward})
+	if saved:
+		t.ward += second_wind
+		emit("second_wind", {"target": t.id})
+		emit("ward", {"target": t.id, "amount": second_wind, "ward": t.ward})
 	if t.is_dead():
 		emit("death", {"target": t.id})
 		if units.has(t):
@@ -451,17 +469,27 @@ func summon(unit_name: String, hp: int, rule: Dictionary = {}) -> bool:
 			u.max_hp = maxi(u.max_hp, hp)
 			u.hp = maxi(u.hp, hp)
 			u.rule = rule
-			emit("refresh", {"target": u.id, "hp": u.hp})
+			u.ward = maxi(u.ward, daemon_ward)
+			emit("refresh", {"target": u.id, "hp": u.hp, "ward": u.ward})
 			_daemon_payoffs(u)
+			_daemon_repair()
 			return true
 	if units.size() >= board_slots:
 		return false
 	var u := Fighter.make("u%d" % _unit_counter, unit_name, hp)
 	_unit_counter += 1
 	u.rule = rule
+	u.ward = daemon_ward
 	units.append(u)
-	emit("summon", {"target": u.id, "name": unit_name, "hp": hp})
+	emit("summon", {"target": u.id, "name": unit_name, "hp": hp, "ward": u.ward})
+	_daemon_repair()
 	return true
+
+
+## Repair Drones: running a daemon (new or refreshed) repairs you.
+func _daemon_repair() -> void:
+	if daemon_heal > 0 and not is_over():
+		Effects.resolve(self, {"op": "heal", "amount": daemon_heal, "to": "self"}, player, player)
 
 
 ## Sum of a rule flag over the daemons that are running (true counts as 1).

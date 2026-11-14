@@ -216,7 +216,7 @@ static func _summon_value(c: Combat, e: Dictionary) -> float:
 					for fx in trig.get("effects", []):
 						now += _effect_value(c, fx, null, c.player.ward)
 			# Refreshing also fires the "destroyed or refreshed" payoffs (Hive Link's blast).
-			now += float(c.daemon_death_damage * c.living(c.enemies).size())
+			now += float(c.daemon_death_damage * c.living(c.enemies).size()) + c.daemon_heal * 0.8
 			return now + DaemonRules.value({"hp": 1, "rule": rule}) * maxf(float(hp - u.hp), 0.0) * 0.6
 	if c.units.size() >= c.board_slots:
 		return 0.0

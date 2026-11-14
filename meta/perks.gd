@@ -22,6 +22,9 @@ const MODS := {
 	"ward_retention": "Firewall kept between turns",
 	"daemon_death_damage": "Damage when a daemon is destroyed or refreshed",
 	"manual_crash": "Shut down your own daemons",
+	"daemon_heal": "Repair when you run a daemon",
+	"daemon_ward": "Firewall on your daemons",
+	"second_wind": "Survive a lethal hit once per fight",
 	"start_mods": "Random mods at run start",
 	"start_perks": "Random subroutines at run start",
 	"enemy_hp_pct": "Enemy HP",
@@ -97,6 +100,12 @@ static func describe_mod(k: String, v: float) -> String:
 			return "When one of your daemons is destroyed or refreshed, it explodes for %d damage to all enemies." % int(v)
 		"manual_crash":
 			return "In fights, you can shut down your own daemons."
+		"daemon_heal":
+			return "Each time you run a daemon, repair %d HP." % int(v)
+		"daemon_ward":
+			return "Your daemons start with %d %s that blocks attacks and doesn't decay." % [int(v), Lexicon.term("ward")]
+		"second_wind":
+			return "Once per fight, the first hit that would flatline you leaves you at 1 HP and gives you %d %s." % [int(v), Lexicon.term("ward")]
 		"start_mods":
 			return "Start runs with %d random mod%s installed." % [int(v), "" if int(v) == 1 else "s"]
 		"start_perks":

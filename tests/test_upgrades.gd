@@ -644,3 +644,36 @@ func test_shut_down_needs_hive_link() -> void:
 	c.summon("Drone", 3)
 	check(not c.can_shutdown(), "no button without Hive Link")
 	check(not c.shutdown_daemon(0), "and no shut down")
+
+
+func test_second_wind_saves_you_once_per_fight() -> void:
+	profile.rig["regrowth_protocol"] = 1
+	var c := _run().start_combat("mites")
+	c.start()
+	c.player.ward = 0
+	c.deal_damage(c.player, c.player.hp + 20)
+	eq(c.player.hp, 1, "Second Wind leaves you at 1 HP")
+	eq(c.player.ward, 10, "and gives 10 Firewall")
+	c.player.ward = 0
+	c.deal_damage(c.player, 5)
+	eq(c.player.hp, 0, "only once per fight")
+
+
+func test_repair_drones_and_daemon_plating() -> void:
+	profile.rig["repair_drones"] = 2
+	profile.rig["hardpoint"] = 3
+	var c := _run().start_combat("mites")
+	c.start()
+	c.player.hp = 20
+	c.summon("A", 3)
+	eq(c.player.hp, 22, "running a daemon repairs 2 at rank 2")
+	c.summon("A", 3)
+	eq(c.player.hp, 24, "refreshing one repairs too")
+	var u: Fighter = c.units[0]
+	eq(u.ward, 3, "plating: 3 Firewall at rank 3")
+	c.deal_damage(u, 9)
+	eq(u.hp, 3, "plating absorbs an attack")
+	eq(u.ward, 2, "a daemon hit counts as 1")
+	c.deal_damage(u, 1, "", "purge")
+	eq(u.hp, 2, "Purge goes through plating")
+	eq(u.ward, 2, "and leaves it")
