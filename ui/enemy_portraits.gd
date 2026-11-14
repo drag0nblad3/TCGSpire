@@ -1,16 +1,17 @@
 class_name EnemyPortraits
 extends RefCounted
-## Artwork atlases for non-boss enemies. Each cell is a 220 × 170 design canvas.
+## Neon creature bases, animated faction signals, and separate elite overlays.
+## Design coordinates remain 220 × 170; raster atlases use double resolution.
 
 const CELL := Vector2(220, 170)
 const ATLASES := {
-	"ember": preload("res://assets/combat/regular/ember.svg"),
-	"tide": preload("res://assets/combat/regular/tide.svg"),
-	"bloom": preload("res://assets/combat/regular/bloom.svg"),
-	"void": preload("res://assets/combat/regular/void.svg"),
-	"chrome": preload("res://assets/combat/regular/chrome.svg"),
-	"noise": preload("res://assets/combat/regular/noise.svg"),
-	"neutral": preload("res://assets/combat/regular/neutral.svg"),
+	"ember": preload("res://assets/combat/neon/ember.webp"),
+	"tide": preload("res://assets/combat/neon/tide.webp"),
+	"bloom": preload("res://assets/combat/neon/bloom.webp"),
+	"void": preload("res://assets/combat/neon/void.webp"),
+	"chrome": preload("res://assets/combat/neon/chrome.webp"),
+	"noise": preload("res://assets/combat/neon/noise.webp"),
+	"neutral": preload("res://assets/combat/neon/neutral.webp"),
 }
 const ROSTER := {
 	"burner_tagger": ["ember", 0, "vents", false],
@@ -92,56 +93,12 @@ const GLITCH_OUTER := [
 const GLITCH_MIDDLE := [0, -13, 17, 0, 0, 0, 0, 0, 14, -10, 0, 0, 0, 0, 0, 16, -12, 0, 0, 0, 0, 0, 19, -9]
 
 
-# One shoulder silhouette and its illuminated inset, mirrored around the atlas center.
-# Burner stacks, Flux fins, Wetware growth, Null fragments, Chrome rails, Static antennae.
-const ELITE_GEAR := {
-	"ember": [[Vector2(23, 102), Vector2(19, 48), Vector2(12, 25), Vector2(34, 20), Vector2(50, 39), Vector2(57, 101)],
-		[Vector2(23, 31), Vector2(34, 29), Vector2(42, 40), Vector2(43, 57), Vector2(29, 56)]],
-	"tide": [[Vector2(30, 108), Vector2(9, 61), Vector2(9, 30), Vector2(26, 47), Vector2(37, 34), Vector2(51, 62), Vector2(69, 101)],
-		[Vector2(16, 47), Vector2(26, 59), Vector2(36, 49), Vector2(44, 67), Vector2(31, 77)]],
-	"bloom": [[Vector2(28, 107), Vector2(12, 77), Vector2(19, 56), Vector2(16, 35), Vector2(37, 41), Vector2(52, 20), Vector2(57, 49), Vector2(70, 61), Vector2(64, 103)],
-		[Vector2(29, 58), Vector2(48, 35), Vector2(49, 63), Vector2(59, 74), Vector2(38, 80)]],
-	"void": [[Vector2(12, 37), Vector2(39, 18), Vector2(53, 43), Vector2(27, 57), Vector2(41, 65), Vector2(60, 51), Vector2(69, 96), Vector2(32, 104), Vector2(19, 77), Vector2(24, 67)],
-		[Vector2(19, 38), Vector2(37, 26), Vector2(44, 40), Vector2(26, 49)]],
-	"chrome": [[Vector2(15, 103), Vector2(15, 46), Vector2(29, 32), Vector2(53, 32), Vector2(65, 45), Vector2(65, 103), Vector2(48, 112), Vector2(27, 111)],
-		[Vector2(22, 51), Vector2(32, 40), Vector2(50, 40), Vector2(57, 48), Vector2(49, 59), Vector2(30, 59)]],
-	"noise": [[Vector2(25, 104), Vector2(21, 62), Vector2(10, 23), Vector2(20, 16), Vector2(38, 46), Vector2(49, 38), Vector2(55, 44), Vector2(42, 66), Vector2(61, 104)],
-		[Vector2(17, 24), Vector2(21, 22), Vector2(35, 47), Vector2(31, 53)]],
-	"neutral": [[Vector2(22, 104), Vector2(14, 61), Vector2(21, 32), Vector2(42, 42), Vector2(55, 30), Vector2(63, 58), Vector2(61, 102)],
-		[Vector2(21, 48), Vector2(42, 56), Vector2(53, 45), Vector2(56, 52), Vector2(44, 65), Vector2(19, 56)]],
-}
-
-
-# Draw the lower mounts in front of the portrait so the attachments wrap into the armor.
-const ELITE_MOUNTS := {
-	"ember": [[Vector2(22, 76), Vector2(55, 75), Vector2(62, 98), Vector2(92, 116), Vector2(88, 132), Vector2(61, 123), Vector2(33, 108)],
-		[Vector2(33, 85), Vector2(45, 84), Vector2(50, 100), Vector2(77, 119), Vector2(75, 122), Vector2(42, 107)]],
-	"tide": [[Vector2(20, 76), Vector2(49, 72), Vector2(69, 96), Vector2(92, 113), Vector2(92, 126), Vector2(65, 120), Vector2(40, 104)],
-		[Vector2(32, 85), Vector2(44, 81), Vector2(61, 102), Vector2(83, 116), Vector2(81, 120), Vector2(58, 109)]],
-	"bloom": [[Vector2(17, 74), Vector2(62, 72), Vector2(60, 91), Vector2(81, 103), Vector2(93, 121), Vector2(85, 129), Vector2(60, 114), Vector2(42, 115), Vector2(26, 99)],
-		[Vector2(28, 82), Vector2(50, 81), Vector2(48, 94), Vector2(66, 104), Vector2(83, 121), Vector2(79, 122), Vector2(56, 108), Vector2(38, 106)]],
-	"void": [[Vector2(20, 76), Vector2(48, 69), Vector2(65, 81), Vector2(63, 94), Vector2(83, 107), Vector2(92, 128), Vector2(67, 123), Vector2(56, 111), Vector2(38, 109)],
-		[Vector2(29, 81), Vector2(47, 76), Vector2(58, 86), Vector2(48, 99), Vector2(40, 99)]],
-	"chrome": [[Vector2(15, 78), Vector2(65, 77), Vector2(66, 96), Vector2(91, 108), Vector2(91, 125), Vector2(62, 125), Vector2(48, 112), Vector2(27, 111), Vector2(15, 103)],
-		[Vector2(23, 86), Vector2(57, 85), Vector2(57, 91), Vector2(23, 92)]],
-	"noise": [[Vector2(22, 65), Vector2(43, 65), Vector2(54, 89), Vector2(73, 98), Vector2(94, 120), Vector2(85, 129), Vector2(62, 114), Vector2(37, 107)],
-		[Vector2(29, 73), Vector2(37, 72), Vector2(47, 96), Vector2(66, 104), Vector2(80, 120), Vector2(74, 119), Vector2(42, 104)]],
-	"neutral": [[Vector2(18, 78), Vector2(62, 77), Vector2(62, 95), Vector2(92, 116), Vector2(85, 130), Vector2(59, 121), Vector2(34, 105)],
-		[Vector2(30, 87), Vector2(50, 85), Vector2(54, 99), Vector2(79, 118), Vector2(75, 121), Vector2(45, 102)]],
-}
-
-
-static func _draw_elite_gear(view: CanvasItem, origin: Vector2, scale: float, layers: Array, accent: Color) -> void:
-	for side in [1, -1]:
-		for i in layers.size():
-			var points := PackedVector2Array()
-			for point: Vector2 in layers[i]:
-				points.append(origin + Vector2(CELL.x * 0.5 + (point.x - CELL.x * 0.5) * side, point.y) * scale)
-			var fill := Color("#263247").lerp(accent, 0.20) if i == 0 else Color(accent, 0.92)
-			view.draw_colored_polygon(points, fill)
-			if i == 0:
-				points.append(points[0])
-				view.draw_polyline(points, accent, maxf(1.0, scale * 2.5), true)
+## Overlays are transparent atlas cells, never baked into a normal creature.
+static func _draw_elite_layer(view: CanvasItem, atlas: Texture2D, faction: String, origin: Vector2, scale: float, front: bool) -> void:
+	var columns := 5 if faction == "neutral" else 3
+	var slot := (25 if faction == "neutral" else 7) + (1 if front else 0)
+	var source := Rect2(Vector2(slot % columns, floori(float(slot) / columns)) * CELL * 2.0, CELL * 2.0)
+	view.draw_texture_rect_region(atlas, Rect2(origin, CELL * scale), source)
 
 
 static func draw(view: CanvasItem, center: Vector2, bounds: Vector2, profile: Array, time: float, elite := false) -> void:
@@ -151,12 +108,12 @@ static func draw(view: CanvasItem, center: Vector2, bounds: Vector2, profile: Ar
 	var waveform: bool = profile[3]
 	var atlas: Texture2D = ATLASES[faction]
 	var columns := 5 if faction == "neutral" else 3
-	var source := Rect2(Vector2(slot % columns, floori(float(slot) / columns)) * CELL, CELL)
+	var source := Rect2(Vector2(slot % columns, floori(float(slot) / columns)) * CELL * 2.0, CELL * 2.0)
 	var scale := minf(bounds.x / CELL.x, bounds.y / CELL.y)
 	var origin := center - CELL * scale * 0.5
 	var accent := Color(Themes.FACTIONS_DARK[faction])
 	if elite:
-		_draw_elite_gear(view, origin, scale, ELITE_GEAR[faction], accent)
+		_draw_elite_layer(view, atlas, faction, origin, scale, false)
 
 	if effect == "fracture":
 		_draw_glitch(view, atlas, source, origin, scale, accent, time)
@@ -172,7 +129,7 @@ static func draw(view: CanvasItem, center: Vector2, bounds: Vector2, profile: Ar
 		if waveform:
 			_draw_waveform(view, origin, scale, accent, time)
 	if elite:
-		_draw_elite_gear(view, origin, scale, ELITE_MOUNTS[faction], accent)
+		_draw_elite_layer(view, atlas, faction, origin, scale, true)
 
 
 static func _draw_background_effect(view: CanvasItem, effect: String, o: Vector2, s: float, ink: Color, time: float) -> void:
@@ -185,9 +142,7 @@ static func _draw_background_effect(view: CanvasItem, effect: String, o: Vector2
 					view.draw_circle(o + Vector2(side, 101.0 - age * 70.0) * s, (2.8 - 1.8 * age) * s, Color(ink, 0.85 * (1.0 - age)), true, -1, true)
 		"bio":
 			var pulse := 0.55 + 0.45 * sin(time * 3.4)
-			for i in 6:
-				var radius := 103.0 - i * 10.0
-				view.draw_circle(o + Vector2(110, 94) * s, radius * s, Color(ink, 0.022 + 0.019 * pulse), true, -1, true)
+			view.draw_arc(o + Vector2(110, 94) * s, (65.0 + 4.0 * pulse) * s, 0.2, PI - 0.2, 36, Color(ink, 0.18 + 0.12 * pulse), maxf(1.0, s), true)
 		"chrome":
 			var hex := PackedVector2Array()
 			for point in [Vector2(110, 12), Vector2(190, 51), Vector2(190, 116), Vector2(110, 159), Vector2(30, 116), Vector2(30, 51), Vector2(110, 12)]:
@@ -244,7 +199,7 @@ static func _draw_glitch(view: CanvasItem, atlas: Texture2D, source: Rect2, orig
 	for band in bands:
 		var area := Rect2(Vector2(0, band[0]), Vector2(CELL.x, band[1]))
 		var dest := Rect2(origin + Vector2(band[2], band[0]) * scale, area.size * scale)
-		view.draw_texture_rect_region(atlas, dest, Rect2(source.position + area.position, area.size))
+		view.draw_texture_rect_region(atlas, dest, Rect2(source.position + area.position * 2.0, area.size * 2.0))
 		if band[2] != 0.0:
 			var y: float = band[0] + band[1] * 0.55
 			for edge in [52.0, 150.0]:
