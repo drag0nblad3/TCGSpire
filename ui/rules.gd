@@ -1,8 +1,8 @@
 class_name Rules
 extends Control
 ## Rules reference overlay: a contents strip that jumps to numbered sections
-## (turn flow, programs, keywords, statuses, intents, daemons, the run, jobs,
-## upgrades, collecting, heat). Status, keyword, type and intent text comes
+## (turn flow, programs, keywords, statuses, intents, daemons, the Stack, implants,
+## jobs, upgrades, collecting, firmware, heat). Status, keyword, type and intent text comes
 ## straight from Statuses.DEFS / CardDef.KEYWORD_DESC / TYPE_DESC / Intents.DESC,
 ## so new content documents itself. Open with Rules.open(node[, heading]).
 ##
@@ -10,8 +10,8 @@ extends Control
 ## (String), a definition ([term, text]), a numbered step (["#", text]) or the
 ## intent icon legend ("@intents").
 
-const WARD := "Firewall absorbs damage before HP and normally clears at the start of your turn. Hardened (or a Gatekeeper daemon) keeps all remaining Firewall. Liquidity Engine keeps 30%, rounded up."
-const UNITS := "Daemons: programs that stay on your board for a few turns and change the rules while they run. A daemon's HP is its countdown: it loses 1 at the start of each of your turns and 1 for each hit it takes, and Purge moves take more. At 0 it closes and its rule ends. Running a daemon that is already up tops its HP back up. Up to 3 can run at once."
+const WARD := "Firewall absorbs damage before HP and normally clears at the start of your turn. Hardened keeps all remaining Firewall, and so does any daemon or implant whose rule keeps Firewall (Gatekeeper, for one). The Liquidity Engine rig upgrade keeps 30%, rounded up."
+const UNITS := "Daemons: programs that stay on your board for a few turns and change the rules while they run. They are not attackers: each one is a rule, like keeping your Firewall or striking at the end of your turn. Enemies can still hit them. A daemon's HP is its countdown: it loses 1 at the start of each of your turns and 1 for each hit it takes. Purge moves (enemy attacks aimed at daemons) take their full damage. At 0 it closes and its rule ends. Running a daemon that is already up tops its HP back up. Up to 3 can run at once."
 const LEGEND := "@intents"
 const GROUPS := ["In a fight", "The run", "Between runs"]
 
@@ -49,10 +49,14 @@ static func sections(db: CardDB) -> Array:
 		["RAM", "Energy. You spend it to play cards and it refills every turn."],
 		["Firewall", "Block. It soaks damage before your HP."],
 		["Sentry", "An enemy. Black sentries are elites and Cores are bosses."],
-		["Exploit, Script, Daemon, Rootkit", "Card types: attack, skill, a short-lived helper on your board, and a power that lasts the fight."],
+		["Exploit, Script, Daemon, Rootkit", "Card types: attack, skill, a temporary rule change on your board, and a power that lasts the fight."],
+		["Loop", "A Loop program gets stronger each time you run it this fight: every number marked Loop +N grows by N."],
 		["Wiped", "Removed for the rest of this fight (it comes back next fight)."],
 		["Malware", "Junk cards enemies put in your deck."],
 		["The Stack", "The map of one run. Each node is a stop on it, and each layer (act) ends at a Core."],
+		["Wall", "A barrier on the Stack that cuts the routes it crosses."],
+		["Jump", "A move diagonally up one floor, through walls. Earned from upgrades and implants."],
+		["Vault", "A node sealed off by walls. Only a jump gets you in."],
 		["Job", "A run. Every run is done for one crew (faction), which pays you rep."],
 		[Palette.w("rest"), "Rest stop: heal or upgrade a card."],
 		[Palette.w("shop"), "The shop."],
@@ -102,7 +106,7 @@ static func sections(db: CardDB) -> Array:
 	out.append(["Enemy intents", "In a fight", [
 		"Each enemy shows what it will do on its turn. Hold it to read the move.",
 		LEGEND,
-		["Exact numbers", "An attack number already includes its Boost, its Throttle and your Exposed, so you can raise exactly enough Firewall."],
+		["Exact numbers", "An attack number already includes the enemy's Boost and Throttled and your Exposed, so you can raise exactly enough Firewall."],
 	]])
 	out.append(["Firewall and daemons", "In a fight", [
 		["Firewall", WARD],
@@ -111,16 +115,30 @@ static func sections(db: CardDB) -> Array:
 	]])
 
 	# --- The run ----------------------------------------------------------------
+	var ease: Dictionary = db.balance.get("act_start_ease", {})
 	out.append(["The Stack", "The run", [
-		"The Stack is the run's map. Move up it one node (stop) at a time. Each layer (act) ends with a Core: the boss fight.",
+		"The Stack is the run's map. Move up it one node (stop) at a time along the lit routes. Each layer (act) ends with a Core: the boss fight.",
 		["HP", "Your HP is your rig's integrity and carries over between fights. Safehouses, some signals and implants repair it."],
-		["Rewards", "After a fight you pick one new program (card) to add to your deck, or skip. A lean deck draws its best cards more often."],
+		["Rewards", "After a fight you pick one of %d new programs (cards) to add to your deck, or skip. A lean deck draws its best cards more often." % int(db.balance.get("reward", {}).get("choices", 3))],
 		["Sentry", "A normal fight."],
-		["Black sentry (X)", "An elite: a tougher fight that drops an implant. Implants are passive items that trigger on their own."],
-		["%s (H)" % Palette.w("rest"), "A rest stop. Reboot to heal, recompile (upgrade) a card, or tinker a mod onto one."],
-		["%s ($)" % Palette.w("shop"), "The shop. Spend creds on programs, implants and mods, or remove a card from your deck."],
-		["Signal (?)", "A random event: pick a choice, some with risks."],
-		["Cache (C)", "Loot: holds an implant."],
+		["Black sentry", "An elite: a tougher fight that drops an implant and lets you pick a subroutine."],
+		["Core", "The boss at the top of each layer. It drops a boss implant, and every Core but the last lets you pick a subroutine."],
+		[Palette.w("rest"), "A rest stop. Reboot to heal, recompile (upgrade) a card, or tinker a mod onto one."],
+		[Palette.w("shop"), "The shop. Spend creds on programs, implants and mods, or remove a card from your deck."],
+		["Signal", "A random event: pick a choice, some with risks."],
+		["Cache", "Loot: holds an implant."],
+		["Walls", "Short walls cut some routes, so the Stack is a little maze. Every node can still reach the Core."],
+		["Jumps", "Some subroutines, rig upgrades and implants give jumps: charges per layer that move you diagonally up one floor, straight through a wall. You play the node you land on."],
+		["Vault", "A node the walls seal off completely. Only a jump gets you in: an elite guard, then a rare implant and extra creds."],
+		["Easy start", "The first %d floors of each layer are softer: enemies there have %d%% less HP and deal %d%% less damage." % [int(ease.get("floors", 2)), absi(roundi(float(ease.get("enemy_hp_pct", 0)) * 100)), absi(roundi(float(ease.get("enemy_dmg_pct", 0)) * 100))]],
+	]])
+	out.append(["Implants", "The run", [
+		"Implants are passive items that trigger on their own. Black sentries, Cores, loot caches, vaults, the %s and some signals hand them out. Rarity tells you how an implant works, not how strong it is:" % Palette.w("shop"),
+		["Common", "A flat bonus that is always on."],
+		["Uncommon", "A bonus with a condition or a counter."],
+		["Rare", "Changes a rule of the game."],
+		["Boss", "Dropped by Cores: a big upside with a real cost."],
+		["Crew implants", "Some implants belong to a crew and never show up on a job against that crew."],
 	]])
 	var share := int(float(db.balance.get("jobs", {}).get("client_share", 0.5)) * 100)
 	var rivals: Array = []
@@ -146,8 +164,8 @@ static func sections(db: CardDB) -> Array:
 		["Mods", "Each program holds one mod. Safehouses let you tinker, the Fixer sells mods, and some signals install them."],
 	]
 	for id in db.mods:
-		mods.append([str(db.mods[id]["name"]), CardMods.describe(db.mods[id])])
-	mods.append(["Subroutines", "Perks for this run. After elites (black sentries) and the first Core, pick one of %d. They last for the rest of the job." % int(db.balance.get("perk_choices", 3))])
+		mods.append([str(db.mods[id]["name"]), (CardMods.describe(db.mods[id]) + " " + CardMods.restriction_text(db.mods[id])).strip_edges()])
+	mods.append(["Subroutines", "Perks for this run. After black sentries and every Core except the last, pick one of %d. They last for the rest of the job." % int(db.balance.get("perk_choices", 3))])
 	out.append(["Upgrades and perks", "The run", mods])
 
 	# --- Between runs -----------------------------------------------------------
@@ -165,7 +183,8 @@ static func sections(db: CardDB) -> Array:
 		["Crew caches", "One per crew, Street included: only that crew's programs (and its joint ops). " + _pack_odds(db, Packs.crew_kind("ember"))],
 		[PackArt.title(db, Packs.PREMIUM), "Premium. Any crew. " + _pack_odds(db, Packs.PREMIUM)],
 		["Rarity", "Rarer programs add complexity, not raw power."],
-		[Palette.w("dust"), "Scrap copies you no longer need for %s, and compile the ones you want." % dust],
+		[Palette.w("dust"), "Scrap copies you no longer need to earn %s, then spend it to compile the programs you want." % dust],
+		["Quick scrap", "While opening a %s, a pulled program you already own more than %d of can be scrapped on the spot." % [Palette.w("pack").to_lower(), limit]],
 		["Mastery", "Running a program often raises its mastery."],
 		["Binders", "Own every program on a crew's rarity page to claim it. A full set pays a card back and a title."],
 	]])
@@ -178,9 +197,11 @@ static func sections(db: CardDB) -> Array:
 		["Maxed", "Once a program's firmware is maxed and you own %d copies, %s reroll it once." % [limit, packs]],
 		["Rig upgrades", "Bought at the hideout with a crew's rep. They apply to every run."],
 	]])
-	out.append(["Heat", "Between runs", [
-		"Heat is the difficulty level, picked on the hub before you take a job. Breach the final Core to unlock the next Heat. Each level adds a modifier, and enemy HP and damage boosts compound with each level.",
-	]])
+	var heat: Array = ["Heat is the difficulty level, picked on the hub before you take a job. Breach the final Core to unlock the next Heat. Each level adds to the ones below it, and the enemy HP and damage boosts compound."]
+	var levels: Array = db.balance.get("heat", [])
+	for i in levels.size():
+		heat.append(["Heat %d" % (i + 1), str(levels[i].get("desc", ""))])
+	out.append(["Heat", "Between runs", heat])
 	return out
 
 
