@@ -231,6 +231,7 @@ func combat_opts() -> Dictionary:
 		"extra_slots": int(perk_mod("board_slots")),
 		"daemon_hp": int(perk_mod("daemon_hp")),
 		"start_ward": int(perk_mod("start_ward")),
+		"turn_ward": int(perk_mod("turn_ward")),
 		"ward_retention": perk_mod("ward_retention"),
 		"daemon_death_damage": int(perk_mod("daemon_death_damage")),
 		"manual_crash": perk_mod("manual_crash") > 0,
@@ -613,7 +614,8 @@ func make_shop() -> Dictionary:
 
 ## What deleting a program costs right now (rig perks can discount it).
 func remove_price() -> int:
-	return maxi(remove_cost - int(perk_mod("remove_discount")), 0)
+	var pct := clampf(perk_mod("remove_discount_pct"), 0.0, 1.0)
+	return maxi(roundi((remove_cost - int(perk_mod("remove_discount"))) * (1.0 - pct)), 0)
 
 
 ## Buys a shop mod and installs it on deck[deck_idx].

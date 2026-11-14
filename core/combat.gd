@@ -38,6 +38,8 @@ var rule_daemon: Fighter
 var perks: Array = []
 ## Firewall gained when combat starts (perks).
 var start_ward := 0
+## Boot Firewall: Firewall gained at the start of each of your turns.
+var turn_ward := 0
 var ward_retention := 0.0
 var daemon_death_damage := 0
 ## Hive Link: you may shut down your own daemons on your turn (shutdown_daemon).
@@ -88,6 +90,7 @@ static func create(db_in: CardDB, deck: Array, encounter_id: String, rng_in: Gam
 		if not pd.get("triggers", []).is_empty():
 			c.perks.append(pd)
 	c.start_ward = int(opts.get("start_ward", 0))
+	c.turn_ward = int(opts.get("turn_ward", 0))
 	c.ward_retention = clampf(float(opts.get("ward_retention", 0.0)), 0.0, 1.0)
 	c.daemon_death_damage = int(opts.get("daemon_death_damage", 0))
 	c.manual_crash = bool(opts.get("manual_crash", false))
@@ -172,6 +175,8 @@ func _start_player_turn() -> void:
 		if start_ward > 0:
 			Effects.resolve(self, {"op": "ward", "amount": start_ward}, player, null)
 		Talismans.fire(self, "combat_start")
+	if turn_ward > 0:
+		Effects.resolve(self, {"op": "ward", "amount": turn_ward}, player, null)
 	Statuses.on_turn_start(self, player)
 	_check_end()
 	if is_over():

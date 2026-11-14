@@ -31,6 +31,8 @@ const MODS := {
 	"rep_pct": "Rep from the job",
 	"perk_choices": "Subroutine choices",
 	"remove_discount": "Cheaper program deletion",
+	"remove_discount_pct": "Cheaper program deletion (%)",
+	"turn_ward": "Firewall every turn",
 	"max_energy": "RAM each turn",
 	"hand_size": "Programs drawn each turn",
 	"board_slots": "Daemon slots",
@@ -50,7 +52,10 @@ static func describe(p: Dictionary, rank: int = 1) -> String:
 		parts.append(RunOutcomes.describe(o))
 	for k in p.get("mods", {}):
 		parts.append(describe_mod(k, mod_at(p, k, maxi(rank, 1))))
-	if p.has("triggers"):
+	# A hand-written "text" replaces the generated trigger text (Thermal Runaway).
+	if p.has("text"):
+		parts.append(str(p["text"]))
+	elif p.has("triggers"):
 		parts.append(Talismans.describe({"triggers": p["triggers"]}))
 	return " ".join(parts)
 
@@ -122,6 +127,10 @@ static func describe_mod(k: String, v: float) -> String:
 			return "Your daemons have +%d HP." % int(v)
 		"perk_choices":
 			return "+%d subroutine choice%s." % [int(v), "" if int(v) == 1 else "s"]
+		"remove_discount_pct":
+			return "Deleting a program at the Fixer costs %d%% less." % roundi(v * 100)
+		"turn_ward":
+			return "Gain %d %s at the start of each turn." % [int(v), Lexicon.term("ward")]
 		"remove_discount":
 			return "Deleting a program at the Fixer costs %d less." % int(v)
 		"run_scrap":

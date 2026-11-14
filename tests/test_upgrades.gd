@@ -444,7 +444,7 @@ func test_firmware_mod_bakes_into_every_copy() -> void:
 func test_new_perk_keys() -> void:
 	profile.rig = {"pirate_coupons": 2, "wider_menu": 1, "contract_killer": 3}
 	var r := _run(1, "ember")
-	eq(r.remove_price(), int(db.balance["shop"]["remove_base"]) - 2 * int(db.perks["pirate_coupons"]["mods"]["remove_discount"]), "deletion discount")
+	eq(r.remove_price(), roundi(int(db.balance["shop"]["remove_base"]) * 0.7), "deletion 15% cheaper per rank")
 	r.floor_num = 10
 	var base := RunState.start(db, Profile.new_player(db), RunState.default_picks(db, profile, "ember"), 1, 0, "ember")
 	base.floor_num = 10
@@ -561,14 +561,14 @@ func test_capstone_needs_crew_maxed_and_changes_combat() -> void:
 
 
 func test_liquidity_engine_preserves_thirty_percent_firewall_and_extra_draw() -> void:
-	profile.rig = {"liquidity_engine": 1, "boot_firewall": 3}
+	profile.rig = {"liquidity_engine": 1}
 	var r := _run()
 	var c := r.start_combat(db.encounters.keys()[0])
 	for enemy in c.enemies:
 		enemy.moves = []
 	c.start()
 	eq(c.hand.size(), int(db.balance["player"]["hand_size"]) + 1, "extra draw")
-	eq(c.player.ward, 9, "Boot Firewall grants its full opening amount")
+	c.player.ward = 9
 	c.end_turn()
 	eq(c.player.ward, 3, "retained Firewall rounds up")
 	var starts := c.events.filter(func(e: Dictionary) -> bool: return e["t"] == "turn_start")
@@ -677,3 +677,17 @@ func test_repair_drones_and_daemon_plating() -> void:
 	c.deal_damage(u, 1, "", "purge")
 	eq(u.hp, 2, "Purge goes through plating")
 	eq(u.ward, 2, "and leaves it")
+
+
+func test_boot_firewall_cred_stash_and_short_capstone_text() -> void:
+	profile.rig = {"boot_firewall": 2, "cred_stash": 3}
+	var r := _run()
+	eq(r.gold, int(db.balance.get("start_gold", 50)) + 100, "Cred Stash +100 at rank 3")
+	var c := r.start_combat("mites")
+	for enemy in c.enemies:
+		enemy.moves = []
+	c.start()
+	eq(c.player.ward, 3, "Boot Firewall: 3 at rank 2")
+	c.end_turn()
+	eq(c.player.ward, 3, "and again every turn")
+	eq(Perks.describe(db.perks["thermal_runaway"]), "+1 RAM on each of your first 3 turns.", "short capstone text")
