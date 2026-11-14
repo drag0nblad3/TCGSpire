@@ -4,7 +4,8 @@ extends RefCounted
 ##   "run": Subroutines. Picked from 3 after black sentries and Cores; last this run.
 ##          May have "mods", "triggers" (like implants) and "pickup" (run outcomes).
 ##   "rig": Rig upgrades. Bought with rig points between runs, saved in the profile,
-##          ranked 1..max_rank; each rank adds its "mods" again. A "capstone" rig perk
+##          ranked 1..max_rank; each rank adds its "mods" again, or a mod can list the total
+##          at each rank ([10, 25, 45] = +10, +15, +20). A "capstone" rig perk
 ##          unlocks once every other rig perk of its crew is maxed, and may have triggers.
 ## Mods are numbers summed over every perk (RunState.perk_mod):
 const MODS := {
@@ -19,13 +20,20 @@ const MODS := {
 	"combat_heal": "Repair after each fight",
 	"start_ward": "Firewall when you jack in",
 	"ward_retention": "Firewall kept between turns",
-	"daemon_death_damage": "Damage when a daemon is destroyed",
+	"daemon_death_damage": "Damage when a daemon is destroyed or refreshed",
+	"manual_crash": "Shut down your own daemons",
+	"daemon_heal": "Repair when you run a daemon",
+	"daemon_ward": "Firewall on your daemons",
+	"second_wind": "Survive a lethal hit once per fight",
 	"start_mods": "Random mods at run start",
 	"start_perks": "Random subroutines at run start",
 	"enemy_hp_pct": "Enemy HP",
+	"enemy_dmg_pct": "Enemy damage",
 	"rep_pct": "Rep from the job",
 	"perk_choices": "Subroutine choices",
 	"remove_discount": "Cheaper program deletion",
+	"remove_discount_pct": "Cheaper program deletion (%)",
+	"turn_ward": "Firewall every turn",
 	"max_energy": "RAM each turn",
 	"hand_size": "Programs drawn each turn",
 	"board_slots": "Daemon slots",
@@ -43,12 +51,29 @@ static func describe(p: Dictionary, rank: int = 1) -> String:
 	var parts: Array[String] = []
 	for o in p.get("pickup", []):
 		parts.append(RunOutcomes.describe(o))
-	var mods: Dictionary = p.get("mods", {})
-	for k in mods:
-		parts.append(describe_mod(k, float(mods[k]) * maxi(rank, 1)))
-	if p.has("triggers"):
+	for k in p.get("mods", {}):
+		parts.append(describe_mod(k, mod_at(p, k, maxi(rank, 1))))
+	# A hand-written "text" replaces the generated trigger text (Thermal Runaway).
+	if p.has("text"):
+		parts.append(str(p["text"]))
+	elif p.has("triggers"):
 		parts.append(Talismans.describe({"triggers": p["triggers"]}))
 	return " ".join(parts)
+
+
+## A mod's total at a rank: a number adds itself per rank, a list gives the total at each rank.
+static func mod_at(p: Dictionary, key: String, rank: int) -> float:
+	var v: Variant = p.get("mods", {}).get(key, 0.0)
+	if rank <= 0:
+		return 0.0
+	if v is Array:
+		return float(v[mini(rank, v.size()) - 1]) if not v.is_empty() else 0.0
+	return float(v) * rank
+
+
+## True when the rank totals differ step to step, so the rig screen shows the next step instead of "per rank".
+static func tiered(p: Dictionary) -> bool:
+	return p.get("mods", {}).values().any(func(v: Variant) -> bool: return v is Array)
 
 
 static func describe_mod(k: String, v: float) -> String:
@@ -78,7 +103,15 @@ static func describe_mod(k: String, v: float) -> String:
 		"ward_retention":
 			return "Keep %d%% of remaining Firewall at the start of your turn, rounded up." % roundi(v * 100)
 		"daemon_death_damage":
-			return "When one of your daemons is destroyed, it explodes for %d damage to all enemies." % int(v)
+			return "When one of your daemons is destroyed or refreshed, it explodes for %d damage to all enemies." % int(v)
+		"manual_crash":
+			return "In fights, you can shut down your own daemons."
+		"daemon_heal":
+			return "Each time you run a daemon, repair %d HP." % int(v)
+		"daemon_ward":
+			return "Your daemons start with %d %s that blocks attacks and doesn't decay." % [int(v), Lexicon.term("ward")]
+		"second_wind":
+			return "Once per fight, the first hit that would flatline you leaves you at 1 HP and gives you %d %s." % [int(v), Lexicon.term("ward")]
 		"start_mods":
 			return "Start runs with %d random mod%s installed." % [int(v), "" if int(v) == 1 else "s"]
 		"start_perks":
@@ -95,6 +128,10 @@ static func describe_mod(k: String, v: float) -> String:
 			return "Your daemons have +%d HP." % int(v)
 		"perk_choices":
 			return "+%d subroutine choice%s." % [int(v), "" if int(v) == 1 else "s"]
+		"remove_discount_pct":
+			return "Deleting a program at the Fixer costs %d%% less." % roundi(v * 100)
+		"turn_ward":
+			return "Gain %d %s at the start of each turn." % [int(v), Lexicon.term("ward")]
 		"remove_discount":
 			return "Deleting a program at the Fixer costs %d less." % int(v)
 		"run_scrap":
@@ -103,6 +140,8 @@ static func describe_mod(k: String, v: float) -> String:
 			return "If you breach at least one Core, the run pays %d more Data cache%s." % [int(v), "" if int(v) == 1 else "s"]
 		"enemy_hp_pct":
 			return "Enemies have %d%% %s HP." % [absi(roundi(v * 100)), "less" if v < 0 else "more"]
+		"enemy_dmg_pct":
+			return "Enemies deal %d%% %s damage." % [absi(roundi(v * 100)), "less" if v < 0 else "more"]
 	return "?"
 
 
@@ -121,6 +160,9 @@ static func validate(p: Dictionary) -> Array[String]:
 	for k in p.get("mods", {}):
 		if not MODS.has(k):
 			errs.append("%s: unknown mod '%s'" % [where, k])
+		var v: Variant = p["mods"][k]
+		if v is Array and (scope != "rig" or v.size() != int(p.get("max_rank", 0))):
+			errs.append("%s: mod '%s' lists one total per rank (rig perks only)" % [where, k])
 	if scope == "rig":
 		if int(p.get("max_rank", 0)) < 1 or int(p.get("cost", 0)) < 1:
 			errs.append("%s: rig perks need max_rank and cost >= 1" % where)

@@ -171,7 +171,7 @@ func test_rig_costs_rep_and_refunds() -> void:
 	check(profile.buy_rig(db, "chassis"), "rank 2")
 	eq(profile.rep_of("bloom"), 0)
 	var r := _run()
-	eq(r.max_hp, int(db.balance["player"]["max_hp"]) + 2 * int(db.perks["chassis"]["mods"]["max_hp"]), "rig max hp")
+	eq(r.max_hp, int(db.balance["player"]["max_hp"]) + 25, "rig max hp")
 	profile.reset_rig(db)
 	eq(profile.rep_of("bloom"), r1 + r2, "refund")
 	eq(profile.rig, {})
@@ -444,7 +444,7 @@ func test_firmware_mod_bakes_into_every_copy() -> void:
 func test_new_perk_keys() -> void:
 	profile.rig = {"pirate_coupons": 2, "wider_menu": 1, "contract_killer": 3}
 	var r := _run(1, "ember")
-	eq(r.remove_price(), int(db.balance["shop"]["remove_base"]) - 2 * int(db.perks["pirate_coupons"]["mods"]["remove_discount"]), "deletion discount")
+	eq(r.remove_price(), roundi(int(db.balance["shop"]["remove_base"]) * 0.7), "deletion 15% cheaper per rank")
 	r.floor_num = 10
 	var base := RunState.start(db, Profile.new_player(db), RunState.default_picks(db, profile, "ember"), 1, 0, "ember")
 	base.floor_num = 10
@@ -561,14 +561,14 @@ func test_capstone_needs_crew_maxed_and_changes_combat() -> void:
 
 
 func test_liquidity_engine_preserves_thirty_percent_firewall_and_extra_draw() -> void:
-	profile.rig = {"liquidity_engine": 1, "boot_firewall": 3}
+	profile.rig = {"liquidity_engine": 1}
 	var r := _run()
 	var c := r.start_combat(db.encounters.keys()[0])
 	for enemy in c.enemies:
 		enemy.moves = []
 	c.start()
 	eq(c.hand.size(), int(db.balance["player"]["hand_size"]) + 1, "extra draw")
-	eq(c.player.ward, 9, "Boot Firewall grants its full opening amount")
+	c.player.ward = 9
 	c.end_turn()
 	eq(c.player.ward, 3, "retained Firewall rounds up")
 	var starts := c.events.filter(func(e: Dictionary) -> bool: return e["t"] == "turn_start")
@@ -605,3 +605,100 @@ func test_hive_link_explodes_once_for_each_destroyed_daemon() -> void:
 	eq(c.units[0].hp, 8, "blast leaves other daemons unharmed")
 	c.deal_damage(drone, 1)
 	eq(second.hp, 30 - blast, "a dead daemon can't explode twice")
+
+
+func test_tiered_rig_mods_list_the_total_at_each_rank() -> void:
+	var base := int(db.balance["player"]["max_hp"])
+	for rank in [1, 2, 3]:
+		profile.rig["chassis"] = rank
+		profile.rig["field_clinic"] = rank
+		var r := _run()
+		eq(r.max_hp, base + [10, 25, 45][rank - 1], "Reinforced Chassis +10/+15/+20")
+		eq(int(r.perk_mod("combat_heal")), [3, 6, 10][rank - 1], "Field Clinic repairs 3/6/10")
+	check(Perks.describe(db.perks["chassis"], 2).contains("+25"), "rig text shows the rank total")
+
+
+func test_hive_link_blasts_on_refresh_and_can_shut_down_daemons() -> void:
+	profile.rig["hive_link"] = 1
+	var c := _run().start_combat("mites")
+	c.start()
+	var blast := int(db.perks["hive_link"]["mods"]["daemon_death_damage"])
+	eq(blast, 5, "Hive Link blasts for 5")
+	check(c.manual_crash, "Hive Link unlocks the shut down button")
+	var first: Fighter = c.enemies[0]
+	first.hp = 30
+	first.ward = 0
+	c.summon("Drone", 3)
+	eq(first.hp, 30, "running a new daemon doesn't blast")
+	c.summon("Drone", 3)
+	eq(first.hp, 30 - blast, "refreshing a running daemon blasts")
+	check(c.shutdown_daemon(0), "shut down your own daemon")
+	eq(c.units.size(), 0, "the daemon is gone")
+	eq(first.hp, 30 - 2 * blast, "shutting down blasts too")
+	check(not c.can_shutdown(), "nothing left to shut down")
+
+
+func test_shut_down_needs_hive_link() -> void:
+	var c := _run().start_combat("mites")
+	c.start()
+	c.summon("Drone", 3)
+	check(not c.can_shutdown(), "no button without Hive Link")
+	check(not c.shutdown_daemon(0), "and no shut down")
+
+
+func test_second_wind_saves_you_once_per_fight() -> void:
+	profile.rig["regrowth_protocol"] = 1
+	var c := _run().start_combat("mites")
+	c.start()
+	c.player.ward = 0
+	c.deal_damage(c.player, c.player.hp + 20)
+	eq(c.player.hp, 1, "Second Wind leaves you at 1 HP")
+	eq(c.player.ward, 10, "and gives 10 Firewall")
+	c.player.ward = 0
+	c.deal_damage(c.player, 5)
+	eq(c.player.hp, 0, "only once per fight")
+
+
+func test_repair_drones_and_daemon_plating() -> void:
+	profile.rig["repair_drones"] = 2
+	profile.rig["hardpoint"] = 3
+	var c := _run().start_combat("mites")
+	c.start()
+	c.player.hp = 20
+	c.summon("A", 3)
+	eq(c.player.hp, 22, "running a daemon repairs 2 at rank 2")
+	c.summon("A", 3)
+	eq(c.player.hp, 24, "refreshing one repairs too")
+	var u: Fighter = c.units[0]
+	eq(u.ward, 3, "plating: 3 Firewall at rank 3")
+	c.deal_damage(u, 9)
+	eq(u.hp, 3, "plating absorbs an attack")
+	eq(u.ward, 2, "a daemon hit counts as 1")
+	c.deal_damage(u, 1, "", "purge")
+	eq(u.hp, 2, "Purge goes through plating")
+	eq(u.ward, 2, "and leaves it")
+
+
+func test_boot_firewall_cred_stash_and_short_capstone_text() -> void:
+	profile.rig = {"boot_firewall": 2, "cred_stash": 3}
+	var r := _run()
+	eq(r.gold, int(db.balance.get("start_gold", 50)) + 100, "Cred Stash +100 at rank 3")
+	var c := r.start_combat("mites")
+	for enemy in c.enemies:
+		enemy.moves = []
+	c.start()
+	eq(c.player.ward, 3, "Boot Firewall: 3 at rank 2")
+	c.end_turn()
+	eq(c.player.ward, 3, "and again every turn")
+	eq(Perks.describe(db.perks["thermal_runaway"]), "+1 RAM on each of your first 3 turns.", "short capstone text")
+
+
+func test_absolute_zero_boosts_you_and_softens_enemy_hits() -> void:
+	var base := float(_run().combat_opts()["enemy_dmg_mult"])
+	profile.rig = {"absolute_zero": 1}
+	var r := _run()
+	check(absf(float(r.combat_opts()["enemy_dmg_mult"]) - base * 0.9) < 0.001, "enemies deal 10% less damage")
+	var c := r.start_combat("mites")
+	c.start()
+	eq(c.player.status("might"), 1, "Boost 1 every fight")
+	check(Perks.describe(db.perks["absolute_zero"]).contains("10% less damage"), "text")

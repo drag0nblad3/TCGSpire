@@ -41,6 +41,11 @@ static func play_turn(c: Combat) -> void:
 		if best < 0:
 			break
 		c.play_card(best, best_t)
+	# Hive Link: a daemon on its last turn would close at the start of next turn anyway; cash it in before the enemy moves.
+	if c.can_shutdown():
+		for i in range(c.units.size() - 1, -1, -1):
+			if c.units[i].hp <= 1 and c.can_shutdown():
+				c.shutdown_daemon(i)
 	if c.phase == Combat.Phase.PLAYER:
 		c.end_turn()
 
@@ -210,6 +215,8 @@ static func _summon_value(c: Combat, e: Dictionary) -> float:
 				if trig.get("on", "") == "closed":
 					for fx in trig.get("effects", []):
 						now += _effect_value(c, fx, null, c.player.ward)
+			# Refreshing also fires the "destroyed or refreshed" payoffs (Hive Link's blast).
+			now += float(c.daemon_death_damage * c.living(c.enemies).size()) + c.daemon_heal * 0.8
 			return now + DaemonRules.value({"hp": 1, "rule": rule}) * maxf(float(hp - u.hp), 0.0) * 0.6
 	if c.units.size() >= c.board_slots:
 		return 0.0

@@ -33,6 +33,9 @@ var _hint: Label
 var _action_label: Label
 var _hand_row: HBoxContainer
 var _end_btn: Button
+## Hive Link: "Shut down" arms a tap on one of your daemons to crash it on purpose.
+var _crash_btn: Button
+var _crash_mode := false
 var _fx: Control
 var _views := {}  # fighter id -> FighterView
 ## Multi-hit playback: "source>target" of the last damage event and how many hits in a row it has taken.
@@ -112,6 +115,10 @@ func _ready() -> void:
 	_hint.custom_minimum_size.x = 250
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	bar.add_child(_hint)
+	_crash_btn = UiKit.button("Shut down", _on_crash_pressed, Vector2(118, 56), 15)
+	_crash_btn.tooltip_text = "Shut down one of your daemons"
+	_crash_btn.visible = combat.manual_crash
+	bar.add_child(_crash_btn)
 	_end_btn = Button.new()
 	_end_btn.text = "End turn"
 	_end_btn.custom_minimum_size = Vector2(150, 56)
@@ -233,8 +240,12 @@ func _rebuild() -> void:
 	_pile_btns["exhaust"].text = "Wiped %d" % combat.exhaust_pile.size()
 	_pile_btns["deck"].text = "Deck %d" % _all_cards().size()
 	var inc := combat.incoming_damage()
+	if _crash_mode and not combat.can_shutdown():
+		_crash_mode = false
 	_player_view.targetable = _ally_mode()
-	if _ally_mode():
+	if _crash_mode:
+		_hint.text = "Shut down\nTap one of your daemons"
+	elif _ally_mode():
 		_hint.text = "%s\nTap yourself or a daemon" % combat.hand[_selected].display_name()
 	elif _selected >= 0:
 		_hint.text = "%s\nTap a highlighted enemy" % combat.hand[_selected].display_name()
@@ -262,6 +273,11 @@ func _rebuild() -> void:
 		_hint.text += "\nHandshake: " + ", ".join(ready)
 	_action_label.text = "Choose a target" if _selected >= 0 else ("Your turn" if combat.phase == Combat.Phase.PLAYER else "Enemy turn")
 	_end_btn.disabled = combat.phase != Combat.Phase.PLAYER or _busy
+	_crash_btn.visible = combat.manual_crash
+	_crash_btn.disabled = _busy or not combat.can_shutdown()
+	_crash_btn.text = "Cancel" if _crash_mode else "Shut down"
+	if _crash_mode:
+		_action_label.text = "Choose a daemon"
 
 
 func _layout_width() -> float:
@@ -307,7 +323,7 @@ func reveal_boss() -> Color:
 
 func _add_unit_view(u: Fighter) -> FighterView:
 	var v := FighterView.new().setup(u, combat, "unit")
-	v.targetable = _ally_mode()
+	v.targetable = _ally_mode() or _crash_mode
 	v.pressed.connect(_on_ally_pressed)
 	v.inspected.connect(_inspect_fighter)
 	_units_row.add_child(v)
@@ -363,6 +379,7 @@ func _inspect_fighter(v: FighterView) -> void:
 func _on_card_pressed(_view: CardView, idx: int) -> void:
 	if _busy or combat.phase != Combat.Phase.PLAYER:
 		return
+	_crash_mode = false
 	if _selected == idx:
 		_selected = -1
 		_rebuild()
@@ -391,8 +408,28 @@ func _ally_mode() -> bool:
 	return _selected >= 0 and _selected < combat.hand.size() and combat.needs_ally(combat.hand[_selected])
 
 
+func _on_crash_pressed() -> void:
+	if _busy or not combat.can_shutdown():
+		return
+	_selected = -1
+	# One daemon up: no need to pick.
+	if not _crash_mode and combat.units.size() == 1:
+		_act(func() -> void: combat.shutdown_daemon(0), -1, "Shutting down")
+		return
+	_crash_mode = not _crash_mode
+	GameAudio.play("select")
+	_rebuild()
+
+
 func _on_ally_pressed(view: FighterView) -> void:
 	if _busy:
+		return
+	if _crash_mode:
+		var ui := combat.units.find(view.fighter)
+		if ui < 0:
+			return
+		_crash_mode = false
+		_act(func() -> void: combat.shutdown_daemon(ui), -1, "Shutting down")
 		return
 	if not _ally_mode():
 		_inspect_fighter(view)
@@ -418,6 +455,7 @@ func _on_end_turn() -> void:
 	if _busy:
 		return
 	_selected = -1
+	_crash_mode = false
 	_act(func() -> void: combat.end_turn())
 
 
@@ -441,6 +479,7 @@ func _act(f: Callable, hand_idx: int = -1, action: String = "Enemy turn") -> voi
 	_busy = true
 	_action_label.text = "Running program" if hand_idx >= 0 else action
 	_end_btn.disabled = true
+	_crash_btn.disabled = true
 	for v in _views.values():
 		v.freeze()
 		v.targetable = false
@@ -570,6 +609,7 @@ func _play_events(played: CardView) -> Array:
 				var fv: FighterView = _views.get(str(e["target"]))
 				if fv != null and is_instance_valid(fv):
 					_float_text(fv, "Refreshed", Palette.ENERGY)
+					fv.shown_ward = int(e.get("ward", fv.fighter.ward))
 				await _wait(0.12)
 			"death":
 				if v != null:
@@ -578,6 +618,9 @@ func _play_events(played: CardView) -> Array:
 						_float_text(v, "Daemon crashed", Palette.HP, 8, true)
 					var tw := v.create_tween()
 					tw.tween_property(v, "modulate", Color(Palette.HP, 0.0), 0.35)
+				await _wait(0.3)
+			"second_wind":
+				_float_text(_player_view, "Second Wind", Palette.UPGRADED, -40, true)
 				await _wait(0.3)
 			"daemon_explosion":
 				_float_text(v, "Detonate", Palette.HP)
@@ -615,7 +658,7 @@ func _play_events(played: CardView) -> Array:
 					u = Fighter.make(str(e["target"]), str(e["name"]), int(e["hp"]))
 				var nv := _add_unit_view(u)
 				nv.shown_hp = int(e["hp"])
-				nv.shown_ward = 0
+				nv.shown_ward = int(e.get("ward", 0))
 				_pop_in(nv)
 				await _wait(0.2)
 			"spawn":

@@ -197,7 +197,7 @@ func perk_mod(key: String) -> float:
 	for pid in perks:
 		v += float(db.perks.get(pid, {}).get("mods", {}).get(key, 0.0))
 	for pid in rig:
-		v += float(db.perks.get(pid, {}).get("mods", {}).get(key, 0.0)) * int(rig[pid])
+		v += Perks.mod_at(db.perks.get(pid, {}), key, int(rig[pid]))
 	for tid in talismans:
 		v += float(db.talismans.get(tid, {}).get("mods", {}).get(key, 0.0))
 	for m in Weekly.mods_of(db, weekly_mods):
@@ -231,11 +231,16 @@ func combat_opts() -> Dictionary:
 		"extra_slots": int(perk_mod("board_slots")),
 		"daemon_hp": int(perk_mod("daemon_hp")),
 		"start_ward": int(perk_mod("start_ward")),
+		"turn_ward": int(perk_mod("turn_ward")),
 		"ward_retention": perk_mod("ward_retention"),
 		"daemon_death_damage": int(perk_mod("daemon_death_damage")),
+		"manual_crash": perk_mod("manual_crash") > 0,
+		"daemon_heal": int(perk_mod("daemon_heal")),
+		"daemon_ward": int(perk_mod("daemon_ward")),
+		"second_wind": int(perk_mod("second_wind")),
 		"enemy_hp_mult": maxf(heat_mult("enemy_hp_pct") * (1.0 + perk_mod("enemy_hp_pct")), 0.5) * act_start_mult("enemy_hp_pct") * deep_mult("enemy_hp_pct"),
 		"enemy_might": int(heat_mod("enemy_might", 0)),
-		"enemy_dmg_mult": maxf(heat_mult("enemy_dmg_pct"), 0.5) * act_start_mult("enemy_dmg_pct") * deep_mult("enemy_dmg_pct"),
+		"enemy_dmg_mult": maxf(heat_mult("enemy_dmg_pct") * (1.0 + perk_mod("enemy_dmg_pct")), 0.5) * act_start_mult("enemy_dmg_pct") * deep_mult("enemy_dmg_pct"),
 	}
 
 
@@ -609,7 +614,8 @@ func make_shop() -> Dictionary:
 
 ## What deleting a program costs right now (rig perks can discount it).
 func remove_price() -> int:
-	return maxi(remove_cost - int(perk_mod("remove_discount")), 0)
+	var pct := clampf(perk_mod("remove_discount_pct"), 0.0, 1.0)
+	return maxi(roundi((remove_cost - int(perk_mod("remove_discount"))) * (1.0 - pct)), 0)
 
 
 ## Buys a shop mod and installs it on deck[deck_idx].
