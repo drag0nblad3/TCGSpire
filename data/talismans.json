@@ -39,7 +39,7 @@
 {"id":"spool_buffer","name":"Spool Buffer","rarity":"rare","faction":"noise","triggers":[{"on":"loop","every":3,"effects":[{"op":"draw","amount":1},{"op":"energy","amount":1}]}]},
 {"id":"pressure_valve","name":"Pressure Valve","rarity":"rare","faction":"ember","flags":{"burn_no_decay":1},"flags_while_daemon":true},
 {"id":"crash_reporter","name":"Crash Reporter","rarity":"uncommon","faction":"chrome","triggers":[{"on":"daemon_closed","effects":[{"op":"draw","amount":2}]}]},
-{"id":"patch_notes","name":"Patch Notes","rarity":"rare","faction":"bloom","flags":{"regen_bonus":1}},
+{"id":"patch_notes","name":"Patch Notes","rarity":"rare","faction":"bloom","flags":{"regen_slow_decay":1}},
 {"id":"grafted_host","name":"Grafted Host","rarity":"uncommon","faction":"bloom","flags":{"guard":2},"flags_while_daemon":true},
 {"id":"ghost_route","name":"Ghost Route","rarity":"uncommon","faction":"void","mods":{"jumps":1}},
 {"id":"recursion_core","name":"Recursion Core","rarity":"rare","faction":"noise","unlock_level":3,"flags":{"loop_bonus":1}},
