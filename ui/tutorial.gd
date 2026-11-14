@@ -19,7 +19,7 @@ const STEPS := [
 	{"until": "attack", "text": "Your RAM is the chip beside End turn. Tap an Exploit such as %s, then tap a sentry to hit it."},
 	{"until": "ward", "text": "Check the incoming damage beside End turn. Run a Script such as %s to raise Firewall. It soaks damage before your HP."},
 	{"until": "turn2", "text": "Out of RAM, or happy with your plays? Press End turn. The sentries act, then you draw a fresh hand."},
-	{"until": "daemon", "text": "Your Firewall cleared and your RAM refilled. Daemons stay on your board and change the rules for a few turns. Run %s if you drew it, or tap Got it."},
+	{"until": "daemon", "text": "Your Firewall cleared and your RAM refilled. Daemons stay on your board for a few turns and add a rule while they run. %s strikes the front sentry at the end of each of your turns. Run it if you drew it, or tap Got it."},
 	{"until": "next", "text": "Hold any program to read it in full, and the ? button opens the rules reference. Now finish the fight."},
 ]
 
@@ -76,10 +76,11 @@ static func briefing(db: CardDB) -> Array:
 		["You're a %s" % Palette.w("hero"), [
 			Palette.w("tagline"),
 			"A run climbs the Stack: a map of fights and stops, %d layers tall. Each layer ends at a Core guarded by a boss." % acts,
+			"Walls cut some routes on the Stack. Sealed vaults hold loot, but only a jump gets you in.",
 		]],
 		["Programs and RAM", [
 			"Your deck is your program library. Each turn you get %d RAM and draw %d programs." % [int(p.get("max_energy", 3)), int(p.get("hand_size", 5))],
-			"Exploits attack. Scripts defend and set up. Daemons stay on your board and bend the rules. Rootkits last the whole fight.",
+			"Exploits attack. Scripts defend and set up. Daemons stay on your board for a few turns and change a rule. Rootkits last the whole fight.",
 		]],
 		["Practice fight", [
 			"Next: two Spark Mites and a small fixed deck. Nothing is lost and nothing is earned.",
@@ -94,7 +95,8 @@ static func debrief(db: CardDB, won: bool) -> Array:
 		["Practice complete" if won else "Flatlined, but that's what practice is for", [
 			"After a real fight you pick one program to add to your deck. Safehouses repair HP and upgrade programs, the %s sells gear, and signals are gambles." % Palette.w("shop"),
 			"Every run is a job for one crew. At least half your programs come from that crew, and their rivals' programs are banned.",
-			"Jobs pay rep and %s. Open them for new programs, and extra copies upgrade a program's firmware for every run." % Palette.w("packs").to_lower(),
+			"Jobs pay the client's rep. Each Core you breach pays a cache of the hiring crew's programs, and finishing the whole job pays a %s." % PackArt.title(db, Packs.PREMIUM),
+			"A deck holds up to %d copies of a program. Extra copies upgrade its firmware for every run, or you can scrap them." % Profile.deck_limit(db),
 			"The Rules button on the hub explains everything in detail.",
 		]],
 	]
