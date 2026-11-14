@@ -43,5 +43,5 @@
 {"id":"regrowth_protocol","scope":"rig","faction":"bloom","capstone":true,"name":"Regrowth Protocol","max_rank":1,"cost":250,"mods":{"max_hp":15,"combat_heal":4}},
 {"id":"absolute_zero","scope":"rig","faction":"void","capstone":true,"name":"Absolute Zero","max_rank":1,"cost":250,"mods":{"enemy_hp_pct":-0.15}},
 {"id":"hive_link","scope":"rig","faction":"chrome","capstone":true,"name":"Hive Link","max_rank":1,"cost":250,"mods":{"daemon_death_damage":8}},
-{"id":"dead_air_protocol","scope":"rig","faction":"noise","capstone":true,"name":"Dead Air","max_rank":1,"cost":250,"triggers":[{"on":"combat_start","effects":[{"op":"apply","status":"brittle","stacks":2,"to":"all_enemies"},{"op":"apply","status":"weaken","stacks":2,"to":"all_enemies"}]}]}
+{"id":"dead_air_protocol","scope":"rig","faction":"noise","capstone":true,"name":"Dead Air","max_rank":1,"cost":250,"triggers":[{"on":"combat_start","effects":[{"op":"apply","status":"brittle","stacks":1,"to":"all_enemies"},{"op":"apply","status":"weaken","stacks":2,"to":"all_enemies"}]}]}
 ]
