@@ -348,6 +348,9 @@ func test_implant_daemon_hp_mult_scales_base_hp() -> void:
 	var d := _fight(["server_farm"])
 	d.summon("A", 3)
 	eq(d.units[0].hp, 6, "double base HP")
+	d.energy = 0
+	d.crash_daemon(d.units[0])
+	eq(d.energy, 1, "RAM when a daemon shuts down")
 
 
 func test_implant_daemon_closed_and_reshuffle_triggers() -> void:
@@ -371,12 +374,22 @@ func test_implant_mods_feed_run_numbers() -> void:
 	eq(r.jumps_total(), 1, "implant grants a jump")
 	r.add_talisman("server_farm")
 	eq(int(r.combat_opts()["extra_slots"]), 0, "no daemon slot lost")
-	eq(int(r.combat_opts()["daemon_death_damage"]), 4, "shutdowns hit every enemy")
 	r.add_talisman("collectors_rig")
 	r.acts_cleared = 0
 	var base := Profile.run_packs(db, r)
 	r.acts_cleared = 1
 	eq(Profile.run_packs(db, r), base + 2, "bonus cache needs a Core")
+
+
+func test_gilded_chip_boosts_every_cred_source() -> void:
+	var r := _run()
+	r.add_talisman("gilded_scale")
+	var g := r.gold
+	RunOutcomes.apply(r, {"op": "gold", "amount": 20})
+	eq(r.gold, g + 30, "+50% on event creds")
+	RunOutcomes.apply(r, {"op": "gold", "amount": -10})
+	eq(r.gold, g + 20, "losses aren't scaled")
+	eq(r.earned_creds(15), 23, "rounds")
 
 
 func test_implant_run_triggers_on_vault_and_jump() -> void:

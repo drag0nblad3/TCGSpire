@@ -11,6 +11,7 @@ const MODS := {
 	"max_hp": "Max HP",
 	"start_gold": "Starting creds",
 	"gold_pct": "Creds from fights",
+	"creds_pct": "All creds earned",
 	"rest_heal_pct": "Safehouse repair",
 	"shop_discount_pct": "Fixer discount",
 	"reward_choices": "Program choices after fights",
@@ -35,7 +36,7 @@ const MODS := {
 	"bonus_packs": "Extra data caches after breaching a Core",
 }
 const SCOPES := ["run", "rig"]
-const PCT := ["gold_pct", "rest_heal_pct", "shop_discount_pct"]
+const PCT := ["gold_pct", "creds_pct", "rest_heal_pct", "shop_discount_pct"]
 
 
 ## Player-facing text, e.g. "+35% creds from fights." rank scales the numbers.
@@ -61,6 +62,8 @@ static func describe_mod(k: String, v: float) -> String:
 			return "Start runs with +%d creds." % int(v)
 		"gold_pct":
 			return "+%d%% creds from fights." % roundi(v * 100)
+		"creds_pct":
+			return "+%d%% creds from every source." % roundi(v * 100)
 		"rest_heal_pct":
 			return "Safehouses repair %d%% more." % roundi(v * 100)
 		"shop_discount_pct":

@@ -27,6 +27,7 @@ static func apply(run: RunState, o: Dictionary) -> String:
 	run.outcome_counter += 1
 	match str(o.get("op", "")):
 		"gold":
+			n = run.earned_creds(n)
 			run.gold = maxi(run.gold + n, 0)
 			return "%+d creds" % n
 		"heal":

@@ -23,7 +23,7 @@
 {"id":"quill_of_fate","name":"Fate Compiler","rarity":"uncommon","triggers":[{"on":"card_played","every":8,"effects":[{"op":"energy","amount":2},{"op":"draw","amount":2}]}]},
 {"id":"living_armor","name":"Living Chrome","rarity":"uncommon","unlock_level":5,"flags":{"guard":1}},
 {"id":"void_heart","name":"Null Heart","rarity":"boss","triggers":[{"on":"turn_start","effects":[{"op":"apply","status":"charge","stacks":2,"to":"self"}]}]},
-{"id":"gilded_scale","name":"Gilded Chip","rarity":"boss","pickup":[{"op":"gold","amount":150},{"op":"remove_card","amount":2}]},
+{"id":"gilded_scale","name":"Gilded Chip","rarity":"boss","mods":{"creds_pct":0.5}},
 {"id":"ceramic_casing","name":"Ceramic Casing","rarity":"common","daemon":{"hp":2}},
 {"id":"watchdog_chip","name":"Watchdog Chip","rarity":"uncommon","triggers":[{"on":"card_played","card_type":"unit","effects":[{"op":"ward","amount":4}]}]},
 {"id":"swap_file","name":"Swap File","rarity":"uncommon","faction":"neutral","triggers":[{"on":"reshuffle","effects":[{"op":"energy","amount":1},{"op":"draw","amount":1}]}]},
@@ -46,7 +46,7 @@
 {"id":"lease_extender","name":"Lease Extender","rarity":"uncommon","faction":"chrome","daemon":{"hp_mult":1.5}},
 {"id":"static_field","name":"Static Field","rarity":"rare","faction":"noise","flags":{"debuff_bonus":1}},
 {"id":"collectors_rig","name":"Collector's Rig","rarity":"rare","mods":{"reward_choices":1,"bonus_packs":1}},
-{"id":"server_farm","name":"Server Farm","rarity":"boss","faction":"chrome","mods":{"daemon_death_damage":4},"daemon":{"hp_mult":2.0}},
+{"id":"server_farm","name":"Server Farm","rarity":"boss","faction":"chrome","daemon":{"hp_mult":2.0},"triggers":[{"on":"daemon_closed","effects":[{"op":"energy","amount":1}]}]},
 {"id":"ring_buffer","name":"Ring Buffer","rarity":"boss","faction":"tide","flags":{"keep_ward":1}},
 {"id":"inside_contact","name":"Inside Contact","rarity":"boss","mods":{"perk_choices":1,"rep_pct":0.25,"jumps":1}}
 ]
