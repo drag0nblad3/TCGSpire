@@ -370,7 +370,8 @@ func test_implant_mods_feed_run_numbers() -> void:
 	r.add_talisman("ghost_route")
 	eq(r.jumps_total(), 1, "implant grants a jump")
 	r.add_talisman("server_farm")
-	eq(int(r.combat_opts()["extra_slots"]), -1, "one fewer daemon slot")
+	eq(int(r.combat_opts()["extra_slots"]), 0, "no daemon slot lost")
+	eq(int(r.combat_opts()["daemon_death_damage"]), 4, "shutdowns hit every enemy")
 	r.add_talisman("collectors_rig")
 	r.acts_cleared = 0
 	var base := Profile.run_packs(db, r)

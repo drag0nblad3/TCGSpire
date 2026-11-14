@@ -106,7 +106,7 @@ Original design only: don't copy cards, names, characters or look from existing 
   `meta/run_bot.gd` uses static `card_value` for picks/upgrades/shop and scores event outcomes. Keep both cheap.
 - Save format change: bump `Profile.SAVE_VERSION` and add a step in `_migrate()`.
 - Packs are earned by play only. Rarity should add complexity, not raw power.
-- Implant rarity is complexity too: common = flat always-on bonus, uncommon = a condition or counter, rare = changes a rule, boss = a trade-off. Keep power close across rarities and avoid two implants that differ only in size.
+- Implant rarity is complexity too: common = flat always-on bonus, uncommon = a condition or counter, rare = changes a rule, boss = strong or unique. Implants never carry a penalty (no lost HP/slots/hand, no curses; `test_implants_have_no_penalties`). Keep power close across rarities and avoid two implants that differ only in size.
 - GDScript gotcha: `var x := untyped_value` fails to parse; write `var x: Type = ...`.
 
 ## Android builds (only when Tyler asks for one)
