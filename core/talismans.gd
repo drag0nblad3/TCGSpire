@@ -63,9 +63,10 @@ static func fire(c: Combat, on: String, ctx: Dictionary = {}) -> void:
 			if trig.has("every"):
 				var key := "%s:%d" % [tid, i]
 				c.talisman_counters[key] = int(c.talisman_counters.get(key, 0)) + 1
+				c.emit("talisman_progress", {"id": tid, "index": i, "count": c.talisman_counters[key], "total": int(trig["every"])})
 				if c.talisman_counters[key] % int(trig["every"]) != 0:
 					continue
-			c.emit("rule" if t.has("daemon") else "talisman", {"id": tid})
+			c.emit("rule" if t.has("daemon") else "talisman", {"id": tid, "trigger": on})
 			c.rule_daemon = t.get("daemon")
 			for e in trig.get("effects", []):
 				Effects.resolve(c, e, c.player, ctx.get("target"))
@@ -90,6 +91,8 @@ static func fire_run(run: RunState, on: String) -> Array:
 		for trig in t.get("run", []):
 			if trig.get("on", "") != on:
 				continue
+			run.implant_activations[tid] = int(run.implant_activations.get(tid, 0)) + 1
+			run.implant_recent.append(tid)
 			for o in trig.get("outcomes", []):
 				var line := RunOutcomes.apply(run, o)
 				if line != "":
