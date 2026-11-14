@@ -15,9 +15,9 @@ extends RefCounted
 ## "card_type": "attack" and "keyword": "loop" (card_played and loop only).
 
 const TRIGGERS := ["combat_start", "turn_start", "turn_end", "card_played", "kill", "daemon_closed", "loop", "reshuffle"]
-## Map-level triggers: "jump" (you jump to a node), "vault" (you crack a vault).
-const RUN_TRIGGERS := ["jump", "vault"]
-const RUN_LABEL := {"jump": "When you jump", "vault": "When you crack a vault"}
+## Map-level triggers: "jump" (you jump to a node), "vault" (you crack a vault), "rest" (you enter a safehouse).
+const RUN_TRIGGERS := ["jump", "vault", "rest"]
+const RUN_LABEL := {"jump": "When you jump", "vault": "When you crack a vault", "rest": "When you reach a safehouse"}
 ## Subroutine mod keys an implant may carry (the ones RunState reads live).
 const MOD_KEYS := ["gold_pct", "rest_heal_pct", "shop_discount_pct", "reward_choices", "perk_choices",
 	"combat_heal", "start_ward", "ward_retention", "daemon_death_damage", "rep_pct", "remove_discount",
@@ -39,12 +39,13 @@ const LABEL := {
 ## Fires implants, then subroutines (perks share the trigger format).
 static func fire(c: Combat, on: String, ctx: Dictionary = {}) -> void:
 	var sources: Array = c.talismans + c.perks
+	# Daemon rules ride along under "unit" ("daemon" is an implant's HP bonus key).
 	for u in c.units:
 		if not u.rule.get("triggers", []).is_empty():
-			sources.append({"id": u.id, "triggers": u.rule["triggers"], "daemon": u})
+			sources.append({"id": u.id, "triggers": u.rule["triggers"], "unit": u})
 	for t in sources:
 		var tid: String = t.get("id", "")
-		if t.has("daemon") and not c.units.has(t["daemon"]):
+		if t.has("unit") and not c.units.has(t["unit"]):
 			continue
 		for i in t.get("triggers", []).size():
 			var trig: Dictionary = t["triggers"][i]
@@ -67,8 +68,8 @@ static func fire(c: Combat, on: String, ctx: Dictionary = {}) -> void:
 				c.emit("talisman_progress", {"id": tid, "index": i, "count": c.talisman_counters[key], "total": int(trig["every"])})
 				if c.talisman_counters[key] % int(trig["every"]) != 0:
 					continue
-			c.emit("rule" if t.has("daemon") else "talisman", {"id": tid, "trigger": on})
-			c.rule_daemon = t.get("daemon")
+			c.emit("rule" if t.has("unit") else "talisman", {"id": tid, "trigger": on})
+			c.rule_daemon = t.get("unit")
 			for e in trig.get("effects", []):
 				Effects.resolve(c, e, c.player, ctx.get("target"))
 			c.rule_daemon = null

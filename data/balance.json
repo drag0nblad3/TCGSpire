@@ -164,9 +164,9 @@
   "walls": {"h_min": 2, "h_max": 3, "v_min": 1, "v_max": 2, "max_vaults": 2},
   "vault": {"gold": [60, 90], "talisman": "rare"},
   "weights": {
-   "fight": 46,
-   "event": 22,
-   "elite": 10,
+   "fight": 49.4,
+   "event": 17.6,
+   "elite": 11,
    "rest": 11,
    "shop": 7
   }

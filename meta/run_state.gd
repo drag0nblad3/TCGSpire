@@ -312,6 +312,8 @@ func enter(id: int) -> Dictionary:
 	var node := map.node(id)
 	floor_num = (act - 1) * map.rows.size() + int(node["row"]) + 1
 	jump_lines = Talismans.fire_run(self, "jump") if jumped else []
+	if str(node.get("type", "")) == "rest":
+		jump_lines.append_array(Talismans.fire_run(self, "rest"))
 	return node
 
 

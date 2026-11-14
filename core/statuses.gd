@@ -14,7 +14,7 @@ const DEFS := {
 	"fortify": {"debuff": false, "desc": "Your Firewall stays up at the start of your turn."},
 	"frail": {"debuff": true, "desc": "Gain 25% less Firewall. Lose 1 stack at end of turn."},
 	"charge": {"debuff": false, "desc": "Stored power that some programs spend for big effects."},
-	"stall": {"debuff": true, "desc": "Skips its next move, and that intent waits a turn. Never more than 1 stack."},
+	"stall": {"debuff": true, "desc": "Skips its next move, and that intent waits a turn. On or off: Lagging an enemy that is already Lagged does nothing."},
 }
 
 const DECAYING := ["brittle", "weaken", "frail"]

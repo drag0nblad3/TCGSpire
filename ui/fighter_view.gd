@@ -246,7 +246,8 @@ func _draw() -> void:
 			y += 48
 	for k in fighter.statuses:
 		var debuff: bool = Statuses.DEFS.get(k, {}).get("debuff", false)
-		chips.append(["%s %d" % [Lexicon.status(str(k)), fighter.statuses[k]], Palette.ENEMY if debuff else Palette.UPGRADED])
+		var chip := Lexicon.status(str(k)) if k == "stall" else "%s %d" % [Lexicon.status(str(k)), fighter.statuses[k]]  # Lagged is on/off.
+		chips.append([chip, Palette.ENEMY if debuff else Palette.UPGRADED])
 	var x := 6.0 if kind != "player" else bar.position.x
 	var cy := y if kind != "player" else bar.end.y + 4
 	if kind == "player":
@@ -368,5 +369,6 @@ func describe() -> String:
 	if fighter.ward > 0:
 		lines.append("Firewall %d: absorbs damage first." % fighter.ward)
 	for k in fighter.statuses:
-		lines.append("%s %d: %s" % [Lexicon.status(str(k)), fighter.statuses[k], Statuses.DEFS.get(k, {}).get("desc", "")])
+		var head := Lexicon.status(str(k)) if k == "stall" else "%s %d" % [Lexicon.status(str(k)), fighter.statuses[k]]
+		lines.append("%s: %s" % [head, Statuses.DEFS.get(k, {}).get("desc", "")])
 	return "\n".join(lines)

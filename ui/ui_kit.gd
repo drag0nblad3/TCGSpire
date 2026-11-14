@@ -115,18 +115,23 @@ static func corner_pos(node: CanvasItem, w: float, margin: float = 16.0) -> Vect
 
 
 ## A short message that slides down from the top as a full-width banner, then slides away.
-## It ignores input, so it never blocks a tap.
+## Tap it to send it away early.
 static func toast(host: Node, text: String, seconds: float = 2.2) -> void:
 	# Only one toast at a time: a new one replaces the old.
 	for n in host.get_children():
 		if n.has_meta("toast"):
 			n.queue_free()
+	var placed := host is CanvasItem and host.is_inside_tree()
+	var w: float = (host as CanvasItem).get_viewport_rect().size.x if placed else 720.0
+	var top := float(safe_insets(host as CanvasItem)["top"]) if placed else 0.0
 	var l := label(text, 17, Palette.TEXT, true)
-	l.custom_minimum_size.x = 0
+	# The wrap width must be set before the panel measures itself: with no width a wrapping
+	# label reports one word per line, which made a screen-tall banner with its text off-screen.
+	l.custom_minimum_size.x = w - 24 - 28
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var p := panel(l, Color(Palette.PANEL_BG, 0.98))
 	p.set_meta("toast", true)
-	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.mouse_filter = Control.MOUSE_FILTER_STOP
 	var sb: StyleBoxFlat = p.get_theme_stylebox("panel")
 	sb.border_color = Color(Palette.ENERGY, 0.8)
 	sb.border_width_bottom = 3
@@ -135,8 +140,6 @@ static func toast(host: Node, text: String, seconds: float = 2.2) -> void:
 	sb.corner_radius_bottom_right = 14
 	host.add_child(p)
 	p.z_index = 50
-	var w: float = (host as CanvasItem).get_viewport_rect().size.x if host is CanvasItem else 720.0
-	var top := float(safe_insets(host as CanvasItem)["top"]) if host is CanvasItem else 0.0
 	p.custom_minimum_size.x = w - 24
 	p.size = Vector2(w - 24, 0)
 	p.reset_size()
@@ -146,6 +149,34 @@ static func toast(host: Node, text: String, seconds: float = 2.2) -> void:
 	tw.tween_interval(seconds)
 	tw.tween_property(p, "position:y", -p.size.y - 8, 0.25).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	tw.tween_callback(p.queue_free)
+	var tap := Tap.new()
+	p.gui_input.connect(func(e: InputEvent) -> void:
+		if tap.feed(e) == "tap":
+			p.accept_event()
+			tw.kill()
+			p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			var out := p.create_tween()
+			out.tween_property(p, "position:y", -p.size.y - 8, 0.18).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+			out.tween_callback(p.queue_free))
+
+
+## Makes a pop-up go away when tapped anywhere that isn't a button or other control that
+## takes the tap itself. Drags (scrolling) don't count. `on_close` runs instead of
+## queue_free when given.
+static func tap_to_close(overlay: Control, on_close: Callable = Callable()) -> void:
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	var tap := Tap.new()
+	var down_at := [0.0]
+	overlay.gui_input.connect(func(e: InputEvent) -> void:
+		if e is InputEventMouseButton and e.pressed:
+			down_at[0] = Time.get_ticks_msec() / 1000.0
+		# A hold is a long-press on something inside (a card opens its inspector), not a close.
+		if tap.feed(e) == "tap" and Time.get_ticks_msec() / 1000.0 - down_at[0] < Tap.LONG_PRESS:
+			overlay.accept_event()
+			if on_close.is_valid():
+				on_close.call()
+			else:
+				overlay.queue_free())
 
 
 ## Main action on a screen: solid accent fill and dark text, so it stands out from the

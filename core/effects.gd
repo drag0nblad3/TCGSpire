@@ -296,6 +296,11 @@ static func _describe(e: Dictionary) -> String:
 		"apply":
 			var s := Lexicon.status(str(e.get("status", "")))
 			var stacks := int(e.get("stacks", 1))
+			if str(e.get("status", "")) == "stall":
+				# Lagged is on or off: never written as a stack count.
+				if to == "all_enemies":
+					return "Lag ALL enemies: each skips its next move (no effect on an enemy already Lagged)."
+				return "Lag the target: it skips its next move (no effect if already Lagged)."
 			if to == "self":
 				return "Gain %d %s." % [stacks, s]
 			return "Apply %d %s%s." % [stacks, s, where]
@@ -371,6 +376,10 @@ static func validate(e: Dictionary, where: String) -> Array[String]:
 			errs.append("%s: op '%s' has unknown param '%s'" % [where, op, k])
 	if e.has("to") and str(e["to"]) not in TARGETS:
 		errs.append("%s: bad 'to' value '%s'" % [where, e["to"]])
+	if op in ["apply", "amplify"] and str(e.get("status", "")) == "stall":
+		# Lagged never stacks, so no content may offer more than one at a time.
+		if op == "amplify" or int(e.get("stacks", 1)) != 1 or e.has("loop") or str(e.get("to", "")) == "self":
+			errs.append("%s: Lagged is applied once, to enemies only (no stacks, Loop or Amplify)" % where)
 	if op in ["damage_per_status", "amplify"] and not Statuses.is_known(str(e.get("status", ""))):
 		errs.append("%s: unknown status '%s'" % [where, e.get("status", "")])
 	if op in ["handshake", "sequence"]:

@@ -129,6 +129,7 @@ func _ready() -> void:
 	piles.alignment = BoxContainer.ALIGNMENT_CENTER
 	for p in ["draw", "discard", "exhaust", "deck"]:
 		var b := UiKit.button("", _show_pile.bind(p), Vector2(118, 46), 15)
+		b.pivot_offset = Vector2(118, 46) / 2
 		_pile_btns[p] = b
 		piles.add_child(b)
 	piles.add_child(UiKit.button("?", func() -> void: Rules.open(self, "Turn flow"), Vector2(52, 46), 20))
@@ -147,7 +148,7 @@ func _ready() -> void:
 			_implant_views[id].activate()
 	_event_cursor = combat.events.size()
 	_rebuild()
-	_deal_in(combat.hand.size())
+	_deal_in(_all_drawn(combat.hand.size()))
 
 
 func _process(_dt: float) -> void:
@@ -188,9 +189,7 @@ func _rebuild() -> void:
 		if is_instance_valid(old):
 			lingering[id] = [old.flash, old.firewall_flash, old.virus_flash]
 	# Where each hand card sits now, so the rebuilt hand can glide from there (see _settle_hand).
-	var hand_was := {}
-	for old_cv: CardView in _hand_row.get_children():
-		hand_was[old_cv.card] = [old_cv.global_position + old_cv.size * 0.5, old_cv.zoom]
+	var hand_was := _hand_spots()
 	for n in _enemies_row.get_children() + _units_row.get_children() + _hand_row.get_children():
 		n.get_parent().remove_child(n)
 		n.queue_free()
@@ -356,7 +355,7 @@ func _show_pile(which: String) -> void:
 func _inspect_fighter(v: FighterView) -> void:
 	if v == null:
 		return
-	UiKit.toast(self, v.describe(), 3.5)
+	FighterInspector.show_for(self, v)
 
 
 # --- input ----------------------------------------------------------------------
@@ -471,10 +470,11 @@ func _wait(t: float) -> void:
 	await tw.finished
 
 
-## Replays new log entries. Returns how many cards were drawn (to deal them in).
+## Replays new log entries. Returns one entry per card that reached the hand, in order:
+## true if it came off the draw pile, false if it was made on the spot (to deal them in).
 ## Add new event types here, not in Combat.
-func _play_events(played: CardView) -> int:
-	var draws := 0
+func _play_events(played: CardView) -> Array:
+	var draws := []
 	while _event_cursor < combat.events.size():
 		var e: Dictionary = combat.events[_event_cursor]
 		_event_cursor += 1
@@ -583,8 +583,14 @@ func _play_events(played: CardView) -> int:
 				_float_text(v, "Detonate", Palette.HP)
 				await _wait(0.12)
 			"enemy_phase":
-				for cv in _hand_row.get_children():
-					cv.create_tween().tween_property(cv, "modulate:a", 0.0, 0.2)
+				# Unplayed programs leave the hand for their pile; Retain ones stay put.
+				var k := 0
+				_glide_after_change()
+				for cv: CardView in _hand_row.get_children():
+					if combat.hand.has(cv.card):
+						continue
+					_send_to_pile(cv, "exhaust" if combat.exhaust_pile.has(cv.card) else "discard", k * 0.04)
+					k += 1
 				await _banner("Enemy turn", Palette.ENEMY)
 			"enemy_move":
 				var src: FighterView = _views.get(str(e["source"]))
@@ -629,7 +635,7 @@ func _play_events(played: CardView) -> int:
 			"reshuffle":
 				_float_text(_player_view, "Discard shuffled into draw pile", Palette.TEXT_DIM, -60)
 			"draw":
-				draws += 1
+				draws.append(not e.get("created", false))
 			"rally":
 				for uv in _units_row.get_children():
 					_float_text(uv, "+%d HP" % int(e["amount"]), Palette.ENERGY)
@@ -637,6 +643,13 @@ func _play_events(played: CardView) -> int:
 			"combat_end":
 				await _banner("Victory" if e["won"] else "Defeated", Palette.ENERGY if e["won"] else Palette.HP)
 	return draws
+
+
+func _all_drawn(n: int) -> Array:
+	var out := []
+	out.resize(n)
+	out.fill(true)
+	return out
 
 
 func _find(arr: Array, id: String) -> Fighter:
@@ -647,6 +660,7 @@ func _find(arr: Array, id: String) -> Fighter:
 
 
 func _fly_card(cv: CardView, target: Variant) -> void:
+	_glide_after_change()
 	var start := cv.global_position
 	cv.get_parent().remove_child(cv)
 	_fx.add_child(cv)
@@ -658,8 +672,69 @@ func _fly_card(cv: CardView, target: Variant) -> void:
 	var tw := cv.create_tween().set_parallel()
 	tw.tween_property(cv, "position", dest, 0.25 * step_scale).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tw.tween_property(cv, "scale", Vector2(0.55, 0.55), 0.25 * step_scale)
-	tw.chain().tween_property(cv, "modulate:a", 0.0, 0.15 * step_scale)
-	tw.chain().tween_callback(cv.queue_free)
+	# Then it drops into the pile it went to (Wiped for powers and Wipe programs), so it is clear where it went.
+	var pile := "exhaust" if combat.exhaust_pile.has(cv.card) else ("discard" if combat.discard_pile.has(cv.card) else "")
+	if pile == "":
+		tw.chain().tween_property(cv, "modulate:a", 0.0, 0.15 * step_scale)
+		tw.chain().tween_callback(cv.queue_free)
+		return
+	tw.chain().tween_interval(0.06 * step_scale)
+	_to_pile(tw.chain(), cv, pile)
+
+
+## Where each hand card sits now (centre and zoom), keyed by card, for _settle_hand.
+func _hand_spots() -> Dictionary:
+	var out := {}
+	for cv: CardView in _hand_row.get_children():
+		out[cv.card] = [cv.global_position + cv.size * 0.5, cv.zoom]
+	return out
+
+
+## Call just before cards leave the hand row: the cards left behind slide over to close the gap.
+func _glide_after_change() -> void:
+	if step_scale > 0.0:
+		_hand_row.sort_children.connect(_settle_hand.bind(_hand_spots()), CONNECT_ONE_SHOT)
+
+
+## Where a pile's button sits on screen (centre, global coordinates).
+func _pile_point(which: String) -> Vector2:
+	var b: Control = _pile_btns[which]
+	return b.global_position + b.size * 0.5
+
+
+## Pulls a hand card out of the row and slides it into a pile's button after `delay` seconds.
+func _send_to_pile(cv: CardView, which: String, delay: float) -> void:
+	var start := cv.global_position
+	cv.get_parent().remove_child(cv)
+	_fx.add_child(cv)
+	cv.global_position = start
+	cv.selected = false
+	var tw := cv.create_tween()
+	if delay > 0.0:
+		tw.tween_interval(delay * step_scale)
+	_to_pile(tw, cv, which)
+
+
+## Appends the shrink-and-slide into a pile's button to `tw`, then frees the card and nudges the button.
+func _to_pile(tw: Tween, cv: CardView, which: String) -> void:
+	var dest := _pile_point(which) - cv.size * 0.5
+	var t := 0.2 * step_scale
+	tw.set_parallel()
+	tw.tween_property(cv, "global_position", dest, t).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_property(cv, "scale", Vector2(0.22, 0.22), t).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	tw.tween_property(cv, "modulate:a", 0.35, t).set_ease(Tween.EASE_IN)
+	tw.chain().tween_callback(func() -> void:
+		_bump_pile(which)
+		cv.queue_free())
+
+
+## A small pop on a pile's button when a card lands in (or leaves) it.
+func _bump_pile(which: String) -> void:
+	var b: Control = _pile_btns[which]
+	if step_scale <= 0.0 or not is_instance_valid(b):
+		return
+	b.scale = Vector2(1.1, 1.1)
+	b.create_tween().tween_property(b, "scale", Vector2.ONE, 0.14 * step_scale).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 
 func _recoil(v: FighterView, amount: int) -> void:
@@ -680,37 +755,73 @@ func _pop_in(v: Control) -> void:
 	tw.tween_property(v, "scale", Vector2.ONE, 0.25 * step_scale).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
-## After a rebuild the hand's cards have new spots and maybe a new size. Start each one where
-## (and as big as) it was and ease it into place, so the hand closes up instead of snapping.
+## After a rebuild the hand's cards have new spots and maybe a new size. Each one glides from
+## where (and as big as) it was into place, so the hand closes up instead of snapping.
 func _settle_hand(was: Dictionary) -> void:
 	for cv: CardView in _hand_row.get_children():
 		if not was.has(cv.card):
 			continue
-		var home := cv.position
-		var shift: Vector2 = was[cv.card][0] - (cv.global_position + cv.size * 0.5)
+		var from: Vector2 = was[cv.card][0]
 		var ratio: float = float(was[cv.card][1]) / maxf(cv.zoom, 0.01)
-		if shift.length() < 1.0 and absf(ratio - 1.0) < 0.01:
+		if from.distance_to(cv.global_position + cv.size * 0.5) < 1.0 and absf(ratio - 1.0) < 0.01:
 			continue
-		cv.position = home + shift
-		cv.scale = Vector2(ratio, ratio)
-		var tw := cv.create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		tw.tween_property(cv, "position", home, 0.22 * step_scale)
-		tw.tween_property(cv, "scale", Vector2.ONE, 0.22 * step_scale)
+		_glide(cv, from, ratio, 0.0, 0.22, false)
 
 
-## Newly drawn cards (the last `n` in hand) fade and grow in, one after another.
-func _deal_in(n: int) -> void:
+## Newly drawn cards (the last ones in hand, one entry each in `drawn`) slide out of the Draw
+## pile's button into their spots, one after another. Cards made on the spot pop in where they sit.
+func _deal_in(drawn: Array) -> void:
+	if drawn.is_empty() or step_scale <= 0.0:
+		return
 	var kids := _hand_row.get_children()
-	var first := maxi(kids.size() - n, 0)
+	var first := maxi(kids.size() - drawn.size(), 0)
 	for i in range(first, kids.size()):
 		var cv: CardView = kids[i]
-		cv.modulate.a = 0.0
-		cv.scale = Vector2(0.7, 0.7)
-		var tw := cv.create_tween()
-		tw.tween_interval((i - first) * 0.06 * step_scale)
-		tw.set_parallel()
-		tw.tween_property(cv, "modulate:a", 1.0, 0.15 * step_scale)
-		tw.tween_property(cv, "scale", Vector2.ONE, 0.2 * step_scale).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		var delay := (i - first) * 0.07
+		if drawn[mini(i - first, drawn.size() - 1)]:
+			_glide(cv, _pile_point("draw"), 0.22, delay, 0.24, true, "draw")
+		else:
+			cv.modulate.a = 0.0
+			cv.scale = Vector2(0.7, 0.7)
+			var tw := cv.create_tween()
+			tw.tween_interval(delay * step_scale)
+			tw.set_parallel()
+			tw.tween_property(cv, "modulate:a", 1.0, 0.15 * step_scale)
+			tw.tween_property(cv, "scale", Vector2.ONE, 0.2 * step_scale).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+## Moves a stand-in copy of a hand card from `from` (centre, global) at `from_scale` to wherever the
+## real card sits, then shows the real one. Following the live spot keeps it right even if the row
+## lays itself out again mid-move; the real card stays put and tappable throughout.
+func _glide(cv: CardView, from: Vector2, from_scale: float, delay: float, dur: float, fade_in: bool, pile: String = "") -> void:
+	var ghost := CardView.new().setup(cv.card, cv.zoom)
+	ghost.playable = cv.playable
+	ghost.selected = cv.selected
+	ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fx.add_child(ghost)
+	ghost.scale = Vector2(from_scale, from_scale)
+	ghost.global_position = from - ghost.size * 0.5
+	ghost.modulate.a = 0.0 if fade_in else 1.0
+	cv.modulate.a = 0.0
+	var follow := func(t: float) -> void:
+		if not is_instance_valid(cv) or not cv.is_inside_tree():
+			return
+		var k := ease(t, 0.4)  # fast start, soft landing
+		ghost.global_position = from.lerp(cv.global_position + cv.size * 0.5, k) - ghost.size * 0.5
+		var sc := lerpf(from_scale, 1.0, k)
+		ghost.scale = Vector2(sc, sc)
+		if fade_in:
+			ghost.modulate.a = minf(t * 3.0, 1.0)
+	var tw := ghost.create_tween()
+	if delay > 0.0:
+		tw.tween_interval(delay * step_scale)
+	if pile != "":
+		tw.tween_callback(_bump_pile.bind(pile))
+	tw.tween_method(follow, 0.0, 1.0, dur * step_scale)
+	tw.tween_callback(func() -> void:
+		if is_instance_valid(cv):
+			cv.modulate.a = 1.0
+		ghost.queue_free())
 
 
 func _banner(text: String, col: Color) -> void:

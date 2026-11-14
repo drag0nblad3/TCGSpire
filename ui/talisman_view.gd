@@ -161,6 +161,9 @@ func inspect() -> void:
 	if definition.has("triggers") or definition.has("run"):
 		column.add_child(UiKit.button("Preview activation", art.activate))
 	column.add_child(UiKit.button("Close", overlay.queue_free))
+	column.add_child(UiKit.label("Tap anywhere to close", 14, Palette.TEXT_DIM))
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UiKit.tap_to_close(overlay)
 	get_tree().root.add_child(overlay)
 
 static func strip(parent: Control) -> HBoxContainer:
