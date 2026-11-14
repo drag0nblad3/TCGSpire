@@ -22,6 +22,9 @@ static func play(db: CardDB, profile: Profile, seed_in: int, heat: int = 0, job:
 	var steps := 0
 	while not run.over and steps < 80:
 		steps += 1
+		if run.deep_pending:
+			run.jack_out()  # The bot banks the win; Deep Stack is for people.
+			break
 		var options := run.available_nodes()
 		if options.is_empty():
 			break
@@ -229,6 +232,8 @@ static func card_value(c: CardDef, upgraded: bool = false) -> float:
 				v += 2.0 * aoe
 			"strip":
 				v += 2.0 * aoe
+			"interrupt":
+				v += 2.5 * aoe
 			"sacrifice":
 				v += 1.5 * float(e.get("mult", 1.0))  # dead without a daemon up
 	if c.get_effects(upgraded).any(func(e: Dictionary) -> bool: return str(e.get("op", "")) == "sacrifice"):

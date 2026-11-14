@@ -374,3 +374,44 @@ func test_closed_rule_fires_when_the_daemon_runs_out_or_is_crashed() -> void:
 	c.end_turn()
 	eq(c.units.size(), 0, "ran out at turn start")
 	eq(c.enemies[0].hp, hp - 3 - 8, "drip at turn end, then the blast")
+
+
+func _interrupt_fight(moves: Array) -> void:
+	c.enemies[0].moves = moves
+	c.enemies[0].move_idx = 0
+	c.enemies[1].moves = []
+
+
+func test_interrupt_cancels_only_the_named_part() -> void:
+	_interrupt_fight([{"name": "Combo", "effects": [{"op": "damage", "amount": 6}, {"op": "ward", "amount": 5}]}])
+	var en: Fighter = c.enemies[0]
+	Effects.resolve(c, {"op": "interrupt", "kinds": ["attack"]}, c.player, en)
+	eq(en.interrupted, ["attack"])
+	eq(c.intent_damage(en), 0)
+	eq(Intents.of(c, en).map(func(i: Dictionary) -> String: return i["kind"]), ["interrupted", "ward"])
+	var hp := c.player.hp
+	c.end_turn()
+	eq(c.player.hp, hp, "attack cancelled")
+	eq(en.ward, 5, "rest of the move still happened")
+	eq(en.interrupted, [], "cleared after the move")
+
+
+func test_interrupt_misses_without_the_intent_and_pays_once() -> void:
+	_interrupt_fight([{"name": "Wall", "effects": [{"op": "ward", "amount": 5}]}])
+	var en: Fighter = c.enemies[0]
+	var fx := {"op": "interrupt", "kinds": ["purge"], "effects": [{"op": "apply", "status": "charge", "stacks": 2, "to": "self"}]}
+	Effects.resolve(c, fx, c.player, en)
+	eq(en.interrupted, [])
+	eq(c.player.status("charge"), 0, "no payoff on a miss")
+	en.moves = [{"name": "Wipe", "effects": [{"op": "damage", "amount": 3, "to": "daemon"}]}]
+	Effects.resolve(c, fx, c.player, en)
+	Effects.resolve(c, fx, c.player, en)
+	eq(c.player.status("charge"), 2, "second interrupt of the same intent finds nothing")
+
+
+func test_interrupt_purge_saves_the_daemon() -> void:
+	_interrupt_fight([{"name": "Wipe", "effects": [{"op": "damage", "amount": 9, "to": "daemon"}]}])
+	c.summon("Drone", 3)
+	Effects.resolve(c, {"op": "interrupt", "kinds": ["purge"], "to": "all_enemies"}, c.player, null)
+	c.end_turn()
+	eq(c.units.size(), 1, "daemon survived the purge")

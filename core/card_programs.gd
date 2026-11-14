@@ -3,6 +3,7 @@ extends RefCounted
 ## Physical-card memory and play-order rules. All state lasts for one combat.
 
 const DESCRIPTIONS := {
+	"interrupt": "Names one or more enemy intents, such as Purge. If the target's next move holds that intent, that part is cancelled; the rest of the move still happens. Nothing happens if the intent isn't there, so read the icons first. Any \"If it cancels\" payoff fires once per enemy cut.",
 	"relay_cashout": "Gain this copy's normal Relay Firewall, then deal the listed damage per Relay point. Consume the signal: it does not pass to another card. Without Relay, there is no bonus damage.",
 	"handshake": "The named partner must have been played earlier this turn. Either order works, with a different payoff. Copies share the partner name, not temporary bonuses.",
 	"cooldown": "Charge this copy only when it is discarded unplayed at turn end. Cache and Volatile prevent that discard. Charge boosts the printed damage or Firewall effect. Charge survives shuffles, is capped, and resets on play.",

@@ -14,9 +14,46 @@ const DESC := {
 	"heal": "Repairs its HP.",
 	"summon": "Calls more sentries into the fight.",
 	"curse": "Uploads malware into your deck or hand.",
+	"interrupted": "Interrupted: one of your programs cancelled that part of its move. The rest of the move still happens.",
 	"stall": "Lagged: skips its next move. This intent waits until the turn after.",
 	"unknown": "Does something unusual. Tap the enemy to read the move.",
 }
+
+
+## Kinds an Interrupt can name.
+const INTERRUPTIBLE := ["attack", "purge", "ward", "buff", "debuff", "heal", "summon", "curse"]
+
+
+## The intent kind of one move effect ("attack", "purge", "ward", ...).
+static func kind_of(e: Dictionary) -> String:
+	var to := str(e.get("to", ""))
+	match str(e.get("op", "")):
+		"damage", "damage_per_ward", "damage_per_status", "lose_hp":
+			return "purge" if to == "daemon" else "attack"
+		"ward":
+			return "ward"
+		"heal":
+			return "heal"
+		"apply":
+			var debuff: bool = Statuses.DEFS.get(str(e.get("status", "")), {}).get("debuff", false)
+			return "debuff" if (debuff and to not in ["self", "all_allies"]) else "buff"
+		"spawn", "summon":
+			return "summon"
+		"add_card":
+			return "curse"
+	return "unknown"
+
+
+## Kinds of `kinds` that the enemy's next move holds and that are not cancelled yet.
+static func matching(en: Fighter, kinds: Array) -> Array:
+	var out: Array = []
+	if en.status("stall") > 0:
+		return out
+	for e in en.current_move().get("effects", []):
+		var k := kind_of(e)
+		if k in kinds and k not in en.interrupted and k not in out:
+			out.append(k)
+	return out
 
 
 static func of(c: Combat, en: Fighter) -> Array:
@@ -24,10 +61,16 @@ static func of(c: Combat, en: Fighter) -> Array:
 	if en.status("stall") > 0:
 		return [{"kind": "stall", "value": 0}]
 	var by_kind := {}
+	var cut := false
 	for e in en.current_move().get("effects", []):
 		var op := str(e.get("op", ""))
 		var to := str(e.get("to", ""))
 		var item := {}
+		if kind_of(e) in en.interrupted:
+			if not cut:
+				out.append({"kind": "interrupted", "value": 0})
+			cut = true
+			continue
 		match op:
 			"damage", "damage_per_ward", "damage_per_status", "lose_hp":
 				var base := int(e.get("amount", 0))
@@ -72,6 +115,9 @@ static func explain(en: Fighter) -> String:
 	var mv := en.current_move()
 	var parts: Array[String] = []
 	for e in mv.get("effects", []):
+		if kind_of(e) in en.interrupted:
+			parts.append("(Interrupted.)")
+			continue
 		parts.append(Effects.describe(e).replace(" to ALL enemies", " to you and your units"))
 	var lag := " (Lagged: skips a turn first.)" if en.status("stall") > 0 else ""
 	return "%s: %s%s" % [mv.get("name", "?"), " ".join(parts), lag]

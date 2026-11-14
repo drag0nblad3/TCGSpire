@@ -12,7 +12,7 @@ extends RefCounted
 ##   rig       -> rep buys ranks of that faction's rig upgrades (permanent perks)
 ##   firmware  -> enough copies + rep (dust for Street/starter cards) permanently upgrades a card
 
-const SAVE_VERSION := 9
+const SAVE_VERSION := 10
 const DEFAULT_PATH := "user://profile.json"
 
 var collection := Collection.new()
@@ -61,6 +61,8 @@ var weekly: Dictionary = {}
 var login: Dictionary = {}
 ## Saved starter-pick loadouts: client crew id -> [picks or [], ...] (Loadouts.SLOTS slots).
 var loadouts: Dictionary = {}
+## ICE database: enemy id -> {"seen": fights, "crashed": kills, "lost": times it was up when you flatlined}.
+var ice: Dictionary = {}
 
 
 static func new_player(db: CardDB) -> Profile:
@@ -631,6 +633,7 @@ func to_dict() -> Dictionary:
 		"weekly": weekly,
 		"login": login,
 		"loadouts": loadouts,
+		"ice": ice,
 	}
 
 
@@ -670,6 +673,7 @@ static func from_dict(d: Dictionary, db: CardDB = null) -> Profile:
 	p.daily = d.get("daily", {}).duplicate(true)
 	p.weekly = d.get("weekly", {}).duplicate(true)
 	p.login = d.get("login", {}).duplicate(true)
+	p.ice = d.get("ice", {}).duplicate(true)
 	for f in d.get("loadouts", {}):
 		p.loadouts[str(f)] = d["loadouts"][f].duplicate(true)
 	return p
@@ -722,6 +726,10 @@ static func _migrate(d: Dictionary, db: CardDB) -> Dictionary:
 		var old: Dictionary = d.get("pack_pity", {})
 		d["pack_pity"] = {Packs.NORMAL: {"rare": int(old.get("rare", 0)), "mythic": int(old.get("mythic", 0))}}
 		v = 9
+	if v < 10:
+		# v10 added the ICE database (per-enemy fight counts); it starts empty.
+		d["ice"] = d.get("ice", {})
+		v = 10
 	d["version"] = v
 	return d
 

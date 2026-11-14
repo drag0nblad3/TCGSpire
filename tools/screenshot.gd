@@ -5,7 +5,7 @@ extends SceneTree
 ##                   [out=/tmp/shot.png] [frames=30] [plays=2] [seed=1] [theme=archive] [end_turn=1] [give=sparring_dummy,drone_swarm]
 ## Under --headless it still runs (smoke test for script errors) but writes no image.
 
-const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "pack_open", "pack_shelf", "pack_premium", "pack_crew", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume", "records", "exploits", "daily", "signal_result", "weekly", "weekly_map", "login", "tutorial", "coach", "map_walls", "map_jump", "foil"]
+const SCREENS := ["hub", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "pack_open", "pack_shelf", "pack_premium", "pack_crew", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume", "records", "exploits", "ice", "deep", "daily", "signal_result", "weekly", "weekly_map", "login", "tutorial", "coach", "map_walls", "map_jump", "foil"]
 
 
 func _initialize() -> void:
@@ -85,7 +85,7 @@ func _idle(cs) -> void:
 
 func _go(main: Control, scr: String, seed_in: int, inspect_card: String = "flare_volley") -> void:
 	var db: CardDB = main.db
-	if scr not in ["hub", "collection", "picker", "pack", "pack_open", "pack_shelf", "pack_premium", "pack_crew", "inspect", "rules", "jobs", "rig", "firmware", "resume", "records", "exploits", "tutorial", "coach", "foil", "weekly", "weekly_map", "login"]:
+	if scr not in ["hub", "collection", "picker", "pack", "pack_open", "pack_shelf", "pack_premium", "pack_crew", "inspect", "rules", "jobs", "rig", "firmware", "resume", "records", "exploits", "ice", "tutorial", "coach", "foil", "weekly", "weekly_map", "login"]:
 		var p: Profile = main.profile
 		main.run = RunState.start(db, p, RunState.default_picks(db, p), seed_in)
 		main.run.add_talisman("oak_token")
@@ -213,6 +213,15 @@ func _go(main: Control, scr: String, seed_in: int, inspect_card: String = "flare
 			main.profile.stats["best_max_burn"] = 34
 			Records.check_exploits(db, main.profile)
 			main._show(RecordsScreen.new().setup(db, main.profile, "exploits"))
+		"ice":
+			main.profile.ice = {"cinder_mite": {"seen": 7, "crashed": 15, "lost": 1}, "hollow_wisp": {"seen": 2, "crashed": 3, "lost": 0},
+				"shard_golem": {"seen": 3, "crashed": 2, "lost": 1}, "hollow_monarch": {"seen": 4, "crashed": 2, "lost": 2}, "ember_imp": {"seen": 1, "crashed": 1, "lost": 0}}
+			main._show(RecordsScreen.new().setup(db, main.profile, "ice"))
+		"deep":
+			main.run.boss_won = true
+			main.run.deep_ok = true
+			main.run.deep_pending = true
+			main.show_map()
 		"daily":
 			main._start_daily()
 		"weekly":

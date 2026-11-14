@@ -12,6 +12,7 @@ static func color(kind: String) -> Color:
 		"debuff", "curse": return Palette.ENEMY
 		"heal": return Palette.faction("bloom")
 		"summon": return Palette.ENERGY
+		"interrupted": return Palette.UPGRADED
 	return Palette.TEXT_DIM
 
 
@@ -62,6 +63,10 @@ static func draw(ci: CanvasItem, c: Vector2, r: float, kind: String, col: Color 
 			ci.draw_colored_polygon(PackedVector2Array([c + Vector2(r * 0.14, -r * 0.68), c + Vector2(-r * 0.42, r * 0.1),
 				c + Vector2(-r * 0.05, r * 0.1), c + Vector2(-r * 0.15, r * 0.68),
 				c + Vector2(r * 0.42, -r * 0.12), c + Vector2(r * 0.06, -r * 0.12)]), col)
+		"interrupted":
+			# A ring with a slash through it.
+			ci.draw_arc(c, r * 0.8, 0, TAU, 20, col, w, true)
+			ci.draw_line(c + Vector2(-r * 0.55, r * 0.55), c + Vector2(r * 0.55, -r * 0.55), col, w, true)
 		"stall":
 			# Pause bars inside a ring.
 			ci.draw_arc(c, r * 0.8, 0, TAU, 20, col, w, true)

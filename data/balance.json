@@ -380,5 +380,7 @@
  },
  "weekly": {"heat": 2, "mods": 3, "packs": 1, "pack_kind": "premium"},
  "login": {"scrap": [10, 15, 20, 25, 30, 40], "packs": {"4": "normal", "7": "premium"}},
- "deck_copy_limit": 2
+ "deck_copy_limit": 2,
+  "deep_stack": {"unlock_heat": 3, "enemy_hp_pct": 0.25, "enemy_dmg_pct": 0.15},
+  "ice_db": {"reveal": 3}
 }

@@ -119,6 +119,8 @@ func upgrade_summary() -> String:
 		for k in eb:
 			if k in ["op", "status", "to", "name", "card", "enemy", "consume", "effect", "mode"]:
 				continue
+			if k == "kinds":
+				continue
 			if k in ["effects", "types"]:
 				if eb[k] != ea.get(k):
 					parts.append("Now: " + Effects.describe(eb))

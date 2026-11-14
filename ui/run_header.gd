@@ -17,7 +17,7 @@ func _ready() -> void:
 	var top := UiKit.hbox(18)
 	top.add_child(UiKit.label("HP %d/%d" % [run.hp, run.max_hp], 23, Palette.HP))
 	top.add_child(UiKit.label("%d creds" % run.gold, 20, Palette.ENERGY))
-	top.add_child(UiKit.label("Layer %d · Node %d" % [run.act, run.floor_num], 18, Palette.TEXT_DIM))
+	top.add_child(UiKit.label(("Depth %d · Node %d" % [run.deep, run.floor_num]) if run.deep > 0 else ("Layer %d · Node %d" % [run.act, run.floor_num]), 18, Palette.TEXT_DIM))
 	if run.heat > 0:
 		top.add_child(UiKit.label("Heat %d" % run.heat, 18, Palette.HP))
 	add_child(top)

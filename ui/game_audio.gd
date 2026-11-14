@@ -109,6 +109,7 @@ static func event_cue(e: Dictionary) -> String:
 		"spawn": return "summon"
 		"status": return "virus" if e.get("status", "") == "burn" else "glitch"
 		"strip": return "delete"
+		"interrupt": return "glitch"
 		"expire": return "death"
 		"daemon_explosion": return "explode"
 		"enemy_phase", "turn_start": return "turn"

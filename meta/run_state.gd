@@ -31,6 +31,11 @@ var acts_cleared := 0
 ## Heat mod "double_cross": the client turns on you for the final act.
 var double_crossed := false
 var over := false
+## Deep Stack (endless): `deep_ok` is set at run start when the profile has unlocked it. After the
+## final Core the run waits (`deep_pending`) for descend() or jack_out(); `deep` counts layers entered.
+var deep_ok := false
+var deep := 0
+var deep_pending := false
 var card_plays: Dictionary = {}
 var remove_cost := 0
 var outcome_counter := 0
@@ -55,6 +60,8 @@ var banned: Array = []
 ## and the daily breach date ("" = a normal run).
 var tally: Dictionary = {}
 var clauses: Array = []
+## ICE database counts gathered this run (enemy id -> {seen, crashed, lost}); Profile folds them in at run end.
+var ice: Dictionary = {}
 var daily := ""
 ## Weekly challenge: its week key ("" = not one) and modifier ids (data/weekly.json).
 ## A weekly run copies no rig ranks and no firmware: every program plays at base level.
@@ -224,16 +231,40 @@ func combat_opts() -> Dictionary:
 		"start_ward": int(perk_mod("start_ward")),
 		"ward_retention": perk_mod("ward_retention"),
 		"daemon_death_damage": int(perk_mod("daemon_death_damage")),
-		"enemy_hp_mult": maxf(heat_mult("enemy_hp_pct") * (1.0 + perk_mod("enemy_hp_pct")), 0.5) * act_start_mult("enemy_hp_pct"),
+		"enemy_hp_mult": maxf(heat_mult("enemy_hp_pct") * (1.0 + perk_mod("enemy_hp_pct")), 0.5) * act_start_mult("enemy_hp_pct") * deep_mult("enemy_hp_pct"),
 		"enemy_might": int(heat_mod("enemy_might", 0)),
-		"enemy_dmg_mult": maxf(heat_mult("enemy_dmg_pct"), 0.5) * act_start_mult("enemy_dmg_pct"),
+		"enemy_dmg_mult": maxf(heat_mult("enemy_dmg_pct"), 0.5) * act_start_mult("enemy_dmg_pct") * deep_mult("enemy_dmg_pct"),
 	}
+
+
+## Deep Stack scaling: each layer below the final Core compounds balance.deep_stack pcts.
+func deep_mult(key: String) -> float:
+	return pow(1.0 + float(db.balance.get("deep_stack", {}).get(key, 0.0)), deep)
+
+
+## Leaves the Stack with the win after the final Core (or any Deep Stack Core).
+func jack_out() -> void:
+	deep_pending = false
+	over = true
+
+
+## Goes one layer deeper: a fresh last-act map with tougher sentries. No packs or rep down here.
+func descend() -> void:
+	if not deep_pending:
+		return
+	deep_pending = false
+	deep += 1
+	node_id = -1
+	path = []
+	jumps_used = 0
+	map = RunMap.generate(db, rng.fork("map:deep:%d" % deep), act, banned, "")
+	hp = mini(max_hp, hp + int((max_hp - hp) * float(db.balance.get("act_heal_pct", 0.5))))
 
 
 # --- map ----------------------------------------------------------------------
 
 func available_nodes() -> Array:
-	if over:
+	if over or deep_pending:
 		return []
 	if node_id < 0:
 		return map.start_nodes()
@@ -293,6 +324,7 @@ func start_combat(encounter_id: String) -> Combat:
 func finish_combat(c: Combat) -> Dictionary:
 	hp = c.player.hp
 	Records.tally_combat(self, c)
+	Records.tally_ice(self, c)
 	for id in c.play_counts():
 		card_plays[id] = int(card_plays.get(id, 0)) + c.play_counts()[id]
 	var rewards := {"gold": 0, "cards": [], "talisman": ""}
@@ -311,7 +343,7 @@ func finish_combat(c: Combat) -> Dictionary:
 		rewards["healed"] = hp - before_hp
 	rewards["cards"] = reward_choices(kind)
 	rewards["kind"] = kind
-	if kind == "elite" or (kind == "boss" and act < total_acts()):
+	if kind == "elite" or (kind == "boss" and (act < total_acts() or deep_ok)):
 		rewards["perks"] = perk_choices(int(db.balance.get("perk_choices", 3)) + int(perk_mod("perk_choices")), rng.fork("perks:%d" % floor_num))
 	if current_node().get("type", "") == "vault":
 		rewards["vault"] = open_vault()
@@ -319,14 +351,18 @@ func finish_combat(c: Combat) -> Dictionary:
 		elites_won += 1
 		rewards["talisman"] = roll_talisman("", rng.fork("elite_t:%d" % floor_num))
 	if kind == "boss":
-		acts_cleared += 1
-		rewards["talisman"] = roll_talisman("boss", rng.fork("boss_t:%d" % act))
+		if deep == 0:
+			acts_cleared += 1
+		rewards["talisman"] = roll_talisman("boss", rng.fork("boss_t:%d" % (act + deep)))
 		if act < total_acts():
 			_next_act()
 			rewards["act_started"] = act
 		else:
 			boss_won = true
-			over = true
+			if deep_ok:
+				deep_pending = true
+			else:
+				over = true
 	return rewards
 
 
@@ -648,7 +684,8 @@ func summary() -> String:
 const SAVED := ["seed_value", "hp", "max_hp", "gold", "floor_num", "heat", "talismans", "node_id", "path", "jumps_used",
 	"combats_won", "elites_won", "boss_won", "act", "acts_cleared", "double_crossed", "over", "card_plays",
 	"remove_cost", "outcome_counter", "locked_talismans", "perks", "rig", "firmware", "firmware_mods",
-	"mods_installed", "job", "banned", "tally", "clauses", "daily", "weekly", "weekly_mods", "implant_activations"]
+	"mods_installed", "job", "banned", "tally", "clauses", "daily", "weekly", "weekly_mods", "implant_activations",
+	"deep_ok", "deep", "deep_pending", "ice"]
 
 
 func to_dict() -> Dictionary:

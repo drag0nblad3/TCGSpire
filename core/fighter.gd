@@ -15,6 +15,8 @@ var rule: Dictionary = {}
 var moves: Array = []
 var move_idx := 0
 var def_id := ""
+## Enemies only: intent kinds (Intents) cancelled for its next move by an Interrupt.
+var interrupted: Array = []
 ## Attack multiplier (heat scaling for enemies), applied after Boost and Weakened.
 var dmg_mult := 1.0
 

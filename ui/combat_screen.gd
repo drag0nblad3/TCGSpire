@@ -526,6 +526,10 @@ func _play_events(played: CardView) -> int:
 				var debuff: bool = Statuses.DEFS.get(e["status"], {}).get("debuff", false)
 				_float_text(v, "%s %s%d" % [Lexicon.status(str(e["status"])), "+" if e["stacks"] >= 0 else "", e["stacks"]], Palette.ENEMY if debuff else Palette.UPGRADED)
 				await _wait(0.1)
+			"interrupt":
+				if v != null:
+					_float_text(v, "Interrupted", Palette.UPGRADED)
+				await _wait(0.1)
 			"strip":
 				if v != null:
 					_float_text(v, "Stripped", Palette.faction("void"))

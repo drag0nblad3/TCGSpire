@@ -225,7 +225,7 @@ static func life_stat(db: CardDB, p: Profile, stat: String) -> int:
 			return p.binders.size()
 		"crews_worked":
 			return Jobs.board(db).filter(func(f: String) -> bool: return int(p.stats.get("jobs_" + f, 0)) > 0).size()
-		"wins", "packs_opened", "best_floor", "daily_runs", "clauses_met", "best_win_heat":
+		"wins", "packs_opened", "best_floor", "daily_runs", "clauses_met", "best_win_heat", "best_depth":
 			return int(p.stats.get(stat, 0))
 	return int(p.stats.get("best_" + stat, 0))
 
@@ -247,10 +247,99 @@ static func check_exploits(db: CardDB, p: Profile) -> Array:
 
 ## Folds a finished run into lifetime stats, pays met clauses and records the daily.
 ## Called by Profile.finish_run. Returns lines.
+# --- ICE database ---------------------------------------------------------------
+
+## Counts this fight's enemies into run.ice: each kind seen once per fight, every one crashed,
+## and every one still up if the fight was lost.
+static func tally_ice(run: RunState, c: Combat) -> void:
+	var seen := {}
+	for en: Fighter in c.enemies:
+		if en.def_id == "":
+			continue
+		var row: Dictionary = run.ice.get(en.def_id, {"seen": 0, "crashed": 0, "lost": 0})
+		if not seen.has(en.def_id):
+			seen[en.def_id] = true
+			row["seen"] = int(row["seen"]) + 1
+		if en.is_dead():
+			row["crashed"] = int(row["crashed"]) + 1
+		elif c.phase == Combat.Phase.LOST:
+			row["lost"] = int(row["lost"]) + 1
+		run.ice[en.def_id] = row
+
+
+## Adds a finished run's ICE counts to the profile. Returns lines for entries decoded by this run.
+static func fold_ice(db: CardDB, p: Profile, run: RunState) -> Array:
+	var decoded: Array = []
+	var need := ice_reveal(db)
+	for id in run.ice:
+		var row: Dictionary = p.ice.get(id, {"seen": 0, "crashed": 0, "lost": 0})
+		var before := int(row["seen"])
+		for k in ["seen", "crashed", "lost"]:
+			row[k] = int(row.get(k, 0)) + int(run.ice[id].get(k, 0))
+		p.ice[id] = row
+		if before < need and int(row["seen"]) >= need:
+			decoded.append(Lexicon.enemy_name(id))
+	return [] if decoded.is_empty() else ["ICE decoded: %s" % ", ".join(decoded)]
+
+
+static func ice_reveal(db: CardDB) -> int:
+	return int(db.balance.get("ice_db", {}).get("reveal", 3))
+
+
+## "normal", "elite" or "boss": the toughest slot this enemy leads an encounter in.
+static func ice_kind(db: CardDB, id: String) -> String:
+	var best := "normal"
+	for eid in db.encounters:
+		var enc: Dictionary = db.encounters[eid]
+		var lead: Array = enc.get("enemies", [])
+		if not lead.is_empty() and str(lead[0]) == id:
+			var k := str(enc.get("kind", "normal"))
+			if k == "boss" or (k == "elite" and best == "normal"):
+				best = k
+	return best
+
+
+## Every enemy as a database row, grouped order: crew ("" = the Stack's own), then normal/elite/boss, then name.
+## {id, name, faction, kind, seen, crashed, lost, state: "unknown"|"seen"|"decoded", moves: [lines], lore}
+static func ice_entries(db: CardDB, p: Profile) -> Array:
+	var out: Array = []
+	var need := ice_reveal(db)
+	for id in db.enemies:
+		var d: Dictionary = db.enemies[id]
+		var row: Dictionary = p.ice.get(id, {})
+		var seen := int(row.get("seen", 0))
+		var e := {"id": id, "name": str(d.get("name", id)), "faction": str(d.get("faction", "")), "kind": ice_kind(db, id),
+			"seen": seen, "crashed": int(row.get("crashed", 0)), "lost": int(row.get("lost", 0)),
+			"state": "decoded" if seen >= need else ("seen" if seen > 0 else "unknown"), "moves": [], "lore": ""}
+		if e["state"] == "decoded":
+			e["lore"] = str(db.ice_lore.get(id, ""))
+			for mv in d.get("moves", []):
+				var parts: Array = mv.get("effects", []).map(func(fx: Dictionary) -> String: return Effects.describe(fx).replace(" to ALL enemies", " to you and your daemons"))
+				e["moves"].append("%s: %s" % [mv.get("name", "?"), " ".join(parts)])
+		out.append(e)
+	var rank := {"normal": 0, "elite": 1, "boss": 2}
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		if a["faction"] != b["faction"]:
+			return a["faction"] < b["faction"]
+		if a["kind"] != b["kind"]:
+			return rank[a["kind"]] < rank[b["kind"]]
+		return a["name"] < b["name"])
+	return out
+
+
+## Deep Stack opens once a run has been won at balance.deep_stack.unlock_heat or higher.
+static func deep_unlocked(db: CardDB, p: Profile) -> bool:
+	return int(p.stats.get("best_win_heat", 0)) >= int(db.balance.get("deep_stack", {}).get("unlock_heat", 3))
+
+
 static func finish_run(db: CardDB, p: Profile, run: RunState) -> Array:
 	var lines: Array = []
 	for k in TALLY:
 		p.stats["best_" + k] = maxi(int(p.stats.get("best_" + k, 0)), int(run.tally.get(k, 0)))
+	lines.append_array(fold_ice(db, p, run))
+	p.stats["best_depth"] = maxi(int(p.stats.get("best_depth", 0)), run.deep)
+	if run.deep > 0:
+		lines.append("Deep Stack: reached depth %d (best %d)" % [run.deep, int(p.stats["best_depth"])])
 	if run.boss_won:
 		p.stats["best_win_heat"] = maxi(int(p.stats.get("best_win_heat", 0)), run.heat)
 	if run.job != "":
@@ -282,11 +371,17 @@ static func validate(db: CardDB) -> Array[String]:
 			errs.append("contract '%s': unknown stat '%s'" % [id, cl.get("stat", "")])
 		if str(cl.get("name", "")) == "" or str(cl.get("text", "")) == "":
 			errs.append("contract '%s': needs name and text" % id)
-	var life := ["foils", "binder_pages", "crews_worked", "wins", "packs_opened", "best_floor", "daily_runs", "clauses_met", "best_win_heat"]
+	var life := ["foils", "binder_pages", "crews_worked", "wins", "packs_opened", "best_floor", "daily_runs", "clauses_met", "best_win_heat", "best_depth"]
 	for id in db.exploits:
 		var x: Dictionary = db.exploits[id]
 		if str(x.get("stat", "")) not in life + TALLY:
 			errs.append("exploit '%s': unknown stat '%s'" % [id, x.get("stat", "")])
 		if str(x.get("lore", "")) == "":
 			errs.append("exploit '%s': needs lore" % id)
+	for id in db.enemies:
+		if str(db.ice_lore.get(id, "")) == "":
+			errs.append("enemy '%s': needs an ICE database lore line" % id)
+	for id in db.ice_lore:
+		if not db.enemies.has(id):
+			errs.append("ice_lore: unknown enemy '%s'" % id)
 	return errs

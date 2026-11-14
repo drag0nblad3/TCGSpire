@@ -284,7 +284,10 @@ func end_turn() -> void:
 			for e in mv.get("effects", []):
 				if is_over():
 					break
+				if Intents.kind_of(e) in en.interrupted:
+					continue
 				Effects.resolve(self, e, en, player)
+			en.interrupted = []
 			en.advance_move()
 		Statuses.on_turn_end(self, en)
 		_check_end()
@@ -506,6 +509,8 @@ func intent_damage(en: Fighter) -> int:
 		return 0
 	for e in en.current_move().get("effects", []):
 		if e.get("op", "") == "damage":
+			if "attack" in en.interrupted:
+				continue
 			if str(e.get("to", "")) == "daemon" or (str(e.get("to", "")) == "front" and not units.is_empty()):
 				continue
 			total += hit_on_player(int(e.get("amount", 0)), en) * int(e.get("hits", 1))

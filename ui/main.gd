@@ -480,6 +480,7 @@ func _show_picker(heat: int, job: String = "", targets: Array = [], clauses: Arr
 		_save()
 		run = RunState.start(db, profile, picks, int(Time.get_unix_time_from_system()), heat, job, targets)
 		run.clauses = clauses.duplicate()
+		run.deep_ok = Records.deep_unlocked(db, profile)
 		show_map())
 	_show(cs)
 
@@ -747,6 +748,9 @@ func _pack_summary(pulled: Array) -> String:
 # --- map ------------------------------------------------------------------------
 
 func show_map() -> void:
+	if run.deep_pending:
+		_show_deep_choice()
+		return
 	_tint()
 	_save_run({"screen": "map"})
 	var m := MapScreen.new().setup(run)
@@ -1088,6 +1092,30 @@ func _info_panel(title: String, body: String, col: Color, icon: Control = null, 
 	var p := UiKit.panel(row)
 	p.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	return p
+
+
+## Deep Stack: after the final Core (and every Core below it) pick between banking the win
+## and going one layer deeper. The win is already safe either way.
+func _show_deep_choice() -> void:
+	_tint()
+	_save_run({"screen": "map"})
+	var cfg: Dictionary = db.balance.get("deep_stack", {})
+	var next := run.deep + 1
+	var parts := UiKit.screen(16)
+	var v: VBoxContainer = parts[1]
+	v.add_child(UiKit.label("The Deep Stack" if run.deep == 0 else "Depth %d cleared" % run.deep, 34, Palette.ENERGY))
+	var body := UiKit.label("The job is done and the win is yours. Below the last Core the Stack keeps going. Each layer down, sentries get +%d%% HP and +%d%% damage on top of the last. Nothing down there pays packs or rep: only your depth record. Flatlining keeps the win." % [
+		roundi(float(cfg.get("enemy_hp_pct", 0.0)) * 100), roundi(float(cfg.get("enemy_dmg_pct", 0.0)) * 100)], 16, Palette.TEXT, true)
+	body.custom_minimum_size.x = 560
+	v.add_child(body)
+	v.add_child(UiKit.label("Your record: depth %d   ·   HP %d/%d" % [int(profile.stats.get("best_depth", 0)), run.hp, run.max_hp], 15, Palette.TEXT_DIM))
+	v.add_child(UiKit.button("Go deeper (depth %d)" % next, func() -> void:
+		run.descend()
+		show_map(), Vector2(360, 72), 22))
+	v.add_child(UiKit.button("Jack out with the win", func() -> void:
+		run.jack_out()
+		_end_run(), Vector2(360, 64)))
+	_show(parts[0])
 
 
 # --- end of run -------------------------------------------------------------------

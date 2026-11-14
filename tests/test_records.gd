@@ -141,3 +141,49 @@ func test_profile_v7_migrates() -> void:
 	eq(p.binders, {})
 	eq(p.loadouts, {})
 	eq(p.to_dict()["version"], Profile.SAVE_VERSION)
+
+
+func test_ice_counts_fold_into_the_profile_and_decode() -> void:
+	var p := Profile.new_player(db)
+	var r := RunState.start(db, p, RunState.default_picks(db, p), 3)
+	for i in 3:
+		var c := r.start_combat("mites")
+		for en in c.enemies:
+			en.hp = 0
+		c.phase = Combat.Phase.WON
+		Records.tally_ice(r, c)
+	var id: String = r.ice.keys()[0]
+	eq(int(r.ice[id]["seen"]), 3, "seen once per fight")
+	check(int(r.ice[id]["crashed"]) >= 3, "every crash counted")
+	var before: Dictionary = Records.ice_entries(db, p).filter(func(e: Dictionary) -> bool: return e["id"] == id)[0]
+	eq(before["state"], "unknown")
+	var lines := Records.fold_ice(db, p, r)
+	check(not lines.is_empty() and str(lines[0]).begins_with("ICE decoded"), "decode line")
+	var after: Dictionary = Records.ice_entries(db, p).filter(func(e: Dictionary) -> bool: return e["id"] == id)[0]
+	eq(after["state"], "decoded")
+	check(not after["moves"].is_empty() and after["lore"] != "", "moves and lore shown")
+	eq(Profile.from_dict(p.to_dict(), db).ice, p.ice, "saved")
+
+
+func test_deep_stack_waits_after_the_final_core_then_scales() -> void:
+	var p := Profile.new_player(db)
+	check(not Records.deep_unlocked(db, p), "locked at first")
+	p.stats["best_win_heat"] = 3
+	check(Records.deep_unlocked(db, p), "open after a Heat 3 win")
+	var r := RunState.start(db, p, RunState.default_picks(db, p), 3)
+	r.deep_ok = true
+	r.boss_won = true
+	r.deep_pending = true
+	eq(r.available_nodes(), [], "no moves until the choice is made")
+	var hp_mult: float = r.combat_opts()["enemy_hp_mult"]
+	r.descend()
+	eq(r.deep, 1)
+	check(not r.over and not r.deep_pending and not r.available_nodes().is_empty(), "a new layer to play")
+	check(r.combat_opts()["enemy_hp_mult"] > hp_mult, "sentries are tougher")
+	var r2 := RunState.from_dict(db, r.to_dict())
+	eq(r2.deep, 1, "depth saved")
+	r.deep_pending = true
+	r.jack_out()
+	check(r.over and r.boss_won, "jacking out keeps the win")
+	p.finish_run(db, r)
+	eq(int(p.stats["best_depth"]), 1)

@@ -69,6 +69,8 @@ func _ready() -> void:
 	v.add_child(UiKit.label("Runs %d   Wins %d   Best floor %d   Cards %d   %s %d" % [
 		int(s.get("runs", 0)), int(s.get("wins", 0)), int(s.get("best_floor", 0)),
 		profile.collection.owned_ids().size(), Palette.w("dust"), profile.collection.dust], 15, Palette.TEXT_DIM))
+	if Records.deep_unlocked(db, profile):
+		v.add_child(UiKit.label("Deep Stack open: keep going after the final Core  ·  Best depth %d" % int(s.get("best_depth", 0)), 14, Palette.UPGRADED))
 	var reps := UiKit.flow(12)
 	for f in Jobs.board(db):
 		var rep := UiKit.hbox(5)
