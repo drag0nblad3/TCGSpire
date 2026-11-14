@@ -11,6 +11,7 @@ extends RefCounted
 const FLAGS := {
 	"burn_no_decay": "Virus on enemies doesn't decay.",
 	"regen_no_decay": "Your Patch doesn't decay.",
+	"regen_slow_decay": "Your Patch loses only 1 stack per turn instead of half.",
 	"keep_ward": "Your Firewall isn't cleared at the start of your turn.",
 	"guard": "Enemy attacks deal %d less damage to you per hit.",
 	"attack_bonus": "You have Boost %d.",
@@ -24,7 +25,7 @@ const FLAGS := {
 
 ## Rough worth of one turn of each flag (per point), for the bots.
 const FLAG_VALUE := {
-	"burn_no_decay": 2.5, "regen_no_decay": 1.5, "keep_ward": 3.5, "guard": 2.2,
+	"burn_no_decay": 2.5, "regen_no_decay": 1.5, "regen_slow_decay": 1.2, "keep_ward": 3.5, "guard": 2.2,
 	"attack_bonus": 2.5, "ward_bonus": 1.6, "thorns": 1.2, "burn_bonus": 2.0,
 	"regen_bonus": 1.5, "debuff_bonus": 1.5, "loop_bonus": 2.0,
 }

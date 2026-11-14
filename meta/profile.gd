@@ -145,7 +145,7 @@ func finish_run(db: CardDB, run: RunState) -> Array:
 		rep[run.job] = rep_of(run.job) + rep_gain
 		lines.append("+%d %s from %s" % [rep_gain, Jobs.rep_name(db, run.job), Jobs.info(db, run.job).get("client", run.job)])
 	lines.append_array(add_xp(db, gained_xp))
-	lines.append_array(add_mastery(db, run.card_plays))
+	add_mastery(db, run.card_plays)  # rewards still pay; Tyler wants no mastery lines on the run recap
 	lines.append_array(Records.finish_run(db, self, run))
 	lines.append_array(Weekly.finish_run(db, self, run))
 	lines.append_array(Records.check_exploits(db, self))

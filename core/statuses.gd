@@ -4,13 +4,13 @@ extends RefCounted
 ## handle it in the hook(s) below, then add a test in tests/test_effects.gd.
 
 const DEFS := {
-	"burn": {"debuff": true, "desc": "At the start of your turn, take damage equal to stacks, then lose 1 stack."},
+	"burn": {"debuff": true, "desc": "At the start of your turn, take damage equal to stacks, then lose half the stacks (rounded up)."},
 	"brittle": {"debuff": true, "desc": "Takes 50% more attack damage. Loses 1 stack at end of turn."},
 	"weaken": {"debuff": true, "desc": "Deals 25% less attack damage. Loses 1 stack at end of turn."},
 	"might": {"debuff": false, "desc": "Attacks deal +1 damage per stack."},
 	"overcharge": {"debuff": true, "desc": "Start next turn with 1 less RAM per stack."},
 	"thorns": {"debuff": false, "desc": "When attacked, deal damage equal to stacks back to the attacker."},
-	"regen": {"debuff": false, "desc": "Repair HP equal to stacks at end of turn, then lose 1 stack. On a daemon it wins back turns."},
+	"regen": {"debuff": false, "desc": "Repair HP equal to stacks at end of turn, then lose half the stacks (rounded up). On a daemon it wins back turns."},
 	"fortify": {"debuff": false, "desc": "Your Firewall stays up at the start of your turn."},
 	"frail": {"debuff": true, "desc": "Gain 25% less Firewall. Lose 1 stack at end of turn."},
 	"charge": {"debuff": false, "desc": "Stored power that some programs spend for big effects."},
@@ -40,12 +40,17 @@ static func modify_attack(base: int, attacker: Fighter, defender: Fighter) -> in
 	return maxi(int(floor(dmg)), 0)
 
 
+## Virus and Patch lose half their stacks each turn, rounded up (so 1 runs out).
+static func half_decay(stacks: int) -> int:
+	return (stacks + 1) / 2
+
+
 static func on_turn_start(c: Combat, f: Fighter) -> void:
 	var burn := f.status("burn")
 	if burn > 0:
 		c.deal_damage(f, burn, "", "burn")
 		if not (c.enemies.has(f) and c.rule_sum("burn_no_decay") > 0):
-			f.add_status("burn", -1)
+			f.add_status("burn", -half_decay(burn))
 
 
 static func on_turn_end(c: Combat, f: Fighter) -> void:
@@ -55,7 +60,8 @@ static func on_turn_end(c: Combat, f: Fighter) -> void:
 		f.hp = mini(f.max_hp, f.hp + regen)
 		c.emit("heal", {"target": f.id, "amount": f.hp - before, "hp": f.hp})
 		if not (f == c.player and c.rule_sum("regen_no_decay") > 0):
-			f.add_status("regen", -1)
+			var slow := f == c.player and c.rule_sum("regen_slow_decay") > 0
+			f.add_status("regen", -(1 if slow else half_decay(regen)))
 	for s in DECAYING:
 		if f.status(s) > 0:
 			f.add_status(s, -1)

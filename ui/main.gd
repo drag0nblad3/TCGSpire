@@ -1204,36 +1204,36 @@ func _end_run(abandoned: bool = false) -> void:
 	var v: VBoxContainer = parts[1]
 	v.add_child(UiKit.label("Run won! You own the Stack." if run.boss_won else ("Run abandoned on node %d" if abandoned else "Flatlined: run over on node %d") % run.floor_num, 34, Palette.ENERGY if run.boss_won else Palette.HP, true))
 	if not killers.is_empty():
-		v.add_child(UiKit.label("Taken down by " + " and ".join(killers), 18, Palette.ENEMY, true))
+		v.add_child(UiKit.label("Taken down by " + " and ".join(killers), 22, Palette.ENEMY, true))
 	var stats := UiKit.hbox(10)
 	for pair in [["Fights", run.combats_won], ["Elites", run.elites_won], ["Node", run.floor_num], ["Deck", run.deck.size()]]:
 		var cell := UiKit.vbox(0)
-		cell.add_child(UiKit.label(str(pair[1]), 26, Palette.TEXT))
-		cell.add_child(UiKit.label(str(pair[0]), 13, Palette.TEXT_DIM))
+		cell.add_child(UiKit.label(str(pair[1]), 30, Palette.TEXT))
+		cell.add_child(UiKit.label(str(pair[0]), 19, Palette.TEXT_DIM))
 		cell.custom_minimum_size.x = 110
 		stats.add_child(UiKit.panel(cell))
 	v.add_child(stats)
 	v.add_child(_path_strip())
 	var high := _run_highlights()
 	if not high.is_empty():
-		v.add_child(UiKit.label("Highlights", 18, Palette.ENERGY))
-		var hl := UiKit.label("\n".join(high), 16, Palette.TEXT, true)
+		v.add_child(UiKit.label("Highlights", 22, Palette.ENERGY))
+		var hl := UiKit.label("\n".join(high), 20, Palette.TEXT, true)
 		v.add_child(hl)
 	if not lines.is_empty():
-		v.add_child(UiKit.label("Earned", 18, Palette.ENERGY))
-		var earned := UiKit.label("\n".join(lines.map(func(l: Variant) -> String: return str(l))), 16, Palette.UPGRADED, true)
+		v.add_child(UiKit.label("Earned", 22, Palette.ENERGY))
+		var earned := UiKit.label("\n".join(lines.map(func(l: Variant) -> String: return str(l))), 20, Palette.UPGRADED, true)
 		earned.custom_minimum_size.x = 600
 		var box := UiKit.panel(earned)
 		box.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		v.add_child(box)
-	v.add_child(UiKit.primary(UiKit.button(Palette.w("camp"), show_hub, Vector2(360, 64))))
+	v.add_child(UiKit.primary(UiKit.button(Palette.w("camp"), show_hub, Vector2(360, 72), 22)))
 	_show(parts[0])
 
 
 ## The route this run took, one small node icon per stop (layers split by a gap).
 func _path_strip() -> Control:
 	var box := UiKit.vbox(6)
-	box.add_child(UiKit.label("Your route on layer %d" % run.act, 15, Palette.TEXT_DIM))
+	box.add_child(UiKit.label("Your route on layer %d" % run.act, 19, Palette.TEXT_DIM))
 	var row := UiKit.flow(4)
 	row.custom_minimum_size.x = 600
 	for id in run.path:
