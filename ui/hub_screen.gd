@@ -52,8 +52,6 @@ func _ready() -> void:
 		v.add_child(GlitchTitle.new().setup(Palette.w("title"), 38))
 	else:
 		v.add_child(UiKit.label(Palette.w("title"), 40, Palette.TEXT))
-	if Palette.w("tagline") != "":
-		v.add_child(UiKit.label(Palette.w("tagline"), 15, Palette.TEXT_DIM, true))
 	var lvl := profile.level()
 	var have := profile.xp - Profile.xp_for_level(lvl)
 	var need := Profile.xp_for_level(lvl + 1) - Profile.xp_for_level(lvl)
@@ -68,86 +66,159 @@ func _ready() -> void:
 	var title := str(profile.settings.get("title", ""))
 	if title != "":
 		v.add_child(UiKit.label(_title_name(title), 16, Palette.UPGRADED))
-	var s := profile.stats
-	v.add_child(UiKit.label("Runs %d   Wins %d   Best floor %d   Cards %d   %s %d" % [
-		int(s.get("runs", 0)), int(s.get("wins", 0)), int(s.get("best_floor", 0)),
-		profile.collection.owned_ids().size(), Palette.w("dust"), profile.collection.dust], 15, Palette.TEXT_DIM))
-	if Records.deep_unlocked(db, profile):
-		v.add_child(UiKit.label("Deep Stack open: keep going after the final Core  ·  Best depth %d" % int(s.get("best_depth", 0)), 14, Palette.UPGRADED))
-	var reps := UiKit.flow(12)
-	for f in Jobs.board(db):
-		var rep := UiKit.hbox(5)
-		rep.add_child(Symbols.badge(f, 28))
-		rep.add_child(UiKit.label("%s %d" % [Jobs.rep_name(db, f), profile.rep_of(f)], 14, Palette.faction(f)))
-		reps.add_child(rep)
-	v.add_child(reps)
+	v.add_child(_run_box())
+	v.add_child(_main_actions())
+	if saved_run == "":
+		v.add_child(_challenges())
 	v.add_child(_login_panel())
+	v.add_child(_stats_box())
+	outer.add_child(_tab_bar())
 
+
+## The soft box around everything that starts a run: heat, the run buttons and the payout fold.
+func _run_box() -> Control:
+	var box := UiKit.vbox(12)
 	var heat_row := UiKit.hbox(16)
+	heat_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	heat_row.add_child(UiKit.button("<", func() -> void: _set_heat(heat - 1), Vector2(56, 48)))
 	_heat_label = UiKit.label("", 22, Palette.HP)
 	_heat_label.custom_minimum_size.x = 140
 	heat_row.add_child(_heat_label)
 	heat_row.add_child(UiKit.button(">", func() -> void: _set_heat(heat + 1), Vector2(56, 48)))
-	v.add_child(heat_row)
-	_heat_desc = UiKit.label("", 14, Palette.TEXT_DIM, true)
-	v.add_child(_heat_desc)
-	_set_heat(heat)
-
+	box.add_child(heat_row)
+	_heat_desc = UiKit.label("", 16, Palette.TEXT_DIM, true)
+	_heat_desc.custom_minimum_size.x = 600
+	box.add_child(_heat_desc)
 	if saved_run != "":
-		v.add_child(UiKit.primary(UiKit.button("Resume run\n%s" % saved_run, func() -> void: resume_pressed.emit(), Vector2(420, 96), 22)))
-		v.add_child(UiKit.button("Abandon run", func() -> void: abandon_pressed.emit(), Vector2(300, 48), 16))
+		box.add_child(UiKit.primary(UiKit.button("Resume run\n%s" % saved_run, func() -> void: resume_pressed.emit(), Vector2(420, 96), 22)))
+		box.add_child(UiKit.button("Abandon run", func() -> void: abandon_pressed.emit(), Vector2(300, 48), 16))
 	else:
 		if first_time():
 			var tut := UiKit.button("New here? Play the tutorial", func() -> void: tutorial_pressed.emit(), Vector2(300, 64), 18)
 			tut.add_theme_color_override("font_color", Palette.UPGRADED)
-			v.add_child(tut)
-		v.add_child(UiKit.primary(UiKit.button("Take a job\nStart a new run", func() -> void: start_pressed.emit(heat), Vector2(420, 104), 26)))
+			box.add_child(tut)
+		box.add_child(UiKit.primary(UiKit.button("Take a job\nStart a new run", func() -> void: start_pressed.emit(heat), Vector2(420, 104), 26)))
 		# Payout details fold away behind a button; the hub stays scannable.
-		_rewards_label = UiKit.label("", 14, Palette.TEXT, true)
+		_rewards_label = UiKit.label("", 16, Palette.TEXT, true)
 		_rewards_label.custom_minimum_size.x = 600
 		var pays_box := UiKit.panel(_rewards_label)
 		pays_box.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		pays_box.visible = false
-		var pays := UiKit.button("What a run pays  ?", func() -> void: pass, Vector2(240, 44), 15)
+		var pays := UiKit.button("What a run pays  ?", func() -> void: pass, Vector2(240, 44), 16)
 		pays.pressed.connect(func() -> void:
 			pays_box.visible = not pays_box.visible
 			pays.text = "Hide payouts" if pays_box.visible else "What a run pays  ?")
-		v.add_child(pays)
-		v.add_child(pays_box)
-		_set_heat(heat)
-	if saved_run == "":
-		var d := Records.daily(db, Records.today())
-		var done: bool = str(profile.daily.get("last", "")) == d["date"]
-		var today_score := int(profile.daily.get("scores", {}).get(d["date"], 0))
-		var db_btn := UiKit.button(("Daily breach done · score %d\nA new one opens tomorrow" % today_score) if done else ("Daily breach: %s job · Heat %d\nDaily challenge run, one try" % [Lexicon.faction(d["job"]), d["heat"]]),
-			func() -> void: daily_pressed.emit(), Vector2(300, 68), 16)
-		db_btn.disabled = done
-		var w := Weekly.challenge(db, Weekly.this_week())
-		var ws := Weekly.state(profile, w["week"])
-		var wk_btn := UiKit.button(("Weekly challenge cleared · best %d
-Play again for score · new in %dd" % [int(ws["best"]), Weekly.days_left(Records.today())]) if ws["cleared"] \
-			else ("Weekly challenge: Heat %d
-%d rule changes · your cards, no upgrades" % [w["heat"], w["mods"].size()]),
-			func() -> void: weekly_pressed.emit(), Vector2(300, 68), 16)
-		var ch_row := UiKit.hbox(12)
-		db_btn.custom_minimum_size = Vector2(300, 68)
-		ch_row.add_child(db_btn)
-		ch_row.add_child(wk_btn)
-		v.add_child(ch_row)
-	v.add_child(_collector_hints())
-	outer.add_child(_tab_bar())
+		box.add_child(pays)
+		box.add_child(pays_box)
+	_set_heat(heat)
+	return _soft_box(box)
 
 
-## Bottom tab bar: the places you go between runs. Menu holds Settings, Rules and the tutorial.
+## Caches and Rig: the two places that grow your account, each with a line on what it does.
+func _main_actions() -> Control:
+	var row := UiKit.hbox(12)
+	var n := profile.packs_unopened
+	var cache_lines: Array[String] = []
+	cache_lines.append(("%d unopened · shards %d / %d" % [n, profile.pack_shards, Profile.shards_per_pack(db)]) if n > 0 else "None unopened. Runs, levels and login days pay more.")
+	cache_lines.append(PackArt.odds_line(db, profile, Packs.NORMAL))
+	var goal := _next_binder()
+	if goal != "":
+		cache_lines.append(goal)
+	var caches := _action("Open caches" if n > 0 else "Caches", str(n) if n > 0 else "", "\n".join(cache_lines), packs_pressed, n > 0, n > 0)
+	var rig_lines := "Permanent upgrades for every run, bought with crew rep. You have %d rep in all." % _total_rep()
+	var rig := _action("Rig upgrades", "", rig_lines, rig_pressed, true, false)
+	row.add_child(caches)
+	row.add_child(rig)
+	return row
+
+
+## One main-area button with its explanation under it, in a soft box half the row wide.
+func _action(text: String, badge: String, info: String, sig: Signal, enabled: bool, glow: bool) -> Control:
+	var col := UiKit.vbox(8, BoxContainer.ALIGNMENT_BEGIN)
+	var b := UiKit.button(text + ("\n%s ready" % badge if badge != "" else ""), func() -> void: sig.emit(), Vector2(0, 80), 20)
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.disabled = not enabled
+	if glow:
+		for state in ["font_color", "font_hover_color", "font_focus_color"]:
+			b.add_theme_color_override(state, Palette.UPGRADED)
+	col.add_child(b)
+	var l := UiKit.label(info, 16, Palette.TEXT_DIM, true)
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	l.custom_minimum_size.x = 0
+	col.add_child(l)
+	var box := _soft_box(col)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.size_flags_stretch_ratio = 1.0
+	return box
+
+
+## Daily breach and weekly challenge, side by side.
+func _challenges() -> Control:
+	var d := Records.daily(db, Records.today())
+	var done: bool = str(profile.daily.get("last", "")) == d["date"]
+	var today_score := int(profile.daily.get("scores", {}).get(d["date"], 0))
+	var db_btn := UiKit.button(("Daily breach done · score %d\nA new one opens tomorrow" % today_score) if done else ("Daily breach: %s job · Heat %d\nDaily challenge run, one try" % [Lexicon.faction(d["job"]), d["heat"]]),
+		func() -> void: daily_pressed.emit(), Vector2(300, 68), 16)
+	db_btn.disabled = done
+	var w := Weekly.challenge(db, Weekly.this_week())
+	var ws := Weekly.state(profile, w["week"])
+	var wk_btn := UiKit.button(("Weekly challenge cleared · best %d\nPlay again for score · new in %dd" % [int(ws["best"]), Weekly.days_left(Records.today())]) if ws["cleared"] \
+		else ("Weekly challenge: Heat %d\n%d rule changes · your cards, no upgrades" % [w["heat"], w["mods"].size()]),
+		func() -> void: weekly_pressed.emit(), Vector2(300, 68), 16)
+	var ch_row := UiKit.hbox(12)
+	for b in [db_btn, wk_btn]:
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		ch_row.add_child(b)
+	return ch_row
+
+
+## Resources and stats, tucked in a quiet box near the bottom.
+func _stats_box() -> Control:
+	var box := UiKit.vbox(8)
+	var s := profile.stats
+	box.add_child(UiKit.label("Runs %d   Wins %d   Best floor %d   Cards %d   %s %d" % [
+		int(s.get("runs", 0)), int(s.get("wins", 0)), int(s.get("best_floor", 0)),
+		profile.collection.owned_ids().size(), Palette.w("dust"), profile.collection.dust], 16, Palette.TEXT_DIM))
+	if Records.deep_unlocked(db, profile):
+		box.add_child(UiKit.label("Deep Stack open: keep going after the final Core  ·  Best depth %d" % int(s.get("best_depth", 0)), 16, Palette.UPGRADED))
+	var reps := UiKit.flow(12)
+	for f in Jobs.board(db):
+		var rep := UiKit.hbox(5)
+		rep.add_child(Symbols.badge(f, 24))
+		rep.add_child(UiKit.label("%s %d" % [Jobs.rep_name(db, f), profile.rep_of(f)], 16, Palette.faction(f)))
+		reps.add_child(rep)
+	box.add_child(reps)
+	return _soft_box(box)
+
+
+func _total_rep() -> int:
+	var t := 0
+	for f in Jobs.board(db):
+		t += profile.rep_of(f)
+	return t
+
+
+## Soft panel: translucent fill, rounded, faint border in the energy color.
+func _soft_box(child: Control) -> PanelContainer:
+	var p := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(Palette.PANEL_BG, 0.55)
+	sb.border_color = Color(Palette.ENERGY, 0.25)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(maxi(Palette.RADIUS, 12) + 6)
+	sb.set_content_margin_all(18)
+	p.add_theme_stylebox_override("panel", sb)
+	p.add_child(child)
+	return p
+
+
+## Bottom tab bar: the other places you go between runs (Caches and Rig sit in the main area). Menu holds Settings, Rules and the tutorial.
 func _tab_bar() -> Control:
 	var bar := UiKit.hbox(6)
 	var ready := profile.ready_to_flash(db).size()
 	var lib := CollectionScreen.library_progress(db, profile)
 	var tabs := [
-		["Caches", str(profile.packs_unopened) if profile.packs_unopened > 0 else "none", packs_pressed, profile.packs_unopened > 0, profile.packs_unopened > 0],
 		["Library", ("%d NEW" % profile.unseen.size()) if not profile.unseen.is_empty() else (("%d ready" % ready) if ready > 0 else "%d/%d" % lib), collection_pressed, true, not profile.unseen.is_empty() or ready > 0],
-		["Rig", "upgrades", rig_pressed, true, false],
 		["Records", "sets", records_pressed, true, false],
 		["Menu", "more", menu_pressed, true, false],
 	]
@@ -197,18 +268,6 @@ func _login_panel() -> Control:
 ## No finished tutorial and no runs yet: the hub offers the tutorial first.
 func first_time() -> bool:
 	return not bool(profile.settings.get("tutorial_done", false)) and int(profile.stats.get("runs", 0)) == 0
-
-
-## Collecting hints under the challenges: cache odds and the next binder (the buttons live in the tab bar).
-func _collector_hints() -> Control:
-	var lines: Array[String] = []
-	if profile.packs_unopened > 0:
-		lines.append("%d unopened %s · shards %d / %d" % [profile.packs_unopened, Palette.w("packs").to_lower(), profile.pack_shards, Profile.shards_per_pack(db)])
-	lines.append(PackArt.odds_line(db, profile, Packs.NORMAL))
-	var goal := _next_binder()
-	if goal != "":
-		lines.append(goal)
-	return UiKit.label("\n".join(lines), 14, Palette.UPGRADED, true)
 
 
 ## The unclaimed binder page closest to done: "Next binder: Burner rares 3 / 4".
@@ -283,14 +342,43 @@ func _rewards_text() -> String:
 
 
 func _set_heat(h: int) -> void:
-	heat = clampi(h, 0, mini(profile.max_heat, db.balance.get("heat", []).size()))
-	_heat_label.text = "Heat %d" % heat
 	var levels: Array = db.balance.get("heat", [])
-	var lines: Array[String] = []
-	for i in heat:
-		lines.append(str(levels[i]["desc"]))
-	_heat_desc.text = "Heat is difficulty. " + ("Heat 0 has no extra modifiers." if lines.is_empty() else " ".join(lines))
+	heat = clampi(h, 0, mini(profile.max_heat, levels.size()))
+	_heat_label.text = "Heat %d" % heat
+	if heat == 0:
+		_heat_desc.text = "Heat is difficulty. Heat 0 has no extra modifiers."
+	else:
+		_heat_desc.text = "Heat %d in total: %s.\nHeat %d adds: %s" % [heat, heat_total(db, heat), heat, str(levels[heat - 1]["desc"])]
 	if heat == profile.max_heat and heat < levels.size():
 		_heat_desc.text += "\nBreach the final Core to unlock Heat %d." % (heat + 1)
 	if _rewards_label != null:
 		_rewards_label.text = _rewards_text()
+
+
+## Every heat level up to `h` stacked: "enemies +73% HP and +73% damage, safehouses repair 30% less, ...".
+## HP/damage compound like RunState.heat_mult; the rest add up like RunState.heat_mod.
+static func heat_total(db_in: CardDB, h: int) -> String:
+	var levels: Array = db_in.balance.get("heat", [])
+	var hp := 1.0
+	var dmg := 1.0
+	var sums := {}
+	for i in mini(h, levels.size()):
+		var mods: Dictionary = levels[i].get("mods", {})
+		hp *= 1.0 + float(mods.get("enemy_hp_pct", 0.0))
+		dmg *= 1.0 + float(mods.get("enemy_dmg_pct", 0.0))
+		for k in mods:
+			if k not in ["enemy_hp_pct", "enemy_dmg_pct"]:
+				sums[k] = float(sums.get(k, 0.0)) + float(mods[k])
+	var bits: Array[String] = []
+	if hp != 1.0 or dmg != 1.0:
+		bits.append("enemies +%d%% HP and +%d%% damage" % [roundi((hp - 1.0) * 100.0), roundi((dmg - 1.0) * 100.0)])
+	if float(sums.get("enemy_might", 0.0)) > 0.0:
+		bits.append("enemy hits +%d" % int(sums["enemy_might"]))
+	if float(sums.get("rest_heal_pct", 0.0)) < 0.0:
+		bits.append("safehouses repair %d%% less" % roundi(-float(sums["rest_heal_pct"]) * 100.0))
+	var extra := int(sums.get("extra_targets", 0.0))
+	if extra > 0:
+		bits.append("jobs run against %d more crew%s" % [extra, "" if extra == 1 else "s"])
+	if float(sums.get("double_cross", 0.0)) > 0.0:
+		bits.append("your client double-crosses you in the last layer")
+	return ", ".join(bits)
