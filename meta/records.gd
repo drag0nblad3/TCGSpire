@@ -316,6 +316,12 @@ static func ice_entries(db: CardDB, p: Profile) -> Array:
 			for mv in d.get("moves", []):
 				var parts: Array = mv.get("effects", []).map(func(fx: Dictionary) -> String: return Effects.describe(fx).replace(" to ALL enemies", " to you and your daemons"))
 				e["moves"].append("%s: %s" % [mv.get("name", "?"), " ".join(parts)])
+			for r in BossRules.describe(d.get("rules", {})):
+				e["moves"].append("Rule, %s: %s" % [r[0], r[1]])
+			for ph in d.get("rules", {}).get("phases", []):
+				for mv in ph.get("moves", []):
+					var parts2: Array = mv.get("effects", []).map(func(fx: Dictionary) -> String: return Effects.describe(fx).replace(" to ALL enemies", " to you and your daemons"))
+					e["moves"].append("%s, %s: %s" % [ph.get("name", "Next phase"), mv.get("name", "?"), " ".join(parts2)])
 		out.append(e)
 	var rank := {"normal": 0, "elite": 1, "boss": 2}
 	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:

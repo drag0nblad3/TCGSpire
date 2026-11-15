@@ -40,6 +40,8 @@ var keywords: Array = []
 var text_override := ""
 ## Fields replaced when the card is upgraded: any of cost, effects, keywords, text.
 var upgrade: Dictionary = {}
+## Spores only: the enemy id this card hatches into if it is discarded unplayed at end of turn.
+var hatch := ""
 
 
 static func from_dict(d: Dictionary) -> CardDef:
@@ -56,6 +58,7 @@ static func from_dict(d: Dictionary) -> CardDef:
 	c.keywords = d.get("keywords", [])
 	c.text_override = str(d.get("text", ""))
 	c.upgrade = d.get("upgrade", {})
+	c.hatch = str(d.get("hatch", ""))
 	return c
 
 

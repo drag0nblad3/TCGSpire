@@ -15,6 +15,8 @@ const DESC := {
 	"summon": "Calls more sentries into the fight.",
 	"curse": "Uploads malware into your deck or hand.",
 	"interrupted": "Interrupted: one of your programs cancelled that part of its move. The rest of the move still happens.",
+	"restore": "Restore: brings its crashed twin back. Crash it first, or Interrupt Repair to stop it for good.",
+	"jammed": "Jammed: the intent is hidden this turn. Exposed on the enemy, or an Interrupt run on it, clears the jam.",
 	"stall": "Lagged: skips its next move. This intent waits until the turn after.",
 	"unknown": "Does something unusual. Tap the enemy to read the move.",
 }
@@ -32,7 +34,7 @@ static func kind_of(e: Dictionary) -> String:
 			return "purge" if to == "daemon" else "attack"
 		"ward":
 			return "ward"
-		"heal":
+		"heal", "devour", "revive":
 			return "heal"
 		"apply":
 			var debuff: bool = Statuses.DEFS.get(str(e.get("status", "")), {}).get("debuff", false)
@@ -58,6 +60,8 @@ static func matching(en: Fighter, kinds: Array) -> Array:
 
 static func of(c: Combat, en: Fighter) -> Array:
 	var out: Array = []
+	if BossRules.jammed(c, en):
+		return [{"kind": "jammed", "value": 0}]
 	if en.status("stall") > 0:
 		return [{"kind": "stall", "value": 0}]
 	var by_kind := {}
@@ -92,6 +96,11 @@ static func of(c: Combat, en: Fighter) -> Array:
 				item = {"kind": "debuff" if (debuff and not on_self) else "buff", "value": int(e.get("stacks", 1)), "status": str(e.get("status", ""))}
 			"spawn", "summon":
 				item = {"kind": "summon", "value": 0}
+			"devour":
+				var helpers: int = c.living(c.enemies).filter(func(f: Fighter) -> bool: return f != en and f.spawned).size()
+				item = {"kind": "heal", "value": int(e.get("amount", 0)) * helpers}
+			"revive":
+				item = {"kind": "restore", "value": 0}
 			"add_card":
 				item = {"kind": "curse", "value": maxi(int(e.get("amount", 1)), 1)}
 			_:
@@ -111,7 +120,9 @@ static func of(c: Combat, en: Fighter) -> Array:
 
 
 ## Plain-language lines for the inspect popup: "Move name: Deal 6 damage. Apply 1 Weaken."
-static func explain(en: Fighter) -> String:
+static func explain(en: Fighter, c: Combat = null) -> String:
+	if c != null and BossRules.jammed(c, en):
+		return "Signal jammed: the move is hidden this turn. Exposed on it, or an Interrupt run on it, clears the jam."
 	var mv := en.current_move()
 	var parts: Array[String] = []
 	for e in mv.get("effects", []):
