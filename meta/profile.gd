@@ -12,7 +12,7 @@ extends RefCounted
 ##   rig       -> rep buys ranks of that faction's rig upgrades (permanent perks)
 ##   firmware  -> enough copies + rep (dust for Street/starter cards) permanently upgrades a card
 
-const SAVE_VERSION := 10
+const SAVE_VERSION := 11
 const DEFAULT_PATH := "user://profile.json"
 
 var collection := Collection.new()
@@ -314,10 +314,10 @@ func rig_cost(db: CardDB, id: String) -> int:
 	return rank_cost(db, id, int(rig.get(id, 0)) + 1)
 
 
-## Price of rank k (1-based): base cost x balance.rig_rank_cost[k-1].
+## Price of rank k (1-based): the perk's "cost" lists the rep price of each rank.
 static func rank_cost(db: CardDB, id: String, k: int) -> int:
-	var mults: Array = db.balance.get("rig_rank_cost", [1, 2, 3])
-	return int(db.perks.get(id, {}).get("cost", 0)) * int(mults[clampi(k - 1, 0, mults.size() - 1)])
+	var costs: Array = db.perks.get(id, {}).get("cost", [])
+	return 0 if costs.is_empty() else int(costs[clampi(k - 1, 0, costs.size() - 1)])
 
 
 func can_buy_rig(db: CardDB, id: String) -> bool:
@@ -681,6 +681,7 @@ static func from_dict(d: Dictionary, db: CardDB = null) -> Profile:
 
 static func _migrate(d: Dictionary, db: CardDB) -> Dictionary:
 	var v := int(d.get("version", 1))
+	var from := v
 	if v < 2:
 		# v2 added progression. Credit old players some XP for runs already played.
 		d["xp"] = int(d.get("stats", {}).get("runs", 0)) * 20
@@ -730,8 +731,23 @@ static func _migrate(d: Dictionary, db: CardDB) -> Dictionary:
 		# v10 added the ICE database (per-enemy fight counts); it starts empty.
 		d["ice"] = d.get("ice", {})
 		v = 10
+	if v < 11:
+		# v11 reshaped rig prices (pricier first rank, cheaper later ones). Ranks bought
+		# at older prices keep that refund value; v5 saves were already adjusted above.
+		if from != 5 and not d.get("rig", {}).is_empty():
+			_adjust_v10_rig_refunds(d, db if db != null else CardDB.shared())
+		v = 11
 	d["version"] = v
 	return d
+
+
+## Rig base prices before v11 (rank k cost base x a multiplier); capstones are listed apart.
+const _LEGACY_RIG_BASE := {
+	"chassis": 15, "cred_stash": 10, "cooling_loop": 15, "fence_network": 15, "boot_firewall": 20,
+	"mod_cache": 20, "wider_scan": 25, "seed_subroutine": 25, "repair_drones": 20, "salvage_rights": 15,
+	"signal_jammer": 25, "contract_killer": 10, "signal_override": 10, "reward_reroute": 15,
+	"field_clinic": 20, "ghost_routing": 20, "wider_menu": 20, "hardpoint": 15, "pirate_coupons": 15,
+}
 
 
 ## Existing v5 ranks carry their discounted refund value. New ranks use v6 prices.
@@ -747,10 +763,26 @@ static func _adjust_v5_rig_refunds(d: Dictionary, db: CardDB) -> void:
 		if perk.get("scope", "") != "rig":
 			continue
 		var faction: String = perk["faction"]
-		var old_base := int(v5_capstones.get(id, perk["cost"]))
+		var old_base := int(v5_capstones.get(id, _LEGACY_RIG_BASE.get(id, 0)))
 		var ranks := clampi(int(d["rig"][id]), 0, mini(int(perk["max_rank"]), v5_multipliers.size()))
 		for rank in range(1, ranks + 1):
 			var old_price := old_base * int(v5_multipliers[rank - 1])
+			adjustment[faction] = int(adjustment.get(faction, 0)) + rank_cost(db, id, rank) - old_price
+	d["rig_refund_adjustment"] = adjustment
+
+
+## v6-v10 prices were base x [2, 6, 12]; record the refund difference to today's prices.
+static func _adjust_v10_rig_refunds(d: Dictionary, db: CardDB) -> void:
+	var adjustment: Dictionary = d.get("rig_refund_adjustment", {}).duplicate()
+	var v10_mults := [2, 6, 12]
+	for id in d["rig"]:
+		var perk: Dictionary = db.perks.get(id, {})
+		if perk.get("scope", "") != "rig" or not _LEGACY_RIG_BASE.has(id):
+			continue
+		var faction: String = perk["faction"]
+		var ranks := clampi(int(d["rig"][id]), 0, mini(int(perk["max_rank"]), v10_mults.size()))
+		for rank in range(1, ranks + 1):
+			var old_price := int(_LEGACY_RIG_BASE[id]) * int(v10_mults[rank - 1])
 			adjustment[faction] = int(adjustment.get(faction, 0)) + rank_cost(db, id, rank) - old_price
 	d["rig_refund_adjustment"] = adjustment
 
