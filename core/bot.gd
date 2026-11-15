@@ -194,6 +194,18 @@ static func _effect_value(c: Combat, e: Dictionary, target: Fighter, ward: int) 
 				if extra > 0:
 					s += _self_status_value(c, st, extra) if f == c.player else _enemy_status_value(c, f, st, extra)
 			return s
+		"fuel":
+			# Taking Boost off a hitter is worth more the harder it hits.
+			var s3 := 0.0
+			var st4 := str(e.get("status", "might"))
+			var need2 := maxi(int(e.get("stacks", 1)), 1)
+			for f in (foes if to == "all_enemies" else ([target] if target != null else [])):
+				if f.status(st4) < need2:
+					continue
+				s3 += need2 * (1.5 + c.intent_damage(f) * 0.1 if st4 == "might" else 1.0)
+				for fx in e.get("effects", []):
+					s3 += _effect_value(c, fx, f, ward)
+			return s3
 		"interrupt":
 			var s2 := 0.0
 			for f in (foes if to == "all_enemies" else ([target] if target != null else [])):

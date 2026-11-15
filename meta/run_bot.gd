@@ -297,6 +297,8 @@ static func card_value(c: CardDef, upgraded: bool = false) -> float:
 				v += 3.5 * aoe  # bosses stack Boost and Firewall; wiping them is worth a hit
 			"interrupt":
 				v += 2.5 * aoe
+			"fuel":
+				v += 2.0 * aoe  # many elites and bosses stack Boost
 			"sacrifice":
 				v += 1.5 * float(e.get("mult", 1.0))  # dead without a daemon up
 	if c.get_effects(upgraded).any(func(e: Dictionary) -> bool: return str(e.get("op", "")) == "sacrifice"):

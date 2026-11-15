@@ -638,6 +638,10 @@ func _play_events(played: CardView) -> Array:
 				if v != null:
 					_float_text(v, "Interrupted", Palette.UPGRADED)
 				await _wait(0.1)
+			"fuel":
+				if v != null:
+					_float_text(v, "Fueled", Palette.UPGRADED)
+				await _wait(0.1)
 			"immune":
 				if v != null:
 					v.firewall_flash = 1.0
