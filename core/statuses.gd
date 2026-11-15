@@ -10,7 +10,7 @@ const DEFS := {
 	"might": {"debuff": false, "desc": "Attacks deal +1 damage per stack."},
 	"overcharge": {"debuff": true, "desc": "Start next turn with 1 less RAM per stack."},
 	"surge": {"debuff": false, "desc": "Start next turn with 1 more RAM per stack."},
-	"thorns": {"debuff": false, "desc": "When attacked, deal damage equal to stacks back to the attacker."},
+	"thorns": {"debuff": false, "desc": "When attacked, deal damage equal to stacks back to the attacker. Loses 1 stack at end of turn."},
 	"regen": {"debuff": false, "desc": "Repair HP equal to stacks at end of turn, then lose half the stacks (rounded up). On a daemon it wins back turns."},
 	"fortify": {"debuff": false, "desc": "Your Firewall stays up at the start of your turn."},
 	"frail": {"debuff": true, "desc": "Gain 25% less Firewall. Lose 1 stack at end of turn."},
@@ -18,7 +18,7 @@ const DEFS := {
 	"stall": {"debuff": true, "desc": "Skips its next move, and that intent waits a turn. On or off: Lagging an enemy that is already Lagged does nothing."},
 }
 
-const DECAYING := ["brittle", "weaken", "frail"]
+const DECAYING := ["brittle", "weaken", "frail", "thorns"]
 
 
 static func debuffs(f: Fighter) -> Array:
