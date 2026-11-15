@@ -93,6 +93,17 @@
    }
   }
  },
+ "nudge": {
+  "partner": 3.0,
+  "boss": 1.5,
+  "strategy": 1.5,
+  "strategy_min_cards": 3,
+  "offer_share": 0.5,
+  "implant_fit": 2.0,
+  "implant_boss": 1.5,
+  "fit_min_cards": 3,
+  "cap": 3.0
+ },
  "reward": {
   "choices": 3,
   "shop_count": 5,

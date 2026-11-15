@@ -459,3 +459,101 @@ func test_act_start_ease_reaches_enemies_and_stacks_with_act_mult() -> void:
 	var c2 := r.start_combat(enc)
 	for i in c.enemies.size():
 		check(c.enemies[i].max_hp < c2.enemies[i].max_hp, "eased enemy %d has less hp" % i)
+
+
+# --- hidden offer nudge (meta/offer_nudge.gd) -----------------------------------
+
+func _nudge_run() -> RunState:
+	var run := _run(7)
+	run.banned = []
+	run.deck = run.deck.filter(func(c: CardInstance) -> bool: return c.def.rarity == "starter")
+	return run
+
+
+func test_nudge_weights_missing_handshake_partner() -> void:
+	var run := _nudge_run()
+	var cfg: Dictionary = db.balance["nudge"]
+	run.add_card("bramble_lash")
+	var w := OfferNudge.card_weigher(run)
+	check(float(w.call("bone_saw")) >= float(cfg["partner"]) - 0.001, "partner of a deck card is weighted")
+	eq(float(w.call("bramble_lash")), 1.0, "a card already in the deck gets no partner weight")
+	run.add_card("bone_saw")
+	eq(float(OfferNudge.card_weigher(run).call("bone_saw")), 1.0, "partner already owned: no weight")
+
+
+func test_nudge_boss_answers_and_cap() -> void:
+	var run := _nudge_run()
+	run.map.nodes.back()["encounter"] = "monarch"  # Formation: hit-all and Virus answer it
+	var wants := OfferNudge.boss_wants(run)
+	check(wants.has("aoe") and wants.has("status:burn"), "formation boss wants hit-all and Virus")
+	var aoe: Array = db.ids_where(func(c: CardDef) -> bool: return OfferNudge.card_tags(c).has("aoe") and OfferNudge.partners(c).is_empty())
+	check(not aoe.is_empty(), "some hit-all program exists")
+	var w := OfferNudge.card_weigher(run)
+	eq(float(w.call(aoe[0])), float(db.balance["nudge"]["boss"]), "hit-all program weighted for formation boss")
+	run.map.nodes.back()["encounter"] = "tide_a2b"
+	check(OfferNudge.boss_wants(run).has("status:burn"), "boss taking extra Virus damage wants Virus")
+	for id in db.ids_where(func(c: CardDef) -> bool: return true):
+		check(float(w.call(id)) <= float(db.balance["nudge"]["cap"]) + 0.001, "%s under the cap" % id)
+
+
+func test_nudge_implants_that_fit_the_deck() -> void:
+	var run := _nudge_run()
+	eq(OfferNudge.talisman_weight(run, "war_drum", OfferNudge.deck_tags(run), {}), 1.0, "daemon implant, no daemons")
+	var units: Array = db.ids_where(func(c: CardDef) -> bool: return c.type == "unit")
+	for i in int(db.balance["nudge"]["fit_min_cards"]):
+		run.add_card(units[i % units.size()])
+	eq(OfferNudge.talisman_weight(run, "war_drum", OfferNudge.deck_tags(run), {}), float(db.balance["nudge"]["implant_fit"]), "daemon implant fits a daemon deck")
+	eq(OfferNudge.talisman_weight(run, "copper_ring", OfferNudge.deck_tags(run), {}), 1.0, "flat implant never nudged")
+	eq(OfferNudge.talisman_weight(run, "ember_charm", {}, {"status:burn": true}), float(db.balance["nudge"]["implant_boss"]), "Virus implant answers a Virus-weak boss")
+
+
+func test_nudge_flat_weights_keep_old_rolls_and_rarity_odds() -> void:
+	var pool := ["a", "b", "c", "d"]
+	var r1 := GameRng.new(3)
+	var r2 := GameRng.new(3)
+	for i in 20:
+		eq(OfferNudge.pick(r1, pool, func(_id: String) -> float: return 1.0), r2.pick(pool), "flat weights pick like before")
+	# Partner weighting raises the partner's share but leaves the rarity split alone.
+	var run := _nudge_run()
+	run.add_card("bramble_lash")
+	var cfg: Dictionary = db.balance["reward"]["weights"]["normal"]
+	var counts := [{}, {}]
+	var hits := [0, 0]
+	for s in 3000:
+		for k in 2:
+			var weigh := OfferNudge.card_weigher(run) if k == 1 else Callable()
+			var id := Packs.roll_card(db, GameRng.new(s * 2 + 1), cfg, [], [], "", weigh)
+			var rar := db.card(id).rarity
+			counts[k][rar] = int(counts[k].get(rar, 0)) + 1
+			if id == "bone_saw":
+				hits[k] += 1
+	for rar in counts[0]:
+		eq(int(counts[1].get(rar, 0)), int(counts[0][rar]), "%s share unchanged" % rar)
+	check(hits[1] > hits[0] * 2, "partner shows up more often (%d vs %d)" % [hits[1], hits[0]])
+
+
+func test_nudge_strategy_theme() -> void:
+	var run := _nudge_run()
+	var burners: Array = db.ids_where(func(c: CardDef) -> bool: return OfferNudge.card_tags(c).has("status:burn") and OfferNudge.partners(c).is_empty())
+	var other: String = burners.pop_back()
+	eq(OfferNudge.strategy_themes(run).has("status:burn"), false, "starter deck has no Virus theme")
+	for i in int(db.balance["nudge"]["strategy_min_cards"]):
+		run.add_card(burners[i])
+	check(OfferNudge.strategy_themes(run).has("status:burn"), "three Virus programs make a theme")
+	check(float(OfferNudge.card_weigher(run).call(other)) >= float(db.balance["nudge"]["strategy"]) - 0.001, "another Virus program is weighted")
+
+
+func test_nudge_limited_to_half_the_offer_rounded_up() -> void:
+	eq(OfferNudge.limit(db, 3), 2, "3 slots")
+	eq(OfferNudge.limit(db, 5), 3, "5 slots")
+	eq(OfferNudge.limit(db, 2), 1, "2 slots")
+	eq(OfferNudge.limit(db, 1), 1, "1 slot")
+	var commons: Array = Packs._pool(db, "common")
+	var hot := commons.slice(0, 3)
+	var weigh := func(id: String) -> float: return 1000000.0 if id in hot else 1.0
+	var full := 0
+	for s in 200:
+		var offer := Packs.reward_choices(db, GameRng.new(s), "normal", 0, [], [], weigh)
+		if offer.size() == 3 and offer.all(func(id: String) -> bool: return id in hot):
+			full += 1
+	check(full < 10, "the third slot rolls at plain odds (%d/200 all boosted)" % full)
