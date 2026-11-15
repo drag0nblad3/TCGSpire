@@ -164,17 +164,48 @@ static func best_picks(db: CardDB, profile: Profile, job: String, targets: Array
 			pool.append(id)
 	var scale := db.firmware_scale()
 	var val := func(id: String) -> float: return card_value(db.card(id)) * float(scale[mini(profile.firmware_level(id), scale.size() - 1)])
-	pool.sort_custom(func(a: String, b: String) -> bool: return val.call(a) > val.call(b))
 	var out: Array = []
-	for id in pool:
-		if out.size() < Jobs.required(db, job, n) and db.card(id).is_of(job):
-			out.append(id)
-	for id in pool:
-		if out.size() >= n:
+	var base: Array = profile.base_deck(db).map(func(o: String) -> CardDef: return db.card(o))
+	# Greedy, re-scored after each pick: daemons crowd each other out (fit_mult).
+	var pick_best := func(ok: Callable) -> String:
+		var best := ""
+		var best_v := -INF
+		for id in pool:
+			if out.count(id) >= pool.count(id) or not ok.call(id):
+				continue
+			var v: float = val.call(id) * fit_mult(db.card(id), base + out.map(func(o: String) -> CardDef: return db.card(o)))
+			if v > best_v:
+				best_v = v
+				best = id
+		return best
+	while out.size() < mini(Jobs.required(db, job, n), n):
+		var id: String = pick_best.call(func(k: String) -> bool: return db.card(k).is_of(job))
+		if id == "":
 			break
-		if out.count(id) < pool.count(id) and (db.card(id).is_of(job) or Jobs.required(db, job, out.size() + 1) <= _theirs(db, job, out)):
-			out.append(id)
+		out.append(id)
+	while out.size() < n:
+		var id: String = pick_best.call(func(k: String) -> bool: return db.card(k).is_of(job) or Jobs.required(db, job, out.size() + 1) <= _theirs(db, job, out))
+		if id == "":
+			break
+		out.append(id)
 	return out
+
+
+## How well a card fits next to `others`: daemons share a few board slots and a second
+## copy of one only tops it up, so each extra daemon is worth less; a deck short on damage
+## wants attacks. Static card_value can't see any of that on its own.
+static func fit_mult(c: CardDef, others: Array) -> float:
+	var m := 1.0
+	if c.type == "unit":
+		var units := others.filter(func(o: CardDef) -> bool: return o.type == "unit").size()
+		if others.any(func(o: CardDef) -> bool: return o.id == c.id):
+			m *= 0.55
+		if units >= 2:
+			m *= pow(0.7, units - 1)
+	var hits := func(k: CardDef) -> bool: return k.type == "attack" or k.effects.any(func(e: Dictionary) -> bool: return str(e.get("op", "")).begins_with("damage"))
+	if hits.call(c) and others.filter(hits).size() < 4:
+		m *= 1.3
+	return m
 
 
 static func _theirs(db: CardDB, job: String, picks: Array) -> int:
@@ -241,7 +272,7 @@ static func card_value(c: CardDef, upgraded: bool = false) -> float:
 			"apply":
 				var st := str(e.get("status", ""))
 				var k := float(e.get("stacks", 1))
-				v += k * ({"burn": 2.2, "brittle": 2.5, "weaken": 2.0, "might": 3.0, "regen": 2.0, "thorns": 1.8, "fortify": 8.0, "charge": 1.6, "frail": 0.8, "overcharge": -3.0, "stall": 6.0}.get(st, 1.5)) * aoe
+				v += k * ({"burn": 2.2, "brittle": 2.5, "weaken": 2.0, "might": 3.0, "regen": 2.0, "thorns": 1.8, "fortify": 8.0, "charge": 1.6, "frail": 0.8, "overcharge": -3.0, "surge": 4.0, "stall": 6.0}.get(st, 1.5)) * aoe
 			"draw":
 				v += n * 3.5
 			"energy":
@@ -290,7 +321,8 @@ static func _deck_bar(run: RunState) -> float:
 	var n := 0
 	for card in run.deck:
 		if card.def.rarity != "curse":
-			total += _inst_value(card)
+			var rest := run.deck.filter(func(k: CardInstance) -> bool: return k != card).map(func(k: CardInstance) -> CardDef: return k.def)
+			total += _inst_value(card) * fit_mult(card.def, rest)
 			n += 1
 	var bar := total / maxf(n, 1)
 	# Bigger decks dilute good draws: be pickier as the deck grows.
@@ -301,7 +333,7 @@ static func _pick_reward(run: RunState, ids: Array) -> String:
 	var best := ""
 	var best_v := 0.0
 	for id in ids:
-		var v := card_value(run.db.card(id)) * (1.1 if run.db.card(id).is_of(run.job) else 1.0)
+		var v := card_value(run.db.card(id)) * (1.1 if run.db.card(id).is_of(run.job) else 1.0) * fit_mult(run.db.card(id), run.deck.map(func(k: CardInstance) -> CardDef: return k.def))
 		if v > best_v:
 			best_v = v
 			best = id

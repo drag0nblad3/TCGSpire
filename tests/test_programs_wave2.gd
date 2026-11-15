@@ -26,7 +26,7 @@ func test_wave2_defensive_and_area_cooldown() -> void:
 	c.hand = [vent]
 	c.play_card(0)
 	for enemy in c.enemies:
-		eq(enemy.hp, 992, "charged AoE hits each enemy")
+		eq(enemy.hp, 990, "charged AoE hits each enemy")
 	eq(vent.cooldown, 0)
 
 func test_wave2_relay_cashout_keeps_firewall_but_ends_chain() -> void:

@@ -87,6 +87,17 @@ func test_overcharge_costs_next_turn_energy() -> void:
 	eq(c.player.status("overcharge"), 0, "cleared")
 
 
+func test_turbo_adds_next_turn_energy_once() -> void:
+	c.energy = 2
+	c.play_card(give(c, "blaze_heart"))
+	eq(c.player.status("surge"), 1)
+	c._start_player_turn()
+	eq(c.energy, 4, "3 + 1 Turbo")
+	eq(c.player.status("surge"), 0, "next turn only")
+	c._start_player_turn()
+	eq(c.energy, 3)
+
+
 func test_damage_per_ward() -> void:
 	c.player.ward = 9
 	c.play_card(give(c, "riptide"), 0)

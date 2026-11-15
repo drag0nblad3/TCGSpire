@@ -47,7 +47,10 @@
   "drone_swarm": 2,
   "rivet_gun": 2,
   "jam_signal": 2,
-  "shriek": 2
+  "shriek": 2,
+  "null_pointer": 1,
+  "drone_reel": 1,
+  "dead_air": 1
  },
  "pack": {
   "size": 4,

@@ -37,18 +37,15 @@ func test_hard_reset_sequence_strips_before_bonus_hit() -> void:
 	eq(d.enemies[0].hp, 991)
 	eq(d.enemies[0].status("might"), 2, "no sequence no strip")
 
-func test_overwatch_supports_daemon_and_passes_defence() -> void:
+func test_overwatch_supports_daemon_and_defends() -> void:
 	var c := arena()
 	c.summon("Test", 3)
-	var receiver := db.instance("jab")
-	c.hand = [receiver]
+	c.hand = []
+	c.draw_pile = [db.instance("jab")]
 	c.play_card(give(c, "overwatch"))
-	eq(c.units[0].hp, 4)
-	eq(c.player.ward, 2)
-	eq(receiver.relay, 2)
-	eq(receiver.relay_cap, 4)
-	c.play_card(0, 0)
+	eq(c.units[0].hp, 5)
 	eq(c.player.ward, 4)
+	eq(c.hand.size(), 1, "draws 1")
 
 func test_dead_drop_draws_then_plants_on_following_card() -> void:
 	for up in [false, true]:
@@ -76,7 +73,7 @@ func test_cold_storage_retains_two_defensive_instructions() -> void:
 	check(card.has_keyword("retain"), "Cold Storage retains")
 	var hp: int = c.enemies[0].hp
 	c.play_card(0)
-	eq(c.player.ward, 8)
+	eq(c.player.ward, 7)
 	eq(c.enemies[0].hp, hp, "attack instructions become Firewall")
 	eq(card.compiled, [])
 

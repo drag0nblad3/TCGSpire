@@ -138,8 +138,13 @@ static func _dump_value(c: Combat, card: CardInstance, n: int) -> Array:
 				v += 1.5
 		elif k.has_keyword("unplayable"):
 			v += 1.5
+		elif k.cost() > left and not k.has_keyword("retain"):
+			v -= 0.5  # can't be played this turn and would be discarded at turn end anyway
+		elif k.has_keyword("retain") or k.effects().any(func(fx: Dictionary) -> bool: return fx.get("op") == "dump"):
+			v -= 2.5 + 0.5 * k.cost()
 		else:
-			v -= 2.0 if k.cost() > left else 2.5 + 0.5 * k.cost()
+			# A card we could still play this turn: dumping it throws away that play.
+			v -= maxf(score(c, k) * maxf(float(k.cost()), 0.6), 2.5)
 		v += k.cooldown * 0.1
 	return [v, count]
 
@@ -369,7 +374,13 @@ static func _enemy_status_value(c: Combat, f: Fighter, st: String, stacks: float
 static func _self_status_value(c: Combat, st: String, stacks: float) -> float:
 	match st:
 		"might":
-			return stacks * 2.5
+			# Boost lasts the fight: worth +1 on every attack hit still to come, not one swing.
+			var hits := 0
+			for pile in [c.hand, c.draw_pile, c.discard_pile]:
+				for k: CardInstance in pile:
+					if k.def.type == "attack":
+						hits += 1
+			return stacks * clampf(hits * 0.8, 2.5, 10.0)
 		"regen":
 			# Repairs damage taken later this fight too, not only what is missing now.
 			return minf(stacks * (stacks + 1.0) / 2.0, c.player.max_hp - c.player.hp + c.incoming_damage()) * 0.8
@@ -386,4 +397,6 @@ static func _self_status_value(c: Combat, st: String, stacks: float) -> float:
 			return stacks * 1.8
 		"overcharge":
 			return -3.0 * stacks
+		"surge":
+			return 4.0 * stacks
 	return stacks * 1.5
