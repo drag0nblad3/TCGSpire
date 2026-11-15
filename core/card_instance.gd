@@ -22,6 +22,10 @@ var compiled: Array = []
 var payload := 0
 var relay := 0
 var relay_cap := 0
+## Evolve: runs of this copy so far this job (kept by RunState, survives fights).
+var uses := 0
+## Combat copies point back at the run deck card they came from (Combat.sync_origins).
+var origin: CardInstance = null
 
 ## Numbers firmware scales, per op. Draw/RAM/copies stay as they are.
 const FW_KEYS := {
@@ -51,7 +55,25 @@ func base_cost() -> int:
 
 
 func cost() -> int:
+	if is_x():
+		return 0
 	return CardMods.cost(mod, base_cost()) if not mod.is_empty() else base_cost()
+
+
+## X cost: the card spends all your RAM (Combat.x_spent).
+func is_x() -> bool:
+	return def.is_x(upgraded)
+
+
+func cost_label() -> String:
+	return "X" if is_x() else str(cost())
+
+
+## Runs left before this copy evolves, or -1 if it never does.
+func evolve_left() -> int:
+	if def.evolve.is_empty():
+		return -1
+	return maxi(int(def.evolve.get("after", 20)) - uses, 0)
 
 
 func effects() -> Array:
@@ -104,6 +126,11 @@ static func scaled(effs: Array, m: float) -> Array:
 			if d.has(k) and (d[k] is int or d[k] is float) and float(d[k]) > 0.0:
 				var v: float = float(d[k]) * m
 				d[k] = v if k == "mult" else maxi(int(ceil(v - 0.001)) if float(d[k]) >= 4.0 else int(floor(v + 0.5)), int(d[k]))
+		# A "per" number (6X Firewall) scales its step the same way.
+		if d.has("per_mult") and Effects.per_key(d) in FW_KEYS.get(str(d.get("op", "")), []):
+			var pm: float = float(d["per_mult"])
+			var pv: float = pm * m
+			d["per_mult"] = maxi(int(ceil(pv - 0.001)) if pm >= 4.0 else int(floor(pv + 0.5)), int(pm)) if pm >= 1.0 else pm
 		out.append(d)
 	return out
 
@@ -165,6 +192,8 @@ func text() -> String:
 		state.append("Compiled: %s." % ", ".join(compiled.map(func(t: String) -> String: return Lexicon.type_name(t))))
 	if payload > 0:
 		state.append("Planted: gain %d Firewall when drawn; consumed." % payload)
+	if evolve_left() >= 0:
+		state.append("Evolve: %d/%d runs." % [uses, int(def.evolve.get("after", 20))])
 	if relay > 0:
 		if effects().any(func(e: Dictionary) -> bool: return e.get("op") == "relay_cashout"):
 			state.append("Relay %d: gain Firewall, then consume for bonus damage." % relay)
@@ -193,6 +222,7 @@ func _generated_text() -> String:
 		parts.append(Effects.describe(e))
 	for k in keywords():
 		parts.append(Lexicon.keyword(str(k)) + ".")
+	parts.append_array(def.extra_text(upgraded))
 	return " ".join(parts)
 
 
@@ -213,4 +243,5 @@ func copy() -> CardInstance:
 	c.payload = payload
 	c.relay = relay
 	c.relay_cap = relay_cap
+	c.uses = uses
 	return c

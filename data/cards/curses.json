@@ -1,4 +1,5 @@
 [
 {"id":"doubt","name":"Adware","faction":"neutral","rarity":"curse","type":"skill","cost":0,"keywords":["unplayable"],"effects":[]},
-{"id":"lingering_chill","name":"Memory Leak","faction":"neutral","rarity":"curse","type":"skill","cost":0,"keywords":["unplayable","ethereal"],"effects":[]}
+{"id":"lingering_chill","name":"Memory Leak","faction":"neutral","rarity":"curse","type":"skill","cost":0,"keywords":["unplayable","ethereal"],"effects":[]},
+{"id":"spore_pod","name":"Spore Pod","faction":"neutral","rarity":"curse","type":"skill","cost":1,"keywords":["exhaust"],"effects":[],"hatch":"vat_grub","text":"Wipe. If this is discarded unplayed at the end of your turn, it is wiped and hatches into a Vat Grub."}
 ]

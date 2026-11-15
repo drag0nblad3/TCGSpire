@@ -17,10 +17,15 @@ var draw_pile: Array = []
 var hand: Array = []
 var discard_pile: Array = []
 var exhaust_pile: Array = []
-var _played_once_per_turn: Array[CardInstance] = []
 var played_ids: Array = []
 var played_types: Array = []
 var energy := 0
+## X cost: the RAM the program being run spent (0 for fixed-cost programs).
+var x_spent := 0
+## Cards the last Dump discarded (effects with "per": "dumped").
+var last_dumped := 0
+## Cards the player picked for this play's Dump / recover (others are picked for them).
+var picks: Array = []
 var max_energy := 3
 var hand_size := 5
 var board_slots := 3
@@ -60,6 +65,8 @@ var enemy_dmg_mult := 1.0
 var daemon_hp := 0
 ## Multiplier on a daemon program's base HP (implant "daemon": {"hp_mult": x}), applied before daemon_hp.
 var daemon_hp_mult := 1.0
+## Shared HP totals by pool name (BossRules "pool").
+var pools: Dictionary = {}
 
 
 ## deck: Array of CardInstance (copied, not mutated). hp < 0 means full HP.
@@ -108,7 +115,11 @@ static func create(db_in: CardDB, deck: Array, encounter_id: String, rng_in: Gam
 	c.enemy_hp_mult = float(opts.get("enemy_hp_mult", 1.0)) * float(act_hp_mult.get(str(int(enc.get("act", 1))), 1.0))
 	for eid in enc.get("enemies", []):
 		c.enemies.append(c._make_enemy(str(eid)))
-	c.draw_pile = deck.map(func(card: CardInstance) -> CardInstance: return card.copy())
+	BossRules.link(c)
+	c.draw_pile = deck.map(func(card: CardInstance) -> CardInstance:
+		var cp := card.copy()
+		cp.origin = card
+		return cp)
 	for card in c.draw_pile:
 		card.reset_combat()
 	return c
@@ -132,6 +143,7 @@ func _make_enemy(eid: String) -> Fighter:
 	f.def_id = eid
 	f.dmg_mult = enemy_dmg_mult
 	f.moves = d.get("moves", [])
+	BossRules.setup(f, d)
 	if d.get("random_start", false) and not f.moves.is_empty():
 		f.move_idx = rng.range_i(0, f.moves.size() - 1)
 	return f
@@ -153,13 +165,13 @@ func start() -> void:
 func _start_player_turn() -> void:
 	turn += 1
 	phase = Phase.PLAYER
-	_played_once_per_turn.clear()
 	played_ids.clear()
 	played_types.clear()
 	if player.status("fortify") <= 0 and rule_sum("keep_ward") <= 0:
 		player.ward = ceili(player.ward * ward_retention)
 	energy = maxi(max_energy - player.status("overcharge"), 0)
 	player.statuses.erase("overcharge")
+	BossRules.on_player_turn(self)
 	emit("turn_start", {"turn": turn, "ward": player.ward})
 	# Daemons run down: HP is the countdown, so a daemon with N HP lasts N rounds if left alone.
 	for u in units.duplicate():
@@ -189,15 +201,43 @@ func can_play(hand_idx: int) -> bool:
 	if phase != Phase.PLAYER or hand_idx < 0 or hand_idx >= hand.size():
 		return false
 	var card: CardInstance = hand[hand_idx]
-	if card.has_keyword("unplayable") or card.cost() > energy or was_played_this_turn(card):
+	if card.has_keyword("unplayable") or card.cost() > energy:
 		return false
 	if units.size() >= board_slots and _summons(card) and not _refreshes(card):
+		return false
+	# Dump N is a cost: you need N other cards in hand.
+	if dump_need(card) > hand.size() - 1:
 		return false
 	return true
 
 
-func was_played_this_turn(card: CardInstance) -> bool:
-	return card in _played_once_per_turn
+## How many other cards this program must Dump (0 for none or "Dump your hand").
+func dump_need(card: CardInstance) -> int:
+	var n := 0
+	for e in card.effects():
+		if e.get("op", "") == "dump":
+			n += int(e.get("amount", 0))
+	return n
+
+
+## What a Dump or recover on this card would ask the player to pick from:
+## {"kind": "dump"|"recover", "amount": n, "cards": [...]} or {} when there is no choice to make.
+## Picks are optional: play_card fills any it doesn't get (see dump/recover).
+func pick_request(hand_idx: int) -> Dictionary:
+	if hand_idx < 0 or hand_idx >= hand.size():
+		return {}
+	var card: CardInstance = hand[hand_idx]
+	for e in card.effects():
+		var op := str(e.get("op", ""))
+		if op == "dump" and int(e.get("amount", 0)) > 0:
+			var others := hand.filter(func(k: CardInstance) -> bool: return k != card)
+			if others.size() > int(e["amount"]):
+				return {"kind": "dump", "amount": int(e["amount"]), "cards": others}
+		elif op == "recover":
+			var pool := recover_pool(str(e.get("from", "discard")))
+			if pool.size() > maxi(int(e.get("amount", 1)), 1):
+				return {"kind": "recover", "amount": maxi(int(e.get("amount", 1)), 1), "cards": pool, "from": str(e.get("from", "discard")), "into": str(e.get("into", "draw"))}
+	return {}
 
 
 func needs_target(card: CardInstance) -> bool:
@@ -210,7 +250,8 @@ func needs_ally(card: CardInstance) -> bool:
 
 ## target_idx is an index into `enemies`; -1 picks the first living enemy.
 ## For "ally" cards it indexes [you] + your daemons (0 or -1 = you).
-func play_card(hand_idx: int, target_idx: int = -1) -> bool:
+## chosen: cards the player picked for a Dump (from hand) or recover (from a pile).
+func play_card(hand_idx: int, target_idx: int = -1, chosen: Array = []) -> bool:
 	if not can_play(hand_idx):
 		return false
 	var card: CardInstance = hand[hand_idx]
@@ -220,7 +261,8 @@ func play_card(hand_idx: int, target_idx: int = -1) -> bool:
 			target_idx = enemies.find(_first_living(enemies))
 		if target_idx < 0 or target_idx >= enemies.size() or enemies[target_idx].is_dead():
 			return false
-		target = enemies[target_idx]
+		# Formation: a guarded boss's escorts take hits aimed at it.
+		target = BossRules.guard_target(self, enemies[target_idx])
 	if needs_ally(card):
 		var allies: Array = [player] + units
 		if target_idx >= allies.size():
@@ -228,10 +270,18 @@ func play_card(hand_idx: int, target_idx: int = -1) -> bool:
 		target = allies[maxi(target_idx, 0)]
 	hand.remove_at(hand_idx)
 	var held := hand.duplicate()
-	energy -= card.cost()
-	if card.has_keyword("once_per_turn"):
-		_played_once_per_turn.append(card)
-	emit("play", {"card": card.key(), "target": target.id if target != null else ""})
+	picks = chosen.duplicate()
+	last_dumped = 0
+	x_spent = 0
+	if card.is_x():
+		x_spent = energy
+		energy = 0
+	else:
+		energy -= card.cost()
+	var play_ev := {"card": card.key(), "target": target.id if target != null else ""}
+	if card.is_x():
+		play_ev["x"] = x_spent
+	emit("play", play_ev)
 	for e in CardPrograms.effects(self, card):
 		if is_over():
 			break
@@ -239,6 +289,8 @@ func play_card(hand_idx: int, target_idx: int = -1) -> bool:
 			target = _first_living(enemies) if needs_target(card) else target
 		Effects.resolve(self, e, player, target)
 	CardPrograms.after_play(self, card, held)
+	picks = []
+	_evolve_step(card)
 	if card.has_loop():
 		card.loops += 1 + rule_sum("loop_bonus")
 		var step := 0
@@ -259,6 +311,89 @@ func play_card(hand_idx: int, target_idx: int = -1) -> bool:
 	return true
 
 
+## Evolve: count the run; on the last one the copy becomes its evolved card (same upgrade/firmware/mod).
+func _evolve_step(card: CardInstance) -> void:
+	if card.def.evolve.is_empty():
+		return
+	card.uses += 1
+	if card.evolve_left() > 0:
+		return
+	var into: CardDef = db.card(str(card.def.evolve.get("into", "")))
+	if into == null:
+		return
+	var was := card.key()
+	card.def = into
+	card.uses = 0
+	card.loops = 0
+	emit("evolve", {"card": was, "into": card.key()})
+
+
+## Dump: discard n other cards from hand (0 = all). Player picks come first; the rest are
+## picked for them: cards with a "When dumped" effect, then Locked cards, then left to right.
+func dump(n: int) -> void:
+	var count := hand.size() if n <= 0 else mini(n, hand.size())
+	var order: Array = picks.filter(func(k: CardInstance) -> bool: return hand.has(k))
+	var rest := hand.filter(func(k: CardInstance) -> bool: return not order.has(k))
+	var rank := func(k: CardInstance) -> int: return 0 if not k.def.get_on_dump(k.upgraded).is_empty() else (1 if k.has_keyword("unplayable") else 2)
+	for r in 3:
+		for k in rest:
+			if rank.call(k) == r:
+				order.append(k)
+	var done := 0
+	for k: CardInstance in order.slice(0, count):
+		if is_over():
+			break
+		hand.erase(k)
+		CardPrograms.on_discard(k)
+		discard_pile.append(k)
+		done += 1
+		emit("dump", {"card": k.key()})
+		for fx in k.def.get_on_dump(k.upgraded):
+			if is_over():
+				break
+			Effects.resolve(self, fx, player, _first_living(enemies))
+		_check_end()
+	last_dumped = done
+
+
+## What recover can pull from a pile: no Rootkits back from Wipe, and no recover cards (no loops).
+func recover_pool(from: String) -> Array:
+	var pile: Array = exhaust_pile if from == "wiped" else discard_pile
+	if from != "wiped":
+		return pile.duplicate()
+	return pile.filter(func(k: CardInstance) -> bool: return k.def.type != "power" and not k.effects().any(func(e: Dictionary) -> bool: return e.get("op", "") == "recover"))
+
+
+## Shuffle n programs from the discard pile or the Wiped pile into the draw pile ("top": on top).
+## Player picks first, then the costliest card (X counts as 3), most recent first.
+func recover(from: String, into: String, n: int) -> void:
+	var pool := recover_pool(from)
+	var order: Array = picks.filter(func(k: CardInstance) -> bool: return pool.has(k))
+	var rest: Array = pool.filter(func(k: CardInstance) -> bool: return not order.has(k))
+	rest.reverse()
+	var weight := func(k: CardInstance) -> int: return 3 if k.is_x() else k.cost()
+	rest.sort_custom(func(a: CardInstance, b: CardInstance) -> bool: return weight.call(a) > weight.call(b))
+	order.append_array(rest)
+	var pile: Array = exhaust_pile if from == "wiped" else discard_pile
+	for k: CardInstance in order.slice(0, n):
+		pile.erase(k)
+		if into == "top" or draw_pile.is_empty():
+			draw_pile.append(k)
+		else:
+			draw_pile.insert(rng.range_i(0, draw_pile.size()), k)
+		emit("recover", {"card": k.key(), "from": from, "into": into})
+
+
+## After a fight: Evolve progress (and evolved forms) go back to the run deck cards.
+func sync_origins() -> void:
+	for k: CardInstance in draw_pile + hand + discard_pile + exhaust_pile:
+		if k.origin == null:
+			continue
+		k.origin.uses = k.uses
+		if k.origin.def != k.def:
+			k.origin.def = k.def
+
+
 func end_turn() -> void:
 	if phase != Phase.PLAYER:
 		return
@@ -274,6 +409,11 @@ func end_turn() -> void:
 			kept.append(card)
 		elif card.has_keyword("ethereal"):
 			exhaust_pile.append(card)
+		elif card.def.hatch != "":
+			# Spore: left unplayed, it is used up and hatches on the enemy side.
+			exhaust_pile.append(card)
+			emit("hatch", {"card": card.key(), "enemy": card.def.hatch})
+			spawn(card.def.hatch)
 		else:
 			CardPrograms.on_discard(card)
 			discard_pile.append(card)
@@ -291,6 +431,7 @@ func end_turn() -> void:
 			return
 		if en.is_dead():
 			continue
+		BossRules.before_move(self, en)
 		if en.status("stall") > 0:
 			# Lagged: skips this move; the same intent waits for next turn.
 			en.add_status("stall", -1)
@@ -306,6 +447,7 @@ func end_turn() -> void:
 				Effects.resolve(self, e, en, player)
 			en.interrupted = []
 			en.advance_move()
+			BossRules.after_move(en)
 		Statuses.on_turn_end(self, en)
 		_check_end()
 		if is_over():
@@ -350,6 +492,7 @@ func attack(src: Fighter, t: Fighter, base: int) -> int:
 	if t == player and src != null and enemies.has(src):
 		amount = maxi(amount - rule_sum("guard"), 0)
 	var dealt := deal_damage(t, amount, src.id if src != null else "")
+	BossRules.on_attacked(self, src, t)
 	# Thorns: being attacked hurts the attacker (even if Ward absorbed the hit).
 	var thorns := t.status("thorns") + (rule_sum("thorns") if t == player else 0)
 	if thorns > 0 and src != null and not src.is_dead():
@@ -363,10 +506,17 @@ func deal_damage(t: Fighter, amount: int, source_id: String = "", kind: String =
 	# A daemon's HP is turns, not toughness: any hit costs it 1. Only Purge takes more.
 	if units.has(t) and kind != "purge":
 		amount = 1
+	if not t.rules.is_empty():
+		amount = BossRules.scale(self, t, amount, kind)
+		if amount <= 0:
+			emit("immune", {"target": t.id})
+			return 0
 	# Daemon Firewall (Daemon Plating) only absorbs attacks: Purge, Virus and HP loss go straight through.
 	var blocked := mini(t.ward, amount) if not (units.has(t) and kind != "attack") else 0
 	t.ward -= blocked
 	var dealt := amount - blocked
+	if not t.rules.is_empty():
+		dealt = BossRules.limit(t, dealt)
 	t.hp = maxi(t.hp - dealt, 0)
 	var saved := t == player and t.hp <= 0 and second_wind > 0 and not second_wind_used
 	if saved:
@@ -377,13 +527,17 @@ func deal_damage(t: Fighter, amount: int, source_id: String = "", kind: String =
 		t.ward += second_wind
 		emit("second_wind", {"target": t.id})
 		emit("ward", {"target": t.id, "amount": second_wind, "ward": t.ward})
+	if not t.rules.is_empty() and dealt > 0:
+		BossRules.after_damage(self, t)
 	if t.is_dead():
 		emit("death", {"target": t.id})
 		if units.has(t):
 			units.erase(t)
 			_daemon_closed(t)
-		elif enemies.has(t) and phase == Phase.PLAYER:
-			Talismans.fire(self, "kill", {"target": t})
+		elif enemies.has(t):
+			BossRules.on_death(self, t)
+			if phase == Phase.PLAYER:
+				Talismans.fire(self, "kill", {"target": t})
 	return dealt
 
 
@@ -506,12 +660,19 @@ func rule_sum(flag: String) -> int:
 
 
 ## Enemy-side summon (op "spawn"). Max 5 enemies alive.
-func spawn(enemy_id: String) -> bool:
+## hp_pct < 1 brings it in hurt (a restored twin); those are not "spawned" helpers.
+func spawn(enemy_id: String, hp_pct: float = 1.0) -> bool:
 	if living(enemies).size() >= 5 or not db.enemies.has(enemy_id):
 		return false
 	var f := _make_enemy(enemy_id)
+	f.spawned = hp_pct >= 1.0
+	if hp_pct < 1.0:
+		f.hp = maxi(roundi(f.max_hp * hp_pct), 1)
+	var pool := str(f.rules.get("pool", ""))
+	if pool != "" and pools.has(pool):
+		f.hp = int(pools[pool])
 	enemies.append(f)
-	emit("spawn", {"target": f.id, "enemy": enemy_id})
+	emit("spawn", {"target": f.id, "enemy": enemy_id, "hp": f.hp})
 	return true
 
 

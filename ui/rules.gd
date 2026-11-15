@@ -108,6 +108,10 @@ static func sections(db: CardDB) -> Array:
 		LEGEND,
 		["Exact numbers", "An attack number already includes the enemy's Boost and Throttled and your Exposed, so you can raise exactly enough Firewall."],
 	]])
+	var boss_rules: Array = ["Cores and some black sentries carry a rule on top of their moves. It shows as a chip under the HP bar. Hold the enemy to read it."]
+	for k in BossRules.DESC:
+		boss_rules.append([BossRules.DESC[k][0], BossRules.DESC[k][1]])
+	out.append(["Boss rules", "In a fight", boss_rules])
 	out.append(["Firewall and daemons", "In a fight", [
 		["Firewall", WARD],
 		["Daemons", UNITS.trim_prefix("Daemons: ").replace("Up to 3", "Up to %d" % slots)],

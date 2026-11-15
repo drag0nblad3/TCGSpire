@@ -26,15 +26,31 @@ const OPS := {
 	"summon": ["name", "hp", "rule"],
 	"rally": ["amount"],
 	"cleanse": ["to"],
-	"add_card": ["card", "amount", "upgraded"],
+	"add_card": ["card", "amount", "upgraded", "pile"],
 	"spawn": ["enemy"],
+	"devour": ["amount", "stacks"],
+	"revive": ["enemy", "pct"],
 	"lose_hp": ["amount", "to"],
 	"damage_per_status": ["status", "mult", "base", "consume", "to", "of"],
 	"amplify": ["status", "mult", "to"],
 	"strip": ["to"],
 	"sacrifice": ["effect", "mult", "to"],
 	"interrupt": ["kinds", "effects", "to"],
+	"dump": ["amount"],
+	"recover": ["from", "into", "amount"],
 }
+
+## Scaling: any effect may carry "per" (what to count), "per_mult" (default 1) and "per_key"
+## (the number that grows; default LOOP_KEY's). At resolve time that number becomes
+## its printed value + floor(count x per_mult). "x" counts the RAM an X-cost card spent.
+const PER_KEYS := ["per", "per_mult", "per_key"]
+const PER_SOURCES := {
+	"x": "", "draw_pile": "N = cards in your draw pile.", "discard_pile": "N = cards in your discard pile.",
+	"hand": "N = other cards in your hand.", "wiped": "N = your Wiped programs.", "dumped": "N = cards dumped.",
+}
+## Where "recover" takes a card from, and where it puts it.
+const RECOVER_FROM := ["discard", "wiped"]
+const RECOVER_INTO := ["draw", "top"]
 
 ## Loop: any effect below may carry "loop": n (a card keyword shown as "Loop +n").
 ## Each time the card runs in a fight, that number grows by n (CardInstance.looped).
@@ -52,6 +68,8 @@ const TARGETS := ["target", "self", "all_enemies", "all_allies", "front", "daemo
 
 
 static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> void:
+	if e.has("per"):
+		e = with_per(e, per_count(c, str(e["per"])))
 	var op := str(e.get("op", ""))
 	var n := int(e.get("amount", 0))
 	match op:
@@ -90,6 +108,7 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 				var before: int = t.hp
 				t.hp = mini(t.max_hp, t.hp + n)
 				c.emit("heal", {"target": t.id, "amount": t.hp - before, "hp": t.hp})
+				BossRules.after_heal(c, t)
 		"apply":
 			var s := str(e.get("status", ""))
 			var stacks := int(e.get("stacks", 1))
@@ -120,6 +139,14 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 					t.statuses.erase(s)
 				c.emit("cleanse", {"target": t.id})
 		"add_card":
+			if str(e.get("pile", "hand")) == "draw":
+				# Shuffled into your draw pile (spores).
+				for i in maxi(n, 1):
+					var planted := c.db.instance(str(e.get("card", "")), bool(e.get("upgraded", false)))
+					if planted != null:
+						c.draw_pile.insert(c.rng.range_i(0, c.draw_pile.size()), planted)
+				c.emit("infect", {"card": str(e.get("card", "")), "amount": maxi(n, 1)})
+				return
 			for i in maxi(n, 1):
 				if c.hand.size() >= Combat.MAX_HAND:
 					break
@@ -129,6 +156,19 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 					c.emit("draw", {"card": inst.key(), "created": true})
 		"spawn":
 			c.spawn(str(e.get("enemy", "")))
+		"revive":
+			c.spawn(str(e.get("enemy", "")), float(e.get("pct", 0.5)))
+		"devour":
+			# Eats every helper it called in: repair and a status per helper eaten.
+			var eaten: Array = c.living(c.enemies).filter(func(f: Fighter) -> bool: return f != src and f.spawned)
+			for f in eaten:
+				f.hp = 0
+				c.emit("death", {"target": f.id, "devoured": true})
+			if not eaten.is_empty():
+				c.emit("devour", {"source": src.id, "count": eaten.size()})
+				resolve(c, {"op": "heal", "amount": n * eaten.size(), "to": "self"}, src, src)
+				if int(e.get("stacks", 0)) > 0:
+					resolve(c, {"op": "apply", "status": "might", "stacks": int(e["stacks"]) * eaten.size(), "to": "self"}, src, src)
 		"damage_per_status":
 			var st := str(e.get("status", ""))
 			var on_target := str(e.get("of", "")) == "target"
@@ -166,18 +206,53 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 		"lose_hp":
 			for t in targets(c, e, src, target, "self"):
 				_lose_hp(c, t, n, src)
+		"dump":
+			c.dump(n)
+		"recover":
+			c.recover(str(e.get("from", "discard")), str(e.get("into", "draw")), maxi(n, 1))
 		"interrupt":
 			# Cancels the named parts of each target's next move; "effects" pay off once per enemy cut.
 			for t in targets(c, e, src, target, "target"):
 				var cut: Array = Intents.matching(t, e.get("kinds", []))
+				if t.rules.has("jam"):
+					t.state["revealed"] = true
 				if cut.is_empty():
 					continue
 				t.interrupted.append_array(cut)
+				t.state["revealed"] = true
 				c.emit("interrupt", {"target": t.id, "kinds": cut})
 				for fx in e.get("effects", []):
 					resolve(c, fx, src, t)
 		_:
 			push_error("Unknown effect op: %s" % op)
+
+
+## The number a "per" effect counts right now.
+static func per_count(c: Combat, per: String) -> int:
+	match per:
+		"x": return c.x_spent
+		"draw_pile": return c.draw_pile.size()
+		"discard_pile": return c.discard_pile.size()
+		"hand": return c.hand.size()
+		"wiped": return c.exhaust_pile.size()
+		"dumped": return c.last_dumped
+	return 0
+
+
+static func per_key(e: Dictionary) -> String:
+	return str(e.get("per_key", LOOP_KEY.get(str(e.get("op", "")), "amount")))
+
+
+## The effect with its "per" number filled in for `count`, and the per params removed.
+static func with_per(e: Dictionary, count: int) -> Dictionary:
+	var d := e.duplicate()
+	var k := per_key(d)
+	var base: Variant = d.get(k, 0)
+	var add := int(floor(float(count) * float(d.get("per_mult", 1)) + 0.0001))
+	d[k] = float(base) + add if base is float else int(base) + add
+	for pk in PER_KEYS:
+		d.erase(pk)
+	return d
 
 
 static func ward_gain(f: Fighter, amount: int) -> int:
@@ -217,8 +292,8 @@ static func targets(c: Combat, e: Dictionary, src: Fighter, target: Fighter, def
 			return [src]
 		"target":
 			if target != null and not target.is_dead():
-				return [target]
-			return foes.slice(0, 1)
+				return [BossRules.guard_target(c, target)] if friendly else [target]
+			return _front(c, foes, friendly)
 		"all_enemies":
 			return foes
 		"all_allies":
@@ -227,14 +302,23 @@ static func targets(c: Combat, e: Dictionary, src: Fighter, target: Fighter, def
 			return [c.rule_daemon] if c.rule_daemon != null and c.units.has(c.rule_daemon) else []
 		"front":
 			if friendly:
-				return foes.slice(0, 1)
+				return _front(c, foes, friendly)
 			return c.units.slice(0, 1) if not c.units.is_empty() else [c.player]
 		"daemon":
 			return [] if friendly else c.units.slice(0, 1)
 	return []
 
 
+## The first foe in line; for your programs a guarded boss's escort stands in front of it.
+static func _front(c: Combat, foes: Array, friendly: bool) -> Array:
+	if foes.is_empty():
+		return []
+	return [BossRules.guard_target(c, foes[0])] if friendly else [foes[0]]
+
+
 static func describe(e: Dictionary) -> String:
+	if e.has("per"):
+		return _describe_per(e)
 	var s := _describe(e)
 	if not e.has("loop"):
 		return s
@@ -245,6 +329,34 @@ static func describe(e: Dictionary) -> String:
 	if i < 0:
 		i = s.length() - 1
 	return s.substr(0, i) + " (%s)" % tag + s.substr(i)
+
+
+## "Deal 3+N damage. N = cards in your draw pile." / "Gain 6X Firewall." / "Deal 5 damage X times."
+static func _describe_per(e: Dictionary) -> String:
+	var per := str(e["per"])
+	var k := per_key(e)
+	var d := e.duplicate()
+	for pk in PER_KEYS:
+		d.erase(pk)
+	var base := int(d.get(k, 0))
+	d[k] = 7777
+	var s := describe(d)
+	var letter := "X" if per == "x" else "N"
+	var m := float(e.get("per_mult", 1))
+	var note: String = PER_SOURCES.get(per, "")
+	var term := letter
+	if is_equal_approx(m, roundf(m)):
+		term = (str(int(m)) if int(m) != 1 else "") + letter
+	elif letter == "N":
+		# Fractions count part of the pile: "N = half the cards in your draw pile, rounded down."
+		var part := "half the" if is_equal_approx(m, 0.5) else "%s x the" % str(m)
+		note = note.replace("N = cards", "N = %s cards" % part).replace("N = other cards", "N = %s other cards" % part).replace("N = your", "N = %s" % part).trim_suffix(".") + ", rounded down."
+	else:
+		term = "%s%s" % [str(m), letter]
+	if base > 0:
+		term = "%d+%s" % [base, term]
+	s = s.replace("7777", term)
+	return s + (" " + note if note != "" else "")
 
 
 static func _describe(e: Dictionary) -> String:
@@ -316,9 +428,16 @@ static func _describe(e: Dictionary) -> String:
 			return "Purge your harmful statuses."
 		"add_card":
 			var nm := Lexicon.card_name(str(e.get("card", "?"))) + ("+" if e.get("upgraded", false) else "")
+			if str(e.get("pile", "hand")) == "draw":
+				return "Shuffle %d %s into your draw pile." % [maxi(n, 1), nm]
 			return "Add %s to your hand." % nm if maxi(n, 1) == 1 else "Add %d %s to your hand." % [n, nm]
 		"spawn":
 			return "Call in a %s." % Lexicon.enemy_name(str(e.get("enemy", "?")))
+		"devour":
+			var boost := int(e.get("stacks", 0))
+			return "Devour every helper it called in: repair %d HP%s for each one eaten." % [n, (" and gain %d %s" % [boost, Lexicon.status("might")]) if boost > 0 else ""]
+		"revive":
+			return "Restore its crashed twin at %d%% HP." % roundi(float(e.get("pct", 0.5)) * 100)
 		"lose_hp":
 			return "Lose %d HP." % n
 		"damage_per_status":
@@ -340,6 +459,17 @@ static func _describe(e: Dictionary) -> String:
 			return "%s %s %s." % [word, whose, st2]
 		"strip":
 			return "Strip all helpful statuses from %s." % ("ALL enemies" if to == "all_enemies" else "the target")
+		"dump":
+			if n <= 0:
+				return "Dump your hand: discard every other card in it."
+			return "Dump %d: discard %s from your hand." % [n, "a card" if n == 1 else "%d cards" % n]
+		"recover":
+			var from := "a Wiped program (not a Rootkit)" if str(e.get("from", "")) == "wiped" else "a program from your discard pile"
+			if maxi(n, 1) > 1:
+				from = from.replace("a Wiped program", "%d Wiped programs" % n).replace("a program", "%d programs" % n)
+			if str(e.get("into", "draw")) == "top":
+				return "Put %s on top of your draw pile." % from
+			return "Shuffle %s into your draw pile." % from
 		"interrupt":
 			var names: Array = e.get("kinds", []).map(func(k: String) -> String: return Lexicon.intent(k))
 			var txt2 := "Interrupt %s%s." % [" or ".join(names), " on ALL enemies" if to == "all_enemies" else ""]
@@ -368,6 +498,8 @@ static func validate(e: Dictionary, where: String) -> Array[String]:
 		errs.append("%s: unknown op '%s'" % [where, op])
 		return errs
 	for k in e:
+		if k in PER_KEYS:
+			continue
 		if k == "loop":
 			if not LOOP_KEY.has(op) or not (e[k] is int or e[k] is float) or int(e[k]) <= 0:
 				errs.append("%s: bad loop on op '%s'" % [where, op])
@@ -419,6 +551,21 @@ static func validate(e: Dictionary, where: String) -> Array[String]:
 		errs.append_array(DaemonRules.validate(e.get("rule", {}), where))
 	if op == "sacrifice" and str(e.get("effect", "damage")) not in SACRIFICE_EFFECTS:
 		errs.append("%s: sacrifice can't become '%s'" % [where, e.get("effect", "")])
+	if e.has("per"):
+		if str(e["per"]) not in PER_SOURCES:
+			errs.append("%s: bad 'per' value '%s'" % [where, e["per"]])
+		if per_key(e) not in OPS[op] and per_key(e) != "hits":
+			errs.append("%s: op '%s' can't scale '%s'" % [where, op, per_key(e)])
+		if not (e.get("per_mult", 1) is int or e.get("per_mult", 1) is float) or float(e.get("per_mult", 1)) <= 0.0:
+			errs.append("%s: per_mult must be positive" % where)
+		if op == "apply" and str(e.get("status", "")) == "stall":
+			errs.append("%s: Lagged can't scale" % where)
+	elif e.has("per_mult") or e.has("per_key"):
+		errs.append("%s: per_mult/per_key without per" % where)
+	if op == "dump" and (not (e.get("amount", 0) is int or e.get("amount", 0) is float) or int(e.get("amount", 0)) < 0):
+		errs.append("%s: dump amount must be 0 (whole hand) or more" % where)
+	if op == "recover" and (str(e.get("from", "discard")) not in RECOVER_FROM or str(e.get("into", "draw")) not in RECOVER_INTO):
+		errs.append("%s: recover needs from discard/wiped and into draw/top" % where)
 	if e.has("of") and str(e["of"]) not in ["self", "target"]:
 		errs.append("%s: bad 'of' value '%s'" % [where, e["of"]])
 	if op == "apply" and not Statuses.is_known(str(e.get("status", ""))):

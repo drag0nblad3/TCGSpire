@@ -59,6 +59,7 @@ static func on_turn_end(c: Combat, f: Fighter) -> void:
 		var before := f.hp
 		f.hp = mini(f.max_hp, f.hp + regen)
 		c.emit("heal", {"target": f.id, "amount": f.hp - before, "hp": f.hp})
+		BossRules.after_heal(c, f)
 		if not (f == c.player and c.rule_sum("regen_no_decay") > 0):
 			var slow := f == c.player and c.rule_sum("regen_slow_decay") > 0
 			f.add_status("regen", -(1 if slow else half_decay(regen)))

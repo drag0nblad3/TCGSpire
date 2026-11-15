@@ -244,6 +244,10 @@ func _draw() -> void:
 			# The rule this daemon enforces while it runs (its HP bar above is the countdown).
 			draw_multiline_string(font, Vector2(4, y + 10), DaemonRules.describe(fighter.rule), HORIZONTAL_ALIGNMENT_CENTER, w - 8, 11, 4, Palette.TEXT)
 			y += 48
+	if kind == "enemy" and combat != null:
+		# Boss rules first: live state such as the trace countdown, the tide or a shield.
+		for text in BossRules.chips(combat, fighter):
+			chips.append([text, Palette.ENERGY])
 	for k in fighter.statuses:
 		var debuff: bool = Statuses.DEFS.get(k, {}).get("debuff", false)
 		var chip := Lexicon.status(str(k)) if k == "stall" else "%s %d" % [Lexicon.status(str(k)), fighter.statuses[k]]  # Lagged is on/off.
@@ -362,7 +366,9 @@ func describe() -> String:
 	var nm := Palette.w("hero") if kind == "player" else fighter.name
 	var lines: Array[String] = ["%s  (%d/%d HP)" % [nm, fighter.hp, fighter.max_hp]]
 	if kind == "enemy" and not fighter.is_dead():
-		lines.append("Next: " + Intents.explain(fighter))
+		lines.append("Next: " + Intents.explain(fighter, combat))
+		for r in BossRules.rows(combat, fighter):
+			lines.append("%s: %s" % [r[0], r[1]])
 	if kind == "unit":
 		lines.append("Daemon: %s" % DaemonRules.describe(fighter.rule))
 		lines.append("Its HP is its countdown: it loses 1 at the start of each of your turns and 1 per hit taken. Purge moves take more. At 0 it closes and the rule ends.")

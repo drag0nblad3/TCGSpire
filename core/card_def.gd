@@ -7,7 +7,7 @@ const TYPES := ["attack", "skill", "unit", "power"]
 ## "ally": you or one of your daemons (hand-picked when a daemon is running).
 const TARGETS := ["enemy", "ally", "none"]
 const RARITIES := ["starter", "common", "uncommon", "rare", "mythic", "curse"]
-const KEYWORDS := ["exhaust", "retain", "unplayable", "innate", "ethereal", "once_per_turn"]
+const KEYWORDS := ["exhaust", "retain", "unplayable", "innate", "ethereal"]
 ## Rules glossary for keywords (shown by the card inspector and the rules screen).
 const KEYWORD_DESC := {
 	"exhaust": "After it runs, the program is wiped for the rest of this fight.",
@@ -15,9 +15,13 @@ const KEYWORD_DESC := {
 	"unplayable": "Can't be run. It just clogs your hand.",
 	"innate": "Always loaded into your opening hand.",
 	"ethereal": "If it's still in your hand at the end of your turn, it is wiped.",
-	"once_per_turn": "After you run a copy, it can't run again that turn, even if you redraw it.",
 	"loop": "Each time you run this copy, every number marked Loop +N grows by N for the rest of the fight.",
+	"x_cost": "Costs all your RAM. X is the RAM you spent, so the card grows with every point you have left.",
+	"evolve": "This copy counts its runs for the whole job. After enough runs it turns into its evolved form for the rest of the run (it keeps its upgrade, firmware and mod).",
+	"on_dump": "When dumped: the effect fires when another program Dumps this card from your hand. Discarding at the end of your turn doesn't count.",
 }
+## Cost value meaning "X": spend all your RAM (JSON "cost": "X").
+const X_COST := -1
 const TYPE_DESC := {
 	"attack": "Exploit: usually deals damage to an enemy.",
 	"skill": "Script: Firewall, draws, statuses and other tricks.",
@@ -38,8 +42,17 @@ var cost := 1
 var effects: Array = []
 var keywords: Array = []
 var text_override := ""
+## Evolved forms and other cards that only exist inside a run: never in packs, binders,
+## shops or rewards (CardDB.ids_where skips them).
+var token := false
+## {"after": runs, "into": card id}: this copy turns into that card after that many runs in one job.
+var evolve: Dictionary = {}
+## Effects that fire when a Dump discards this card from your hand.
+var on_dump: Array = []
 ## Fields replaced when the card is upgraded: any of cost, effects, keywords, text.
 var upgrade: Dictionary = {}
+## Spores only: the enemy id this card hatches into if it is discarded unplayed at end of turn.
+var hatch := ""
 
 
 static func from_dict(d: Dictionary) -> CardDef:
@@ -51,12 +64,32 @@ static func from_dict(d: Dictionary) -> CardDef:
 	c.rarity = str(d.get("rarity", "common"))
 	c.type = str(d.get("type", "skill"))
 	c.target = str(d.get("target", "none"))
-	c.cost = int(d.get("cost", 1))
+	c.cost = _parse_cost(d.get("cost", 1))
+	c.token = bool(d.get("token", false))
+	c.evolve = d.get("evolve", {})
+	c.on_dump = d.get("on_dump", [])
 	c.effects = d.get("effects", [])
 	c.keywords = d.get("keywords", [])
 	c.text_override = str(d.get("text", ""))
 	c.upgrade = d.get("upgrade", {})
+	if c.upgrade.has("cost"):
+		c.upgrade = c.upgrade.duplicate()
+		c.upgrade["cost"] = _parse_cost(c.upgrade["cost"])
+	c.hatch = str(d.get("hatch", ""))
 	return c
+
+
+static func _parse_cost(v: Variant) -> int:
+	return X_COST if str(v) == "X" else int(v)
+
+
+## True if the card costs X (all your RAM).
+func is_x(upgraded: bool = false) -> bool:
+	return get_cost(upgraded) == X_COST
+
+
+func cost_label(upgraded: bool = false) -> String:
+	return "X" if is_x(upgraded) else str(get_cost(upgraded))
 
 
 func factions() -> Array:
@@ -84,6 +117,11 @@ func get_keywords(upgraded: bool) -> Array:
 	return upgrade.get("keywords", keywords) if upgraded else keywords
 
 
+## "When dumped" effects (an upgrade may replace them with "on_dump").
+func get_on_dump(upgraded: bool) -> Array:
+	return upgrade.get("on_dump", on_dump) if upgraded else on_dump
+
+
 func get_text(upgraded: bool) -> String:
 	var override := str(upgrade.get("text", text_override)) if upgraded else text_override
 	if override != "":
@@ -93,7 +131,18 @@ func get_text(upgraded: bool) -> String:
 		parts.append(Effects.describe(e))
 	for k in get_keywords(upgraded):
 		parts.append(Lexicon.keyword(str(k)) + ".")
+	parts.append_array(extra_text(upgraded))
 	return " ".join(parts)
+
+
+## Rules text for the card-level abilities (When dumped, Evolve) that aren't effects.
+func extra_text(upgraded: bool = false) -> Array[String]:
+	var parts: Array[String] = []
+	if not get_on_dump(upgraded).is_empty():
+		parts.append("When dumped: " + " ".join(get_on_dump(upgraded).map(func(fx: Dictionary) -> String: return Effects.describe(fx))))
+	if not evolve.is_empty():
+		parts.append("Evolve %d: becomes %s." % [int(evolve.get("after", 20)), Lexicon.card_name(str(evolve.get("into", "")))])
+	return parts
 
 
 ## What recompiling (upgrading) changes, e.g. "Damage 6 → 9. Costs 0 RAM."
@@ -103,7 +152,7 @@ func upgrade_summary() -> String:
 		return "Can't be upgraded."
 	var parts: Array[String] = []
 	if get_cost(true) != cost:
-		parts.append("Costs %d RAM (was %d)." % [get_cost(true), cost])
+		parts.append("Costs %s RAM (was %s)." % [cost_label(true), cost_label(false)])
 	var a: Array = get_effects(false).duplicate()
 	for eb in get_effects(true):
 		var match_i := -1
@@ -133,6 +182,12 @@ func upgrade_summary() -> String:
 				if bool(eb[k]) and not bool(ea.get(k, false)):
 					parts.append("The added program is upgraded.")
 				continue
+			if k in ["per", "per_key", "from", "into"]:
+				continue
+			if k == "per_mult":
+				if not is_equal_approx(float(eb[k]), float(ea.get(k, 1.0))):
+					parts.append("Now: " + Effects.describe(eb))
+				continue
 			var dflt := 1 if k == "hits" or (k == "amount" and eb.get("op", "") == "add_card") else 0
 			var before := int(ea.get(k, dflt))
 			var after := int(eb[k])
@@ -140,6 +195,8 @@ func upgrade_summary() -> String:
 				parts.append("%s %d → %d." % [_param_name(eb, k), before, after])
 	for ea in a:
 		parts.append("Drops: " + Effects.describe(ea))
+	if get_on_dump(true) != on_dump:
+		parts.append("When dumped: " + " ".join(get_on_dump(true).map(func(fx: Dictionary) -> String: return Effects.describe(fx))))
 	for k in get_keywords(true):
 		if k not in keywords:
 			parts.append("Gains %s." % Lexicon.keyword(str(k)))
@@ -194,6 +251,11 @@ func validate() -> Array[String]:
 				errs.append("%s: unknown keyword '%s'" % [where, k])
 		for e in get_effects(up):
 			errs.append_array(Effects.validate(e, where))
+	for up in [false, true]:
+		for e in get_on_dump(up):
+			errs.append_array(Effects.validate(e, where + " on_dump"))
+	if not evolve.is_empty() and (int(evolve.get("after", 0)) <= 0 or str(evolve.get("into", "")) == "" or str(evolve.get("into", "")) == id):
+		errs.append("%s: evolve needs a positive 'after' and another card 'into'" % where)
 	if upgrade.is_empty() and rarity != "curse":
 		errs.append("%s: missing upgrade" % where)
 	return errs

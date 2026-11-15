@@ -10,7 +10,7 @@ static func color(kind: String) -> Color:
 		"ward": return Palette.WARD
 		"buff": return Palette.UPGRADED
 		"debuff", "curse": return Palette.ENEMY
-		"heal": return Palette.faction("bloom")
+		"heal", "restore": return Palette.faction("bloom")
 		"summon": return Palette.ENERGY
 		"interrupted": return Palette.UPGRADED
 	return Palette.TEXT_DIM
@@ -39,10 +39,10 @@ static func draw(ci: CanvasItem, c: Vector2, r: float, kind: String, col: Color 
 			ci.draw_colored_polygon(pts, Color(col, 0.35))
 			pts.append(pts[0])
 			ci.draw_polyline(pts, col, w, true)
-		"buff", "heal":
+		"buff", "heal", "restore":
 			var up := PackedVector2Array([c + Vector2(0, -r * 0.8), c + Vector2(r * 0.65, 0), c + Vector2(r * 0.25, 0),
 				c + Vector2(r * 0.25, r * 0.75), c + Vector2(-r * 0.25, r * 0.75), c + Vector2(-r * 0.25, 0), c + Vector2(-r * 0.65, 0)])
-			if kind == "heal":
+			if kind != "buff":
 				up = PackedVector2Array([c + Vector2(-r * 0.25, -r * 0.75), c + Vector2(r * 0.25, -r * 0.75), c + Vector2(r * 0.25, -r * 0.25),
 					c + Vector2(r * 0.75, -r * 0.25), c + Vector2(r * 0.75, r * 0.25), c + Vector2(r * 0.25, r * 0.25),
 					c + Vector2(r * 0.25, r * 0.75), c + Vector2(-r * 0.25, r * 0.75), c + Vector2(-r * 0.25, r * 0.25),

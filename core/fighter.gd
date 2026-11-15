@@ -19,6 +19,16 @@ var def_id := ""
 var interrupted: Array = []
 ## Attack multiplier (heat scaling for enemies), applied after Boost and Weakened.
 var dmg_mult := 1.0
+## Enemies only: boss rules from the enemy def ("rules", see BossRules) and their live counters.
+var rules: Dictionary = {}
+var state: Dictionary = {}
+## A one-off move that replaces the next move from the list (Restore, a low-tide move).
+var override: Dictionary = {}
+## Extra effects stapled in front of the next move (a full heat gauge venting).
+var bonus: Array = []
+var bonus_name := ""
+## True for enemies called in mid-fight by "spawn" (a Devour move eats these).
+var spawned := false
 
 
 static func make(id_in: String, name_in: String, hp_in: int) -> Fighter:
@@ -47,13 +57,21 @@ func add_status(n: String, stacks: int) -> void:
 
 
 func current_move() -> Dictionary:
-	if moves.is_empty():
-		return {}
-	return moves[move_idx % moves.size()]
+	var mv: Dictionary = override
+	if mv.is_empty() and not moves.is_empty():
+		mv = moves[move_idx % moves.size()]
+	if bonus.is_empty():
+		return mv
+	return {"name": "%s + %s" % [bonus_name, mv.get("name", "")], "effects": bonus + mv.get("effects", [])}
 
 
+## A one-off override is used up without moving through the list.
 func advance_move() -> void:
-	move_idx += 1
+	bonus = []
+	if not override.is_empty():
+		override = {}
+	else:
+		move_idx += 1
 
 
 ## Compact one-line state, handy in test failures and sim logs.

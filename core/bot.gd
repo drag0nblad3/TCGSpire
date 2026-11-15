@@ -69,7 +69,29 @@ static func score(c: Combat, card: CardInstance, t: int = -1) -> float:
 	var v := 0.0
 	var ward := c.player.ward
 	var effects := CardPrograms.effects(c, card)
-	for e in effects:
+	var dumped := 0
+	for raw in effects:
+		var e: Dictionary = raw
+		match str(e.get("op", "")):
+			"dump":
+				var res := _dump_value(c, card, int(e.get("amount", 0)))
+				v += res[0]
+				dumped = res[1]
+				continue
+			"recover":
+				var pool := c.recover_pool(str(e.get("from", "discard")))
+				if not pool.is_empty():
+					var best := 0
+					for k: CardInstance in pool:
+						best = maxi(best, 3 if k.is_x() else k.cost())
+					v += (2.0 + best * 1.2) * (0.6 if str(e.get("into", "draw")) == "draw" else 1.0)
+				continue
+		if e.has("per"):
+			var per := str(e["per"])
+			var n := c.energy if per == "x" else (dumped if per == "dumped" else Effects.per_count(c, per))
+			if per == "hand":
+				n = maxi(n - 1, 0)
+			e = Effects.with_per(e, n)
 		# The bot plays "ally" programs on itself (target -1), so value them that way.
 		var ev: Dictionary = e
 		if c.needs_ally(card) and not e.has("to"):
@@ -84,13 +106,42 @@ static func score(c: Combat, card: CardInstance, t: int = -1) -> float:
 		for effect in card.effects():
 			if effect.get("op") == "compile":
 				capacity = int(effect.get("cap", 3))
-		if card.compiled.size() < capacity and c.hand.any(func(other: CardInstance) -> bool: return other != card and other.cost() <= c.energy and not other.has_keyword("unplayable") and not c.was_played_this_turn(other)):
+		if card.compiled.size() < capacity and c.hand.any(func(other: CardInstance) -> bool: return other != card and other.cost() <= c.energy and not other.has_keyword("unplayable")):
 			v *= 0.25
 	# Loop programs get better every run this fight, so running one early pays later.
 	if card.has_loop():
 		v *= 1.2
-	# Free cards are always worth it; otherwise prefer value per RAM.
-	return v / maxf(card.cost(), 0.6) + 0.01
+	if card.evolve_left() > 0:
+		v *= 1.05
+	# Free cards are always worth it; otherwise prefer value per RAM. X spends it all.
+	var spend := float(c.energy) if card.is_x() else float(card.cost())
+	return v / maxf(spend, 0.6) + 0.01
+
+
+## [value, cards dumped] of Dump n (0 = whole hand) from this play, picked the way Combat.dump picks.
+static func _dump_value(c: Combat, card: CardInstance, n: int) -> Array:
+	var others := c.hand.filter(func(k: CardInstance) -> bool: return k != card)
+	var count := others.size() if n <= 0 else mini(n, others.size())
+	var ranked: Array = []
+	for r in 3:
+		for k: CardInstance in others:
+			var rank := 0 if not k.def.get_on_dump(k.upgraded).is_empty() else (1 if k.has_keyword("unplayable") else 2)
+			if rank == r:
+				ranked.append(k)
+	var v := 0.0
+	var left := c.energy - card.cost()
+	for k: CardInstance in ranked.slice(0, count):
+		if not k.def.get_on_dump(k.upgraded).is_empty():
+			for fx in k.def.get_on_dump(k.upgraded):
+				v += _effect_value(c, fx, c.living(c.enemies)[0] if not c.living(c.enemies).is_empty() else null, c.player.ward)
+			if k.has_keyword("unplayable"):
+				v += 1.5
+		elif k.has_keyword("unplayable"):
+			v += 1.5
+		else:
+			v -= 2.0 if k.cost() > left else 2.5 + 0.5 * k.cost()
+		v += k.cooldown * 0.1
+	return [v, count]
 
 
 static func _effect_value(c: Combat, e: Dictionary, target: Fighter, ward: int) -> float:
@@ -259,8 +310,16 @@ static func _summon_value(c: Combat, e: Dictionary) -> float:
 static func _hit_value(c: Combat, f: Fighter, amount: int, hits: int) -> float:
 	if f == null or f.is_dead():
 		return 0.0
-	var per := Statuses.modify_attack(amount + c.rule_sum("attack_bonus"), c.player, f)
+	# Boss rules: escorts take the hit, shields stop it, tides and plating scale it, phases cap it.
+	f = BossRules.guard_target(c, f)
+	var per := BossRules.scale(c, f, Statuses.modify_attack(amount + c.rule_sum("attack_bonus"), c.player, f), "attack")
+	if per <= 0:
+		return 0.0
+	var twins: Array = c.living(c.enemies).filter(func(e: Fighter) -> bool: return e != f and e.rules.has("twin")) if f.rules.has("twin") else []
 	var hp := f.hp
+	var mark := BossRules.phase_floor(f)
+	if mark > 0 and hp > mark:
+		hp -= mark
 	var ward := f.ward
 	var v := 0.0
 	for i in hits:
@@ -272,9 +331,13 @@ static func _hit_value(c: Combat, f: Fighter, amount: int, hits: int) -> float:
 		if f.status("thorns") > 0:
 			v -= f.status("thorns") * 0.8
 		if hp <= 0:
-			# Lethal: also removes that enemy's incoming attack.
-			v += 4.0 + c.intent_damage(f) * 1.2
+			# Lethal: also removes that enemy's incoming attack. (A phase mark is not a kill.)
+			if mark <= 0 or f.hp <= mark:
+				v += 4.0 + c.intent_damage(f) * 1.2
 			break
+	# Twin Cores: keep them level so both fall together; a lone survivor is the priority.
+	if f.rules.has("twin"):
+		v *= 1.4 if twins.is_empty() else (0.6 if twins.any(func(e: Fighter) -> bool: return e.hp > f.hp + per) else 1.0)
 	return v
 
 
