@@ -9,7 +9,7 @@ const SCREENS := ["hub", "hub_heat", "map", "combat", "reward", "rest", "shop", 
 
 
 func _initialize() -> void:
-	var opts := {"out": "user://shot.png", "frames": "30", "plays": "0", "screen": "combat", "seed": "1", "theme": "", "end_turn": "0", "give": ""}
+	var opts := {"out": "user://shot.png", "frames": "30", "plays": "0", "screen": "combat", "seed": "1", "theme": "", "end_turn": "0", "give": "", "hand": "", "pick": "0"}
 	for a in OS.get_cmdline_user_args():
 		var kv := a.split("=", true, 1)
 		if kv.size() == 2:
@@ -48,6 +48,24 @@ func _initialize() -> void:
 					gc.energy += inst.cost()
 					gs._on_card_pressed(null, gc.hand.size() - 1)
 					await _idle(gs)
+		if scr == "combat" and opts["hand"] != "":
+			# hand=id,id: replace the opening hand with those programs (not run). pick=1 then taps the
+			# first one that asks for a Dump / recover pick, to show the pick overlay.
+			var hs = main.get("_screen")
+			var hc: Combat = hs.combat
+			hc.discard_pile.append_array(hc.hand)
+			hc.hand.clear()
+			for id in str(opts["hand"]).split(","):
+				var inst: CardInstance = main.db.instance(id)
+				if inst != null:
+					hc.hand.append(inst)
+			hs._rebuild()
+			await _idle(hs)
+			if opts["pick"] == "1":
+				for i in hc.hand.size():
+					if not hc.pick_request(i).is_empty():
+						hs._on_card_pressed(null, i)
+						break
 		if scr in ["combat", "boss"]:
 			for p in int(opts["plays"]):
 				var cs = main.get("_screen")

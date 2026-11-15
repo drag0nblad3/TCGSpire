@@ -332,6 +332,7 @@ func start_combat(encounter_id: String) -> Combat:
 ## Returns rewards: {"gold": int, "cards": [ids], "talisman": id or ""}.
 func finish_combat(c: Combat) -> Dictionary:
 	hp = c.player.hp
+	c.sync_origins()
 	Records.tally_combat(self, c)
 	Records.tally_ice(self, c)
 	for id in c.play_counts():
@@ -707,7 +708,7 @@ func to_dict() -> Dictionary:
 		d[k] = v.duplicate(true) if v is Array or v is Dictionary else v
 	var cards: Array = []
 	for c: CardInstance in deck:
-		cards.append({"id": c.def.id, "up": c.upgraded, "fw": c.fw, "foil": c.foil, "mod": str(c.mod.get("id", ""))})
+		cards.append({"id": c.def.id, "up": c.upgraded, "fw": c.fw, "foil": c.foil, "mod": str(c.mod.get("id", "")), "uses": c.uses})
 	d["deck"] = cards
 	d["map"] = {"nodes": map.nodes.duplicate(true), "rows": map.rows.duplicate(true), "act": map.act, "walls": map.walls.duplicate(true)}
 	return d
@@ -727,6 +728,7 @@ static func from_dict(db_in: CardDB, d: Dictionary) -> RunState:
 			continue
 		inst.fw_scale = db_in.firmware_scale()
 		inst.foil = bool(c.get("foil", false))
+		inst.uses = int(c.get("uses", 0))
 		if str(c.get("mod", "")) != "":
 			inst.mod = db_in.mod(str(c["mod"]))
 		r.deck.append(inst)

@@ -1,8 +1,8 @@
 class_name LoginBonus
 extends RefCounted
-## Daily login bonus: one claim per calendar day (device date). Days 1-6 pay
-## balance.login.scrap[day - 1] scrap, day 4 adds a data cache, day 7 pays a Zero-day cache, then the
-## cycle starts again at day 1. A missed day never resets progress: the next claim
+## Daily login bonus: one claim per calendar day (device date). Every day pays one cache
+## (balance.login.pack, a data cache; day 7 upgrades it to a Zero-day cache via balance.login.packs)
+## plus balance.login.scrap[day - 1] scrap, then the cycle starts again at day 1. A missed day never resets progress: the next claim
 ## is simply the next day of the cycle.
 ##
 ## Profile.login = {"last": date of the last claim, "day": last day claimed (0-7), "claims": lifetime}.
@@ -19,19 +19,19 @@ static func next_day(p: Profile) -> int:
 	return int(p.login.get("day", 0)) % CYCLE + 1
 
 
-## What a cycle day pays: {"scrap": n, "packs": [pack kinds]}. Days 1-6 pay
-## balance.login.scrap[day - 1]; balance.login.packs maps a day ("4", "7") to a pack kind.
+## What a cycle day pays: {"scrap": n, "packs": [pack kinds]}: balance.login.scrap[day - 1]
+## scrap and one cache, balance.login.pack unless balance.login.packs maps the day ("7") to another kind.
 static func reward(db: CardDB, day: int) -> Dictionary:
 	var cfg: Dictionary = db.balance.get("login", {})
 	var scrap: Array = cfg.get("scrap", [])
 	var out := {"scrap": int(scrap[day - 1]) if day - 1 < scrap.size() else 0, "packs": []}
-	var kind := str(cfg.get("packs", {}).get(str(day), ""))
+	var kind := str(cfg.get("packs", {}).get(str(day), cfg.get("pack", "")))
 	if kind != "":
 		out["packs"].append(kind)
 	return out
 
 
-## "+25 scrap, +1 data cache", "+1 Zero-day cache".
+## "+15 scrap, +1 data cache", "+25 scrap, +1 Zero-day cache".
 static func reward_text(db: CardDB, day: int) -> String:
 	var r := reward(db, day)
 	var bits: Array[String] = []

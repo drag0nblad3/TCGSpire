@@ -78,7 +78,7 @@ static func maxed(db: CardDB) -> Profile:
 	var p := Profile.new_player(db)
 	for id in db.cards:
 		var c: CardDef = db.cards[id]
-		if c.rarity == "curse":
+		if c.rarity == "curse" or c.token:
 			continue
 		if c.rarity != "starter":
 			p.collection.add(id, maxi(Profile.deck_limit(db) - p.collection.count(id), 0))
