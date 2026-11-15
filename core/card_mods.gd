@@ -38,7 +38,33 @@ static func can_apply(m: Dictionary, card: CardInstance) -> bool:
 	for k in m.get("keywords_add", []):
 		if k in d.get_keywords(card.upgraded):
 			return false
+	# Tyler's rule: no free card that deals (or adds) damage and replaces itself without a real cost.
+	var effs: Array = d.get_effects(card.upgraded) + m.get("effects_add", [])
+	var kws: Array = d.get_keywords(card.upgraded) + m.get("keywords_add", [])
+	if free_damage_cantrip(effs, kws, cost(m, card.base_cost()) if not card.is_x() else 1):
+		return false
 	return true
+
+
+const _DAMAGE_OPS := ["damage", "damage_per_ward", "damage_per_status", "cooldown", "relay_cashout", "amplify"]
+
+
+## A 0 RAM program that deals or boosts damage and draws a card, with no Wipe and no HP cost:
+## it can replay forever in a small deck (Fork Bomb + Prefetch). Not allowed on cards or via mods.
+static func free_damage_cantrip(effects: Array, keywords: Array, ram: int) -> bool:
+	if ram > 0 or "exhaust" in keywords:
+		return false
+	var hurts := false
+	var draws := false
+	for e in effects:
+		var op := str(e.get("op", ""))
+		if op in _DAMAGE_OPS or (op == "apply" and str(e.get("status", "")) == "might"):
+			hurts = true
+		if op == "draw" or (op == "handshake" and e.get("effects", []).any(func(x: Dictionary) -> bool: return x.get("op", "") == "draw")):
+			draws = true
+		if op == "lose_hp":
+			return false
+	return hurts and draws
 
 
 static func cost(m: Dictionary, base: int) -> int:

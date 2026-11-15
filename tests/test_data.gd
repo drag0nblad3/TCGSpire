@@ -23,6 +23,22 @@ func test_implants_have_no_penalties() -> void:
 			check(float(t["daemon"][k]) >= (1.0 if k == "hp_mult" else 0.0), "%s weakens daemons" % id)
 
 
+func test_no_free_damage_cantrips() -> void:
+	# Tyler's rule: no 0 RAM card that deals or adds damage and draws to replace itself without Wipe or another real cost.
+	for id in db.cards:
+		var c: CardDef = db.cards[id]
+		if c.type == "unit":
+			continue
+		for up in [false, true]:
+			var card := CardInstance.new(c, up)
+			check(not CardMods.free_damage_cantrip(c.get_effects(up), c.get_keywords(up), card.base_cost() if not card.is_x() else 1), "%s%s is a free damage cantrip" % [id, "+" if up else ""])
+			for m in db.mods:
+				if CardMods.can_apply(db.mod(m), card):
+					var effs: Array = c.get_effects(up) + db.mod(m).get("effects_add", [])
+					var kws: Array = c.get_keywords(up) + db.mod(m).get("keywords_add", [])
+					check(not CardMods.free_damage_cantrip(effs, kws, CardMods.cost(db.mod(m), card.base_cost()) if not card.is_x() else 1), "%s%s + %s is a free damage cantrip" % [id, "+" if up else "", m])
+
+
 func test_every_card_has_text() -> void:
 	for id in db.cards:
 		var c: CardDef = db.cards[id]

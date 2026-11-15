@@ -138,8 +138,13 @@ static func _dump_value(c: Combat, card: CardInstance, n: int) -> Array:
 				v += 1.5
 		elif k.has_keyword("unplayable"):
 			v += 1.5
+		elif k.cost() > left and not k.has_keyword("retain"):
+			v -= 0.5  # can't be played this turn and would be discarded at turn end anyway
+		elif k.has_keyword("retain") or k.effects().any(func(fx: Dictionary) -> bool: return fx.get("op") == "dump"):
+			v -= 2.5 + 0.5 * k.cost()
 		else:
-			v -= 2.0 if k.cost() > left else 2.5 + 0.5 * k.cost()
+			# A card we could still play this turn: dumping it throws away that play.
+			v -= maxf(score(c, k) * maxf(float(k.cost()), 0.6), 2.5)
 		v += k.cooldown * 0.1
 	return [v, count]
 
