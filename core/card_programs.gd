@@ -3,6 +3,8 @@ extends RefCounted
 ## Physical-card memory and play-order rules. All state lasts for one combat.
 
 const DESCRIPTIONS := {
+	"dump": "Dump N: discard N other cards from your hand as part of running this program (you pick them). You need that many other cards in hand to run it. Dump your hand discards all of them, even none. Dumped cards go to the discard pile, Cooldown cards charge, and any \"When dumped\" effect fires.",
+	"recover": "Pick a program from that pile and shuffle it back into your draw pile (or onto the top). Rootkits can't come back from Wipe. Nothing happens if the pile is empty.",
 	"interrupt": "Names one or more enemy intents, such as Purge. If the target's next move holds that intent, that part is cancelled; the rest of the move still happens. Nothing happens if the intent isn't there, so read the icons first. Any \"If it cancels\" payoff fires once per enemy cut.",
 	"relay_cashout": "Gain this copy's normal Relay Firewall, then deal the listed damage per Relay point. Consume the signal: it does not pass to another card. Without Relay, there is no bonus damage.",
 	"handshake": "The named partner must have been played earlier this turn. Either order works, with a different payoff. Copies share the partner name, not temporary bonuses.",

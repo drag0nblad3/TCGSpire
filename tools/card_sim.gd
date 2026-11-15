@@ -65,7 +65,7 @@ func _cards(db: CardDB, filter: String) -> Array:
 	var out: Array = []
 	for id in db.cards:
 		var c := db.card(id)
-		if c.rarity in ["starter", "curse"]:
+		if c.rarity in ["starter", "curse"] or c.token:
 			continue
 		if filter != "" and id not in filter.split(","):
 			continue

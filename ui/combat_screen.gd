@@ -18,6 +18,9 @@ const HAND_OVERLAP := 8.0
 var combat: Combat
 var run: RunState
 var _selected := -1
+## Cards picked for the selected program's Dump / recover (Combat.pick_request), and for which hand slot.
+var _picks: Array = []
+var _picks_for := -1
 var _event_cursor := 0
 var _implant_views: Dictionary = {}
 var _implant_tracker := ImplantTracker.new()
@@ -393,18 +396,61 @@ func _on_card_pressed(_view: CardView, idx: int) -> void:
 		var c: CardInstance = combat.hand[idx]
 		if c.has_keyword("unplayable"):
 			UiKit.toast(self, "%s can't be played." % c.display_name())
-		elif combat.was_played_this_turn(c):
-			UiKit.toast(self, "%s can be played again next turn." % c.display_name())
 		elif c.cost() > combat.energy:
 			UiKit.toast(self, "Not enough RAM (%d needed)." % c.cost())
+		elif combat.dump_need(c) > combat.hand.size() - 1:
+			UiKit.toast(self, "Needs %d other card%s in hand to Dump." % [combat.dump_need(c), "" if combat.dump_need(c) == 1 else "s"])
 		return
+	_picks = []
+	_picks_for = -1
+	var req := combat.pick_request(idx)
+	if not req.is_empty():
+		GameAudio.play("select")
+		_pick_cards(idx, req, [])
+		return
+	_continue_play(idx)
+
+
+## Dump / recover: pick cards one at a time in an overlay, then target and run the program.
+func _pick_cards(idx: int, req: Dictionary, chosen: Array) -> void:
+	var left: Array = req["cards"].filter(func(k: CardInstance) -> bool: return not chosen.has(k))
+	var need := int(req["amount"])
+	var title := ""
+	if req["kind"] == "dump":
+		title = "Dump: pick a card to discard (%d of %d)" % [chosen.size() + 1, need] if need > 1 else "Dump: pick a card to discard"
+	else:
+		var from := "Wiped programs" if req.get("from", "") == "wiped" else "discard pile"
+		title = "Pick from your %s: it goes %s" % [from, "on top of your draw pile" if req.get("into", "") == "top" else "back into your draw pile"]
+	var on_pick := func(i: int) -> void:
+		if i < 0 or not is_inside_tree():
+			return
+		var next: Array = chosen + [left[i]]
+		if next.size() < need and left.size() > 1:
+			_pick_cards(idx, req, next)
+			return
+		_picks = next
+		_picks_for = idx
+		_continue_play(idx)
+	get_tree().root.add_child(DeckOverlay.new().setup(title, left, "Cancel", on_pick, true))
+
+
+## Targeting (if the program needs one), then run it with any picks made.
+func _continue_play(idx: int) -> void:
 	var card: CardInstance = combat.hand[idx]
 	if (combat.needs_target(card) and combat.living(combat.enemies).size() > 1) or (combat.needs_ally(card) and not combat.units.is_empty()):
 		GameAudio.play("select")
 		_selected = idx
 		_rebuild()
 		return
-	_act(func() -> void: combat.play_card(idx, -1), idx)
+	var chosen := _take_picks(idx)
+	_act(func() -> void: combat.play_card(idx, -1, chosen), idx)
+
+
+func _take_picks(idx: int) -> Array:
+	var out: Array = _picks if _picks_for == idx else []
+	_picks = []
+	_picks_for = -1
+	return out
 
 
 ## True while the selected program wants you or one of your daemons as its target.
@@ -441,7 +487,8 @@ func _on_ally_pressed(view: FighterView) -> void:
 	var idx := _selected
 	var ally_idx := ([combat.player] + combat.units).find(view.fighter)
 	_selected = -1
-	_act(func() -> void: combat.play_card(idx, ally_idx), idx)
+	var chosen := _take_picks(idx)
+	_act(func() -> void: combat.play_card(idx, ally_idx, chosen), idx)
 
 
 func _on_enemy_pressed(view: FighterView, enemy_idx: int) -> void:
@@ -452,7 +499,8 @@ func _on_enemy_pressed(view: FighterView, enemy_idx: int) -> void:
 		return
 	var idx := _selected
 	_selected = -1
-	_act(func() -> void: combat.play_card(idx, enemy_idx), idx)
+	var chosen := _take_picks(idx)
+	_act(func() -> void: combat.play_card(idx, enemy_idx, chosen), idx)
 
 
 func _on_end_turn() -> void:
@@ -533,6 +581,8 @@ func _play_events(played: CardView) -> Array:
 			"play":
 				if step_scale > 0.0 and played != null:
 					GameAudio.play(played.card.def.faction)
+				if e.has("x"):
+					_float_text(_player_view, "X = %d" % int(e["x"]), Palette.ENERGY, -40, true)
 				if played != null and is_instance_valid(played):
 					_fly_card(played, _views.get(str(e["target"])))
 					played = null
@@ -738,6 +788,22 @@ func _play_events(played: CardView) -> Array:
 				_float_text(_player_view, "Loop: +%d now" % int(e.get("grown", e["loops"])), Palette.faction("void"), -30)
 			"reshuffle":
 				_float_text(_player_view, "Discard shuffled into draw pile", Palette.TEXT_DIM, -60)
+			"dump":
+				# The dumped card leaves the hand for the discard pile.
+				_glide_after_change()
+				for cv: CardView in _hand_row.get_children():
+					if cv.card.key() == str(e["card"]) and not combat.hand.has(cv.card) and cv.modulate.a > 0.5:
+						_send_to_pile(cv, "discard", 0.0)
+						break
+				_float_text(_player_view, "Dumped %s" % _card_label(str(e["card"])), Palette.TEXT_DIM, -50)
+				await _wait(0.15)
+			"recover":
+				var where := "on top of your draw pile" if str(e.get("into", "")) == "top" else "into your draw pile"
+				_float_text(_player_view, "%s back %s" % [_card_label(str(e["card"])), where], Palette.ENERGY, -60)
+				_bump_pile("draw")
+				await _wait(0.2)
+			"evolve":
+				await _banner("%s evolved into %s" % [_card_label(str(e["card"])), _card_label(str(e["into"]))], Palette.UPGRADED)
 			"draw":
 				draws.append(not e.get("created", false))
 			"rally":
@@ -747,6 +813,11 @@ func _play_events(played: CardView) -> Array:
 			"combat_end":
 				await _banner("Victory" if e["won"] else "Defeated", Palette.ENERGY if e["won"] else Palette.HP)
 	return draws
+
+
+## "black_hat+#1" -> "Black Hat"
+func _card_label(key: String) -> String:
+	return Lexicon.card_name(key.split("#")[0].trim_suffix("+"))
 
 
 func _all_drawn(n: int) -> Array:

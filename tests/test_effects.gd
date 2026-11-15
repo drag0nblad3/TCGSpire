@@ -358,7 +358,7 @@ func test_loop_trigger_fires_implants() -> void:
 	c.energy = 9
 	var card: CardInstance = null
 	for id in db.cards:
-		if db.make_deck([id])[0].has_loop():
+		if db.make_deck([id])[0].has_loop() and c.dump_need(db.make_deck([id])[0]) == 0:
 			card = db.make_deck([id])[0]
 			break
 	c.hand.append(card)

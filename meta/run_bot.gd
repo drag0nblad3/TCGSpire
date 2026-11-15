@@ -182,7 +182,28 @@ static func card_value(c: CardDef, upgraded: bool = false) -> float:
 	if c == null:
 		return 0.0
 	var v := 0.0
-	for e in c.get_effects(upgraded):
+	var effs: Array = []
+	var dump_n := 0
+	for raw in c.get_effects(upgraded):
+		if str(raw.get("op", "")) == "dump":
+			dump_n = int(raw.get("amount", 0))
+	for raw in c.get_effects(upgraded):
+		if raw.has("per"):
+			# Typical counts: X = 3 RAM, a mid-shuffle draw pile, a few cards dumped.
+			var guess: int = {"x": 3, "draw_pile": 10, "discard_pile": 6, "hand": 4, "wiped": 2, "dumped": dump_n if dump_n > 0 else 3}.get(str(raw["per"]), 2)
+			effs.append(Effects.with_per(raw, guess))
+		else:
+			effs.append(raw)
+	if not c.get_on_dump(upgraded).is_empty():
+		var od := 0.0
+		for fx in c.get_on_dump(upgraded):
+			od += card_value(CardDef.from_dict({"id": "_od", "cost": 1, "effects": [fx]}))
+		if "unplayable" in c.get_keywords(upgraded):
+			return od * 0.5
+		v += od * 0.3
+	if not c.evolve.is_empty():
+		v += 1.5
+	for e in effs:
 		var n := float(e.get("amount", 0))
 		var aoe := 1.7 if str(e.get("to", "")) == "all_enemies" else 1.0
 		if e.has("loop"):
@@ -228,6 +249,10 @@ static func card_value(c: CardDef, upgraded: bool = false) -> float:
 				v -= n * 0.6
 			"add_card":
 				v += 3.0
+			"dump":
+				v -= 2.5 * (n if n > 0 else 2.0)
+			"recover":
+				v += 3.0
 			"amplify":
 				v += 2.0 * aoe
 			"strip":
@@ -244,7 +269,7 @@ static func card_value(c: CardDef, upgraded: bool = false) -> float:
 		v *= 0.85
 	if "unplayable" in c.get_keywords(upgraded):
 		return -10.0
-	return v / maxf(c.get_cost(upgraded), 0.6)
+	return v / (3.0 if c.is_x(upgraded) else maxf(c.get_cost(upgraded), 0.6))
 
 
 ## card_value of an instance, including its firmware level.
