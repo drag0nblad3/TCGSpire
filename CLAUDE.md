@@ -8,7 +8,7 @@ Original design only: don't copy cards, names, characters or look from existing 
 - `scripts/cards.sh [filter]` — every card as one line with generated rules text.
 - `scripts/sim.sh [n=200] [deck=a,b] [enc=mites,golem]` — bot plays seeded fights, one line per encounter.
 - `scripts/sim.sh mode=run [n=100] [heat] [job=ember|all] [profile=new|experienced|veteran|max] [acts=1]` — bot plays whole runs: win %, avg floor,
-  top killers; `acts=1` adds per-act death share and turns per normal/elite/boss fight. `profile=experienced`/`veteran` = save after 10/39 bot runs with likely spending, `max` = everything owned/bought (`meta/profile_bot.gd`). Default heat per profile: new 0, experienced 1, veteran 3, max 6.
+  top killers; `acts=1` adds per-act death share and turns per normal/elite/boss fight. `profile=experienced`/`veteran` = save after 10/39 bot runs with likely spending, `max` = everything owned/bought (`meta/profile_bot.gd`). Default heat per profile: new 0, experienced 1, veteran 3, max 6. `SAVE_OUT=f.json` writes the built profile, `SAVE_IN=f.json` plays from it instead: compare two builds from the same save (any card or bot change otherwise changes the experienced/veteran save itself).
 - `scripts/card_sim.sh [n=60] [profile=new] [heat] [cards=a,b] [jobs=4] [out=/tmp/card_sim]` — per-card balance: 2 copies of each pack card
   forced into the starter picks on its crew's job, scored by floor reached vs seed-paired baseline runs (`rel` = vs crew median), plus
   bot picks/offers and plays/damage/Firewall per play; writes `report.tsv` in `out`. ~10 min for every card at n=80 on 4 cores. Low plays/run = bot blind spot.

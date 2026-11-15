@@ -65,6 +65,12 @@ func _sim_runs(db: CardDB, n: int, heat: int, job: String = "", which: String = 
 		profile = ProfileBot.veteran(db, 39)
 	elif which == "max":
 		profile = ProfileBot.maxed(db)
+	if OS.has_environment("SAVE_OUT"):
+		var fo := FileAccess.open(OS.get_environment("SAVE_OUT"), FileAccess.WRITE)
+		fo.store_string(JSON.stringify(profile.to_dict()))
+		fo.close()
+	if OS.has_environment("SAVE_IN"):
+		profile = Profile.from_dict(JSON.parse_string(FileAccess.get_file_as_string(OS.get_environment("SAVE_IN"))), db)
 	if which != "new":
 		print("profile %s: %s" % [which, ProfileBot.summary(db, profile)])
 	var wins := 0
