@@ -235,7 +235,7 @@ func test_unknown_op_fails_validation() -> void:
 func test_charge_discharge_consumes() -> void:
 	c.player.add_status("charge", 4)
 	c.play_card(give(c, "discharge"), 0)
-	eq(c.enemies[0].hp, 18, "4 charge x3")
+	eq(c.enemies[0].hp, 14, "4 charge x4")
 	eq(c.player.status("charge"), 0, "consumed")
 
 

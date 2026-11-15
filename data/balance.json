@@ -45,8 +45,8 @@
   "static_build": 1,
   "discharge": 1,
   "drone_swarm": 2,
-  "rivet_gun": 1,
-  "jam_signal": 1,
+  "rivet_gun": 2,
+  "jam_signal": 2,
   "shriek": 2
  },
  "pack": {
