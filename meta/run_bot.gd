@@ -9,9 +9,15 @@ extends RefCounted
 ## forced: card ids that replace the weakest starter picks (per-card sims).
 ## stats: optional Dictionary filled with per-card offers, picks and plays
 ## (card id -> {offered, picked, plays, dmg, ward}) for tools/sim.gd mode=cards.
+## Card choices pick at random (weighted by value) among the options worth at least
+## (1 - PICK_SPREAD) of the best one, like a person drafting; false = always the best (sim flag greedy=1).
+static var stochastic := true
+const PICK_SPREAD := 0.2
+
+
 static func play(db: CardDB, profile: Profile, seed_in: int, heat: int = 0, job: String = "", forced: Array = [], stats = null) -> Dictionary:
 	var targets := Jobs.targets(db, job, Jobs.extra_targets(db, heat), GameRng.new(seed_in).fork("job")) if job != "" else []
-	var picks := best_picks(db, profile, job, targets)
+	var picks := best_picks(db, profile, job, targets, GameRng.new(seed_in).fork("bot_picks") if stochastic else null)
 	if not forced.is_empty():
 		picks = picks.filter(func(id: String) -> bool: return id not in forced)
 		picks.resize(mini(picks.size(), maxi(profile.starter_picks(db) - forced.size(), 0)))
@@ -47,7 +53,7 @@ static func play(db: CardDB, profile: Profile, seed_in: int, heat: int = 0, job:
 					break
 				var pick := _pick_reward(run, rewards["cards"])
 				if pick == "" and run.reward_rerolls_left > 0:
-					pick = _pick_reward(run, run.reroll_reward(rewards["kind"], rewards["cards"]))
+					pick = _pick_reward(run, run.reroll_reward(rewards["kind"], rewards["cards"]), "re")
 				if stats != null:
 					for id in rewards["cards"]:
 						_stat(stats, id)["offered"] += 1
@@ -152,7 +158,25 @@ static func _choose_node(run: RunState, options: Array) -> int:
 
 ## Strongest legal picks from the collection: the client's best cards up to the
 ## job's quota, then the best of the rest (firmware scales a card's value).
-static func best_picks(db: CardDB, profile: Profile, job: String, targets: Array) -> Array:
+## Picks a key of `vals` ({id: value}): the best, or with `rng` a value-weighted draw
+## among those within PICK_SPREAD of the best. "" when nothing is worth anything.
+static func soft_pick(vals: Dictionary, rng: GameRng) -> String:
+	var best := ""
+	var best_v := 0.0
+	for id in vals:
+		if float(vals[id]) > best_v:
+			best_v = float(vals[id])
+			best = id
+	if rng == null or best == "":
+		return best
+	var near := {}
+	for id in vals:
+		if float(vals[id]) >= best_v * (1.0 - PICK_SPREAD):
+			near[id] = float(vals[id])
+	return str(rng.weighted(near))
+
+
+static func best_picks(db: CardDB, profile: Profile, job: String, targets: Array, rng: GameRng = null) -> Array:
 	var n := profile.starter_picks(db)
 	var ban := targets if not targets.is_empty() else Jobs.banned(db, job)
 	var pool: Array = []
@@ -168,16 +192,12 @@ static func best_picks(db: CardDB, profile: Profile, job: String, targets: Array
 	var base: Array = profile.base_deck(db).map(func(o: String) -> CardDef: return db.card(o))
 	# Greedy, re-scored after each pick: daemons crowd each other out (fit_mult).
 	var pick_best := func(ok: Callable) -> String:
-		var best := ""
-		var best_v := -INF
+		var vals := {}
 		for id in pool:
-			if out.count(id) >= pool.count(id) or not ok.call(id):
+			if vals.has(id) or out.count(id) >= pool.count(id) or not ok.call(id):
 				continue
-			var v: float = val.call(id) * fit_mult(db.card(id), base + out.map(func(o: String) -> CardDef: return db.card(o)))
-			if v > best_v:
-				best_v = v
-				best = id
-		return best
+			vals[id] = maxf(val.call(id) * fit_mult(db.card(id), base + out.map(func(o: String) -> CardDef: return db.card(o))), 0.001)
+		return soft_pick(vals, rng)
 	while out.size() < mini(Jobs.required(db, job, n), n):
 		var id: String = pick_best.call(func(k: String) -> bool: return db.card(k).is_of(job))
 		if id == "":
@@ -192,8 +212,9 @@ static func best_picks(db: CardDB, profile: Profile, job: String, targets: Array
 
 
 ## How well a card fits next to `others`: daemons share a few board slots and a second
-## copy of one only tops it up, so each extra daemon is worth less; a deck short on damage
-## wants attacks. Static card_value can't see any of that on its own.
+## copy of one only tops it up, so each extra daemon is worth less. Deck goals: some real
+## offense and defense first (starter cards don't count), then engine as the deck grows.
+## Static card_value can't see any of that on its own.
 static func fit_mult(c: CardDef, others: Array) -> float:
 	var m := 1.0
 	if c.type == "unit":
@@ -202,10 +223,46 @@ static func fit_mult(c: CardDef, others: Array) -> float:
 			m *= 0.55
 		if units >= 2:
 			m *= pow(0.7, units - 1)
-	var hits := func(k: CardDef) -> bool: return k.type == "attack" or k.effects.any(func(e: Dictionary) -> bool: return str(e.get("op", "")).begins_with("damage"))
-	if hits.call(c) and others.filter(hits).size() < 4:
+	# Second half of a Handshake pair: its partner is already in the deck, either way round.
+	var partners := func(k: CardDef) -> Array:
+		return k.effects.filter(func(e: Dictionary) -> bool: return str(e.get("op", "")) == "handshake").map(func(e: Dictionary) -> String: return str(e.get("card", "")))
+	var mine: Array = partners.call(c)
+	if others.any(func(o: CardDef) -> bool: return o.id in mine or c.id in partners.call(o)):
+		m *= 1.4
+	var built: Array = others.filter(func(o: CardDef) -> bool: return o.rarity not in ["starter", "curse"])
+	var off_n := built.filter(func(o: CardDef) -> bool: return "off" in roles(o)).size()
+	var def_n := built.filter(func(o: CardDef) -> bool: return "def" in roles(o)).size()
+	var r := roles(c)
+	if "off" in r and off_n < 4:
 		m *= 1.3
+	if "def" in r and def_n < 3:
+		m *= 1.25
+	if "eng" in r and not ("off" in r or "def" in r):
+		# Engine pays off once the deck can already fight; worth more the more is built.
+		m *= (1.0 + minf(0.04 * built.size(), 0.35)) if off_n >= 3 and def_n >= 2 else 0.85
 	return m
+
+
+## What a card does for a deck: "off" (damage), "def" (Firewall, Throttled, healing...),
+## "eng" (draw, RAM, powers, daemons, buffs that grow other cards).
+static func roles(c: CardDef) -> Array:
+	var out: Array = []
+	if c == null:
+		return out
+	if c.type == "attack":
+		out.append("off")
+	if c.type in ["power", "unit"]:
+		out.append("eng")
+	for e in c.effects:
+		var op := str(e.get("op", ""))
+		var st := str(e.get("status", ""))
+		if op.begins_with("damage") or op in ["cooldown", "relay_cashout"] or st in ["burn", "brittle"]:
+			out.append("off")
+		if op in ["ward", "heal", "plant", "relay"] or st in ["weaken", "fortify", "regen", "thorns", "stall"] or (op == "interrupt" and "attack" in e.get("kinds", [])):
+			out.append("def")
+		if op in ["draw", "energy", "summon", "rally", "amplify", "recover", "compile"] or st in ["might", "surge", "charge"] or e.has("loop") or e.has("per"):
+			out.append("eng")
+	return out
 
 
 static func _theirs(db: CardDB, job: String, picks: Array) -> int:
@@ -240,7 +297,7 @@ static func card_value(c: CardDef, upgraded: bool = false) -> float:
 		v += 1.5
 	for e in effs:
 		var n := float(e.get("amount", 0))
-		var aoe := 1.7 if str(e.get("to", "")) == "all_enemies" else 1.0
+		var aoe := 1.4 if str(e.get("to", "")) == "all_enemies" else 1.0
 		if e.has("loop"):
 			v += float(e["loop"]) * 2.0 * aoe
 		match str(e.get("op", "")):
@@ -272,15 +329,15 @@ static func card_value(c: CardDef, upgraded: bool = false) -> float:
 			"apply":
 				var st := str(e.get("status", ""))
 				var k := float(e.get("stacks", 1))
-				v += k * ({"burn": 2.2, "brittle": 2.5, "weaken": 2.0, "might": 3.0, "regen": 2.0, "thorns": 1.8, "fortify": 8.0, "charge": 1.6, "frail": 0.8, "overcharge": -3.0, "surge": 4.0, "stall": 6.0}.get(st, 1.5)) * aoe
+				v += k * ({"burn": 2.2, "brittle": 2.5, "weaken": 3.0, "might": 3.0, "regen": 3.0, "thorns": 1.8, "fortify": 8.0, "charge": 1.6, "frail": 0.8, "overcharge": -3.0, "surge": 4.0, "stall": 10.0}.get(st, 1.5)) * aoe
 			"draw":
 				v += n * 3.5
 			"energy":
 				v += n * 4.5
 			"summon":
-				v += DaemonRules.value(e) * 0.9
+				v += DaemonRules.value(e) * 0.75
 			"rally":
-				v += 1.0 + n * 1.5
+				v += 0.5 + n * 1.0
 			"heal":
 				v += n * 1.2  # HP carries between fights
 			"lose_hp":
@@ -292,19 +349,21 @@ static func card_value(c: CardDef, upgraded: bool = false) -> float:
 			"recover":
 				v += 3.0
 			"amplify":
-				v += 2.0 * aoe
+				v += 4.0 if str(e.get("status", "")) == "burn" else 2.0  # Virus is built by the deck itself
 			"strip":
 				v += 3.5 * aoe  # bosses stack Boost and Firewall; wiping them is worth a hit
 			"interrupt":
-				v += 2.5 * aoe
+				v += (2.5 + (5.0 if "attack" in e.get("kinds", []) else 0.0)) * aoe
 			"fuel":
 				v += 2.0 * aoe  # many elites and bosses stack Boost
 			"sacrifice":
 				v += 1.5 * float(e.get("mult", 1.0))  # dead without a daemon up
 	if c.get_effects(upgraded).any(func(e: Dictionary) -> bool: return str(e.get("op", "")) == "sacrifice"):
-		v *= 0.5  # needs a daemon up
+		v *= 0.7  # needs a daemon up
 	if c.type == "power":
 		v *= 1.6  # lasts the whole fight
+	if "retain" in c.get_keywords(upgraded):
+		v += 1.5  # waits in hand for the right turn
 	if "exhaust" in c.get_keywords(upgraded) and c.type != "power":
 		v *= 0.85
 	if "unplayable" in c.get_keywords(upgraded):
@@ -331,15 +390,14 @@ static func _deck_bar(run: RunState) -> float:
 	return bar * (0.9 + maxf(run.deck.size() - 14, 0) * 0.04)
 
 
-static func _pick_reward(run: RunState, ids: Array) -> String:
-	var best := ""
-	var best_v := 0.0
+static func _pick_reward(run: RunState, ids: Array, tag: String = "") -> String:
+	var bar := _deck_bar(run) * 0.7
+	var vals := {}
 	for id in ids:
 		var v := card_value(run.db.card(id)) * (1.1 if run.db.card(id).is_of(run.job) else 1.0) * fit_mult(run.db.card(id), run.deck.map(func(k: CardInstance) -> CardDef: return k.def))
-		if v > best_v:
-			best_v = v
-			best = id
-	return best if best != "" and best_v >= _deck_bar(run) * 0.7 else ""
+		if v >= bar:
+			vals[id] = maxf(v, 0.001)
+	return soft_pick(vals, run.rng.fork("bot_reward:%s%d" % [tag, run.floor_num]) if stochastic else null)
 
 
 static func _pick_event_choice(run: RunState, ev: Dictionary) -> Dictionary:
@@ -412,8 +470,7 @@ static func _best_perk(ids: Array) -> String:
 
 ## Card whose upgrade adds the most value.
 static func _upgrade_target(run: RunState) -> int:
-	var best := -1
-	var best_gain := 0.0
+	var gains := {}
 	var maxed := RunState.deck_maxed(run.deck)
 	for i in run.deck.size():
 		var c: CardInstance = run.deck[i]
@@ -422,10 +479,10 @@ static func _upgrade_target(run: RunState) -> int:
 		var after := c.copy()
 		after.level_up()
 		var gain := _inst_value(after) - _inst_value(c) + (0.5 if c.def.rarity != "starter" else 0.0)
-		if gain > best_gain:
-			best_gain = gain
-			best = i
-	return best
+		if gain > 0.0:
+			gains[str(i)] = gain
+	var pick := soft_pick(gains, run.rng.fork("bot_upgrade:%d" % run.floor_num) if stochastic else null)
+	return int(pick) if pick != "" else -1
 
 
 static func _remove_target(run: RunState) -> int:
