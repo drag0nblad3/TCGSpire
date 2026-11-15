@@ -32,7 +32,7 @@ func test_x_hits_scale_and_zero_ram_does_nothing() -> void:
 	c.energy = 2
 	var hp: int = c.enemies[0].hp
 	c.play_card(give(c, "thermal_runaway"))
-	eq(c.enemies[0].hp, hp - 10, "5 damage X=2 times")
+	eq(c.enemies[0].hp, hp - 12, "6 damage X=2 times")
 	hp = c.enemies[0].hp
 	c.play_card(give(c, "thermal_runaway"))
 	eq(c.enemies[0].hp, hp, "X=0 deals nothing")

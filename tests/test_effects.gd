@@ -436,3 +436,10 @@ func test_lagged_cannot_be_offered_in_stacks() -> void:
 	check(not Effects.validate({"op": "amplify", "status": "stall"}, "x").is_empty(), "Amplify Lagged refused")
 	check(Effects.validate({"op": "apply", "status": "stall", "stacks": 1}, "x").is_empty(), "one Lagged is fine")
 	check(not Effects.describe({"op": "apply", "status": "stall", "stacks": 1}).contains("1"), "Lagged text has no count")
+
+
+func test_amplify_base_when_none() -> void:
+	c.play_card(give(c, "recursion"))
+	eq(c.player.status("charge"), 3, "no Charge: gain 2, then the loop's +1")
+	c.play_card(give(c, "recursion"))
+	eq(c.player.status("charge"), 7, "3 doubled to 6, then +1")

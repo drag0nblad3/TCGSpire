@@ -232,7 +232,8 @@ static func card_value(c: CardDef, upgraded: bool = false) -> float:
 				elif str(e.get("op", "")) == "damage_per_ward":
 					v += 8.0 * aoe * minf(float(e.get("mult", 1.0)), 1.0)
 				else:
-					v += 8.0 * aoe
+					# Your own stacks: a deck that runs it builds a few (about 3 Charge) before cashing in.
+					v += (float(e.get("base", 0)) + float(e.get("mult", 1.0)) * 3.0) * aoe
 			"ward":
 				v += n * 0.85
 			"apply":
@@ -260,7 +261,7 @@ static func card_value(c: CardDef, upgraded: bool = false) -> float:
 			"amplify":
 				v += 2.0 * aoe
 			"strip":
-				v += 2.0 * aoe
+				v += 3.5 * aoe  # bosses stack Boost and Firewall; wiping them is worth a hit
 			"interrupt":
 				v += 2.5 * aoe
 			"sacrifice":
