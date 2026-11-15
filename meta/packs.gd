@@ -127,22 +127,28 @@ static func odds_at_least(db: CardDB, kind: String, rarity: String) -> float:
 
 ## Distinct card choices. kind = normal | elite | boss | shop (balance.reward).
 ## extra adds choices (perks); banned factions (the job's rivals) are never offered.
-static func reward_choices(db: CardDB, rng: GameRng, kind: String = "normal", extra: int = 0, banned: Array = [], excluded: Array = []) -> Array:
+## weigh: id -> weight inside the rolled rarity (OfferNudge.card_weigher), invalid = even.
+static func reward_choices(db: CardDB, rng: GameRng, kind: String = "normal", extra: int = 0, banned: Array = [], excluded: Array = [], weigh: Callable = Callable()) -> Array:
 	var cfg: Dictionary = db.balance.get("reward", {})
 	var weights: Dictionary = cfg.get("weights", {}).get(kind, {"common": 1})
 	var count := int(cfg.get("shop_count", 5)) if kind == "shop" else int(cfg.get("choices", 3)) + extra
 	var out: Array = []
 	var guard := 0
+	# At most half the offer (rounded up) may be cards the weighting favours;
+	# once that many landed, the rest roll at plain odds.
+	var room := OfferNudge.limit(db, count) if weigh.is_valid() else 0
 	while out.size() < count and guard < 100:
 		guard += 1
-		var id := roll_card(db, rng, weights, banned, excluded)
+		var id := roll_card(db, rng, weights, banned, excluded, "", weigh if room > 0 else Callable())
 		if id != "" and id not in out:
 			out.append(id)
+			if OfferNudge.boosted(weigh, id):
+				room -= 1
 	return out
 
 
 ## crew: only cards of that crew (CardDef.is_of), "" = any.
-static func roll_card(db: CardDB, rng: GameRng, weights: Dictionary, banned: Array = [], excluded: Array = [], crew: String = "") -> String:
+static func roll_card(db: CardDB, rng: GameRng, weights: Dictionary, banned: Array = [], excluded: Array = [], crew: String = "", weigh: Callable = Callable()) -> String:
 	# Drop rarities with no cards so a roll never comes up empty.
 	var usable := {}
 	for r in weights:
@@ -151,7 +157,7 @@ static func roll_card(db: CardDB, rng: GameRng, weights: Dictionary, banned: Arr
 	if usable.is_empty():
 		return ""
 	var rarity: String = rng.weighted(usable)
-	return rng.pick(_pool(db, rarity, banned, excluded, crew))
+	return str(OfferNudge.pick(rng, _pool(db, rarity, banned, excluded, crew), weigh))
 
 
 static func _pool(db: CardDB, rarity: String, banned: Array = [], excluded: Array = [], crew: String = "") -> Array:

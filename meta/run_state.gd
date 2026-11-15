@@ -405,14 +405,14 @@ func _next_act() -> void:
 
 
 func reward_choices(kind: String = "normal") -> Array:
-	return Packs.reward_choices(db, rng.fork("reward:%d" % floor_num), kind, int(perk_mod("reward_choices")) if kind != "shop" else 0, banned)
+	return Packs.reward_choices(db, rng.fork("reward:%d" % floor_num), kind, int(perk_mod("reward_choices")) if kind != "shop" else 0, banned, [], OfferNudge.card_weigher(self))
 
 
 func reroll_reward(kind: String, current: Array) -> Array:
 	if over or reward_rerolls_left <= 0 or kind not in ["normal", "elite", "boss"] or current.is_empty():
 		return []
 	var roll := rng.fork("reward_reroll:%d:%d" % [floor_num, reward_rerolls_left])
-	var choices := Packs.reward_choices(db, roll, kind, int(perk_mod("reward_choices")), banned, current)
+	var choices := Packs.reward_choices(db, roll, kind, int(perk_mod("reward_choices")), banned, current, OfferNudge.card_weigher(self))
 	if choices.size() != current.size():
 		return []
 	reward_rerolls_left -= 1
@@ -517,7 +517,8 @@ func add_talisman(id: String) -> void:
 
 
 ## rarity "" = weighted roll from balance.talisman_weights.
-func roll_talisman(rarity: String, r: GameRng) -> String:
+## nudge false = plain odds (the shop's half-of-the-offer limit is used up).
+func roll_talisman(rarity: String, r: GameRng, nudge: bool = true) -> String:
 	if rarity == "":
 		rarity = str(r.weighted(db.balance.get("talisman_weights", {"common": 1})))
 	var pool: Array = []
@@ -527,8 +528,14 @@ func roll_talisman(rarity: String, r: GameRng) -> String:
 			pool.append(id)
 	pool.sort()
 	if pool.is_empty() and rarity != "common":
-		return roll_talisman("common", r)
-	return str(r.pick(pool)) if not pool.is_empty() else ""
+		return roll_talisman("common", r, nudge)
+	if not nudge:
+		return str(r.pick(pool)) if not pool.is_empty() else ""
+	# Hidden nudge toward implants that fit the deck or answer this act's boss.
+	var have := OfferNudge.deck_tags(self)
+	var wants := OfferNudge.boss_wants(self)
+	var weigh := func(id: String) -> float: return OfferNudge.talisman_weight(self, id, have, wants)
+	return str(OfferNudge.pick(r, pool, weigh)) if not pool.is_empty() else ""
 
 
 # --- rest / shop / events -----------------------------------------------------
@@ -595,12 +602,17 @@ func make_shop() -> Dictionary:
 	var prices: Dictionary = cfg.get("card_price", {})
 	var off := clampf(1.0 - perk_mod("shop_discount_pct"), 0.3, 1.0)
 	var cards: Array = []
-	for id in Packs.reward_choices(db, r, "shop", 0, banned):
+	for id in Packs.reward_choices(db, r, "shop", 0, banned, [], OfferNudge.card_weigher(self)):
 		var c := db.card(id)
 		cards.append({"id": id, "price": int((int(prices.get(c.rarity, 50)) + r.range_i(-5, 5)) * off)})
 	var tal: Array = []
+	var room := OfferNudge.limit(db, 2)
+	var have := OfferNudge.deck_tags(self)
+	var wants := OfferNudge.boss_wants(self)
 	for i in 2:
-		var tid := roll_talisman("", r)
+		var tid := roll_talisman("", r, room > 0)
+		if OfferNudge.talisman_weight(self, tid, have, wants) > 1.0001:
+			room -= 1
 		if tid != "" and db.talismans[tid]["rarity"] != "boss" and tid not in tal.map(func(x: Dictionary) -> String: return x["id"]):
 			var tp: Dictionary = cfg.get("talisman_price", {})
 			tal.append({"id": tid, "price": int(int(tp.get(db.talismans[tid]["rarity"], 150)) * off)})
