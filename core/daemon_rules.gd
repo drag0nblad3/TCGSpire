@@ -94,6 +94,9 @@ static func _effect_value(fx: Dictionary) -> float:
 			return n * float(fx.get("hits", 1)) * (1.4 if fx.get("to", "") == "all_enemies" else 1.0)
 		"damage_per_ward":
 			return 6.0 * float(fx.get("mult", 1.0))
+		"damage_per_status":
+			# Reads stacks the deck builds up (Virus, Buffer): count on a few.
+			return (float(fx.get("base", 0)) + 4.0 * float(fx.get("mult", 1.0))) * (1.4 if fx.get("to", "") == "all_enemies" else 1.0)
 		"ward":
 			return n * 0.85
 		"heal":

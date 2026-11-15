@@ -369,7 +369,13 @@ static func _enemy_status_value(c: Combat, f: Fighter, st: String, stacks: float
 static func _self_status_value(c: Combat, st: String, stacks: float) -> float:
 	match st:
 		"might":
-			return stacks * 2.5
+			# Boost lasts the fight: worth +1 on every attack hit still to come, not one swing.
+			var hits := 0
+			for pile in [c.hand, c.draw_pile, c.discard_pile]:
+				for k: CardInstance in pile:
+					if k.def.type == "attack":
+						hits += 1
+			return stacks * clampf(hits * 0.8, 2.5, 10.0)
 		"regen":
 			# Repairs damage taken later this fight too, not only what is missing now.
 			return minf(stacks * (stacks + 1.0) / 2.0, c.player.max_hp - c.player.hp + c.incoming_damage()) * 0.8
