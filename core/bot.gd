@@ -397,4 +397,6 @@ static func _self_status_value(c: Combat, st: String, stacks: float) -> float:
 			return stacks * 1.8
 		"overcharge":
 			return -3.0 * stacks
+		"surge":
+			return 4.0 * stacks
 	return stacks * 1.5

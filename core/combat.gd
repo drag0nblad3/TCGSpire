@@ -169,8 +169,9 @@ func _start_player_turn() -> void:
 	played_types.clear()
 	if player.status("fortify") <= 0 and rule_sum("keep_ward") <= 0:
 		player.ward = ceili(player.ward * ward_retention)
-	energy = maxi(max_energy - player.status("overcharge"), 0)
+	energy = maxi(max_energy - player.status("overcharge") + player.status("surge"), 0)
 	player.statuses.erase("overcharge")
+	player.statuses.erase("surge")
 	BossRules.on_player_turn(self)
 	emit("turn_start", {"turn": turn, "ward": player.ward})
 	# Daemons run down: HP is the countdown, so a daemon with N HP lasts N rounds if left alone.

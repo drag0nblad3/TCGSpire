@@ -272,7 +272,7 @@ static func card_value(c: CardDef, upgraded: bool = false) -> float:
 			"apply":
 				var st := str(e.get("status", ""))
 				var k := float(e.get("stacks", 1))
-				v += k * ({"burn": 2.2, "brittle": 2.5, "weaken": 2.0, "might": 3.0, "regen": 2.0, "thorns": 1.8, "fortify": 8.0, "charge": 1.6, "frail": 0.8, "overcharge": -3.0, "stall": 6.0}.get(st, 1.5)) * aoe
+				v += k * ({"burn": 2.2, "brittle": 2.5, "weaken": 2.0, "might": 3.0, "regen": 2.0, "thorns": 1.8, "fortify": 8.0, "charge": 1.6, "frail": 0.8, "overcharge": -3.0, "surge": 4.0, "stall": 6.0}.get(st, 1.5)) * aoe
 			"draw":
 				v += n * 3.5
 			"energy":

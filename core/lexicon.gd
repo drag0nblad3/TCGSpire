@@ -21,6 +21,7 @@ const STATUS := {
 	"weaken": "Throttled",
 	"might": "Boost",
 	"overcharge": "Overheat",
+	"surge": "Turbo",
 	"thorns": "Feedback",
 	"regen": "Patch",
 	"fortify": "Hardened",
