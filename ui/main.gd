@@ -412,7 +412,6 @@ func _show_jobs(heat: int) -> void:
 	outer.add_child(UiKit.label("Job board", 32, Palette.ENERGY))
 	outer.add_child(UiKit.label("Pick a crew to work for. Tap a job for its full pay and bonuses.", 15, Palette.TEXT_DIM, true))
 	var v := UiKit.scroll(outer)
-	var n := profile.starter_picks(db)
 	# Same board until the next run ends, so browsing doesn't reroll the targets.
 	var board_rng := GameRng.new(int(profile.stats.get("runs", 0)) * 7919 + heat)
 	var details: Array = []
@@ -431,7 +430,7 @@ func _show_jobs(heat: int) -> void:
 		var summary := [
 			[j.get("client", f) + "  /  " + Lexicon.faction(f), 19, Palette.faction(f)],
 			["Pays +%d %s · %s" % [pay["rep"], Jobs.rep_name(db, f), cache_line(pay)], 14, Palette.TEXT],
-			["Against %s · load %d+ %s" % [" + ".join(against), Jobs.required(db, f, n), Lexicon.faction(f)], 14, Palette.TEXT_DIM]]
+			["Against %s · half your picks %s" % [" + ".join(against), Lexicon.faction(f)], 14, Palette.TEXT_DIM]]
 		for line in summary:
 			copy.add_child(_left_label(line[0], line[1], line[2]))
 		var more := UiKit.vbox(4, BoxContainer.ALIGNMENT_BEGIN)

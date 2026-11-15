@@ -34,7 +34,7 @@ Original design only: don't copy cards, names, characters or look from existing 
   ability, perk mod `jumps` = charges per act: diagonal up one floor through walls, you play the landing node, `RunState.jump_moves`), `run_outcomes.gd` (run-level ops for
   events/pickups), `run_bot.gd` (plays whole runs for sims), `profile_bot.gd` (builds experienced/veteran/maxed saves for sims). Progression: XP levels, card mastery, heat.
   `jobs.gd`: every run is a job for one client faction (data/factions.json, 6 crews in 3 rival pairs) run
-  against targets (the rival, plus heat mod "extra_targets"): >= half the picks the client's, targets banned
+  against targets (the rival, plus heat mod "extra_targets"): >= half the cards picked (rounded up, not of the slots) are the client's (joint ops count, Street doesn't; `Jobs.check` for the picker, `Jobs.fit` trims any start), targets banned
   from picks and offers, targets' enemies (`data/enemies/factions.json`, encounters with "faction") fill
   ~60% of fights/elites and 75% of bosses (18 crew bosses, 3 acts), pays the client's rep.
   Heat 6 "double_cross": the client joins the targets for the last act and its Core is the final boss. Firmware tier 2 bakes a mod

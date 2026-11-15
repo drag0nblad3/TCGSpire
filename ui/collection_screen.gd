@@ -42,7 +42,7 @@ func setup(db_in: CardDB, p: Profile, pick: bool = false, job_in: String = "", t
 		for id in p.last_picks:
 			if picks.count(id) < p.deck_copies(db_in, id) and picks.size() < p.starter_picks(db) and db.card(id) != null and not db.card(id).banned_by(ban):
 				picks.append(id)
-		if Jobs.check(db, job, picks, p.starter_picks(db), targets) != "":
+		if Jobs.check(db, job, picks, targets) != "":
 			picks = RunState.default_picks(db, p, job, targets)
 	return self
 
@@ -58,8 +58,8 @@ func _ready() -> void:
 		v.add_child(UiKit.label("Every run starts with your base rig (%s) plus the programs you pick here." % _base_summary(), 14, Palette.TEXT_DIM, true))
 		if job != "":
 			var ban: Array = targets.map(func(x: String) -> String: return Lexicon.faction(x))
-			v.add_child(UiKit.label("Job for %s: at least %d %s programs. %s programs are banned." % [Jobs.info(db, job).get("client", job),
-				Jobs.required(db, job, profile.starter_picks(db)), Lexicon.faction(job), " and ".join(ban)], 15, Palette.faction(job), true))
+			v.add_child(UiKit.label("Job for %s: at least half your picks must be %s programs (joint ops count, %s ones don't). %s programs are banned." % [
+				Jobs.info(db, job).get("client", job), Lexicon.faction(job), Lexicon.faction("neutral"), " and ".join(ban)], 15, Palette.faction(job), true))
 		_problem = UiKit.label("", 14, Palette.HP, true)
 		v.add_child(_problem)
 		v.add_child(_loadout_row())
@@ -121,7 +121,7 @@ func _ready() -> void:
 		closed.emit(), Vector2(160, 60)))
 	if pick_mode:
 		_begin = UiKit.button("Begin run", func() -> void:
-			if Jobs.check(db, job, picks, profile.starter_picks(db), targets) == "":
+			if Jobs.check(db, job, picks, targets) == "":
 				picks_confirmed.emit(picks.duplicate()), Vector2(220, 60), 22)
 		UiKit.primary(_begin)
 		bottom.add_child(_begin)
@@ -230,7 +230,7 @@ func _refresh() -> void:
 	var total: int = lib[1]
 	if pick_mode:
 		_header.text = "Pick your starting cards: %d / %d" % [picks.size(), profile.starter_picks(db)]
-		var problem := Jobs.check(db, job, picks, profile.starter_picks(db), targets)
+		var problem := Jobs.check(db, job, picks, targets)
 		_problem.text = problem
 		if _begin != null:
 			_begin.disabled = problem != ""

@@ -132,14 +132,37 @@ func test_elite_offers_subroutines() -> void:
 
 # --- jobs and rep -----------------------------------------------------------------
 
+func test_job_half_of_selected_picks() -> void:
+	# The share counts the cards picked, rounded up, not the open slots.
+	eq(Jobs.check(db, "ember", ["kindle", "focus"]), "", "1 of 2 is half")
+	check(Jobs.check(db, "ember", ["kindle", "focus", "second_wind"]) != "", "1 of 3 is short")
+	eq(Jobs.check(db, "ember", ["kindle"]), "", "a single crew pick is fine")
+	check(Jobs.check(db, "ember", ["focus"]) != "", "a single Street pick is not")
+	eq(Jobs.check(db, "ember", []), "", "no picks is fine")
+	check(Jobs.check(db, "ember", ["focus", "second_wind"]).contains("drop 2 others"), "says what to drop")
+	# Street cards never count, so a Street-only job pick list is trimmed to nothing.
+	eq(Jobs.fit(db, "ember", ["focus", "second_wind"]), [], "Street alone is dropped")
+	eq(Jobs.fit(db, "ember", ["kindle", "focus", "second_wind", "sprout"]), ["kindle", "focus"], "others dropped from the end")
+	eq(Jobs.fit(db, "", ["focus", "second_wind"]), ["focus", "second_wind"], "freelance keeps everything")
+	# A run started with illegal picks still obeys the rule.
+	var r := RunState.start(db, profile, ["kindle", "focus", "second_wind", "sprout"], 1, 0, "ember")
+	var picked := r.deck.filter(func(c: CardInstance) -> bool: return c.def.rarity != "starter")
+	eq(picked.size(), 2, "start drops the extra others")
+	# Joint ops count for both of their crews.
+	for c in db.cards.values():
+		if c.faction2 != "":
+			eq(Jobs.check(db, c.faction, [c.id, "focus"]), "", "joint op counts for its home crew")
+			eq(Jobs.check(db, c.faction2, [c.id, "focus"]), "", "joint op counts for its second crew")
+			break
+
+
 func test_job_rules_and_bans() -> void:
-	var n := profile.starter_picks(db)
-	check(Jobs.check(db, "ember", ["kindle", "kindle", "undertow"], n) != "", "rival banned")
-	check(Jobs.check(db, "ember", ["kindle", "focus", "second_wind", "sprout"], n) != "", "needs half")
-	eq(Jobs.check(db, "ember", ["kindle", "kindle", "focus", "sprout"], n), "", "valid")
+	check(Jobs.check(db, "ember", ["kindle", "kindle", "undertow"]) != "", "rival banned")
+	check(Jobs.check(db, "ember", ["kindle", "focus", "second_wind", "sprout"]) != "", "needs half")
+	eq(Jobs.check(db, "ember", ["kindle", "kindle", "focus", "sprout"]), "", "valid")
 	for f in Jobs.board(db):
 		var picks := RunState.default_picks(db, profile, f)
-		eq(Jobs.check(db, f, picks, n), "", "default picks for " + f)
+		eq(Jobs.check(db, f, picks), "", "default picks for " + f)
 	var r := _run(3, "ember")
 	check(r.deck.all(func(c: CardInstance) -> bool: return c.def.faction != "tide"), "no tide in deck")
 	for s in 20:
@@ -490,7 +513,7 @@ func test_profile_bot_builds_sim_saves() -> void:
 	for f in Jobs.board(db):
 		var picks := RunBot.best_picks(db, m, f, [])
 		eq(picks.size(), m.starter_picks(db), "full picks for " + f)
-		eq(Jobs.check(db, f, picks, m.starter_picks(db)), "", "legal picks for " + f)
+		eq(Jobs.check(db, f, picks), "", "legal picks for " + f)
 
 
 func test_heat_stat_boosts_compound() -> void:

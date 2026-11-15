@@ -172,9 +172,13 @@ static func best_picks(db: CardDB, profile: Profile, job: String, targets: Array
 	for id in pool:
 		if out.size() >= n:
 			break
-		if out.count(id) < pool.count(id):
+		if out.count(id) < pool.count(id) and (db.card(id).is_of(job) or Jobs.required(db, job, out.size() + 1) <= _theirs(db, job, out)):
 			out.append(id)
 	return out
+
+
+static func _theirs(db: CardDB, job: String, picks: Array) -> int:
+	return picks.filter(func(id: String) -> bool: return db.card(id).is_of(job)).size()
 
 
 ## Rough worth of a card per RAM, from its effects alone (no combat state).

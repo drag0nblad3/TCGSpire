@@ -100,13 +100,11 @@ static func start(db_in: CardDB, profile: Profile, picks: Array, seed_in: int, h
 		var bid := str(raw)
 		r.deck.append(r.make_card(bid.trim_suffix("+"), bid.ends_with("+")))
 	var allowed := profile.starter_picks(db_in)
-	var problem := Jobs.check(db_in, job_in, picks.slice(0, allowed), allowed, r.banned)
+	var problem := Jobs.check(db_in, job_in, picks.slice(0, allowed), r.banned)
 	if problem != "":
-		push_warning("Job '%s': %s" % [job_in, problem])
+		push_warning("Job '%s': %s (extra picks dropped)" % [job_in, problem])
 	var used := {}
-	for id in picks.slice(0, allowed):
-		if db_in.card(id) != null and db_in.card(id).banned_by(r.banned):
-			continue
+	for id in Jobs.fit(db_in, job_in, picks.slice(0, allowed), r.banned):
 		used[id] = int(used.get(id, 0)) + 1
 		if used[id] > profile.deck_copies(db_in, id):
 			push_error("Run pick '%s' exceeds owned copies" % id)
@@ -160,7 +158,7 @@ static func default_picks(db_in: CardDB, profile: Profile, job_in: String = "", 
 		var c := db_in.card(id)
 		if c != null and c.rarity != "starter" and not c.banned_by(ban):
 			out.append(id)
-	return out.slice(0, n)
+	return Jobs.fit(db_in, job_in, out.slice(0, n), ban)
 
 
 # --- heat ---------------------------------------------------------------------

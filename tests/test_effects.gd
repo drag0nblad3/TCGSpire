@@ -346,8 +346,8 @@ func test_joint_op_cards_count_for_both_crews_and_obey_bans() -> void:
 	check(card.is_of("ember") and card.is_of("bloom"), "counts as both crews")
 	check(card.banned_by(["bloom"]) and card.banned_by(["ember"]), "banned if either crew is a target")
 	check(not card.banned_by(["tide"]), "fine otherwise")
-	eq(Jobs.check(db, "bloom", ["fever_graft", "fever_graft"], 4, ["void"]), "", "fills Wetware picks")
-	check(Jobs.check(db, "tide", ["fever_graft"], 2, ["ember"]) != "", "Burner half is banned on a Flux job")
+	eq(Jobs.check(db, "bloom", ["fever_graft", "fever_graft"], ["void"]), "", "fills Wetware picks")
+	check(Jobs.check(db, "tide", ["fever_graft"], ["ember"]) != "", "Burner half is banned on a Flux job")
 	check("fever_graft" not in Records.binder_ids(db, "ember", "full"), "joint ops stay out of crew binders")
 
 

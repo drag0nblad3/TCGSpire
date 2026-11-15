@@ -55,30 +55,62 @@ static func offers(db: CardDB, heat: int, rng: GameRng) -> Array:
 	return out
 
 
-static func required(db: CardDB, faction: String, picks_allowed: int) -> int:
+## How many of `picked` cards must be the client's (balance.jobs.client_share, rounded up).
+## Counts the cards actually picked, not the open slots, so a small collection can still start.
+## Joint ops count for both their crews (CardDef.is_of); Street cards never count.
+static func required(db: CardDB, faction: String, picked: int) -> int:
 	if faction == "":
 		return 0
-	return ceili(picks_allowed * float(db.balance.get("jobs", {}).get("client_share", 0.5)))
+	return ceili(picked * float(db.balance.get("jobs", {}).get("client_share", 0.5)))
 
 
 ## "" when the picks satisfy the job, else what's wrong (for the picker UI).
-static func check(db: CardDB, faction: String, picks: Array, picks_allowed: int, targets_in: Array = []) -> String:
+static func check(db: CardDB, faction: String, picks: Array, targets_in: Array = []) -> String:
 	if faction == "":
 		return ""
 	var ban := targets_in if not targets_in.is_empty() else banned(db, faction)
 	var theirs := 0
+	var total := 0
 	for id in picks:
 		var c := db.card(str(id))
 		if c == null:
 			continue
 		if c.banned_by(ban):
 			return "%s programs are banned on this job." % Lexicon.faction(c.faction if c.faction in ban else c.faction2)
+		total += 1
 		if c.is_of(faction):
 			theirs += 1
-	var need := required(db, faction, picks_allowed)
+	var need := required(db, faction, total)
 	if theirs < need:
-		return "Load %d more %s program%s (%d of %d)." % [need - theirs, Lexicon.faction(faction), "" if need - theirs == 1 else "s", theirs, need]
+		var drop := 0
+		while required(db, faction, total - drop) > theirs:
+			drop += 1
+		return "Half your picks must be %s: %d of %d are. Add %d more %s or drop %d other%s." % [Lexicon.faction(faction), theirs, total,
+			need - theirs, Lexicon.faction(faction), drop, "" if drop == 1 else "s"]
 	return ""
+
+
+## `picks` made legal for the job: banned cards removed, then other crews' cards
+## dropped from the end until the client's share holds. Order is kept.
+static func fit(db: CardDB, faction: String, picks: Array, targets_in: Array = []) -> Array:
+	var ban := targets_in if not targets_in.is_empty() else banned(db, faction)
+	var out: Array = []
+	var theirs := 0
+	for id in picks:
+		var c := db.card(str(id))
+		if c == null or (faction != "" and c.banned_by(ban)):
+			continue
+		out.append(id)
+		if c.is_of(faction):
+			theirs += 1
+	if faction == "":
+		return out
+	var i := out.size() - 1
+	while required(db, faction, out.size()) > theirs and i >= 0:
+		if not db.card(str(out[i])).is_of(faction):
+			out.remove_at(i)
+		i -= 1
+	return out
 
 
 static func rep_name(db: CardDB, faction: String) -> String:
