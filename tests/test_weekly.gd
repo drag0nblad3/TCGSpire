@@ -102,30 +102,33 @@ func test_data_modifiers_valid() -> void:
 	eq(bad.size(), 2)
 
 
-func test_login_bonus_escalates_and_never_resets() -> void:
+func test_login_bonus_pays_a_cache_every_day_and_never_resets() -> void:
 	var p := Profile.new_player(db)
 	var scrap: Array = db.balance["login"]["scrap"]
+	eq(scrap.size(), LoginBonus.CYCLE, "scrap for every day")
+	for day in range(1, LoginBonus.CYCLE + 1):
+		eq(LoginBonus.reward(db, day)["packs"], [Packs.PREMIUM if day == LoginBonus.CYCLE else Packs.NORMAL], "day %d: one cache" % day)
+		check(int(LoginBonus.reward(db, day)["scrap"]) > 0, "day %d pays scrap" % day)
 	var dust := p.collection.dust
+	var normal := p.pack_count(Packs.NORMAL)
 	var got := LoginBonus.claim(db, p, "2026-11-01")
 	eq(int(got["day"]), 1)
 	eq(p.collection.dust, dust + int(scrap[0]))
+	eq(p.pack_count(Packs.NORMAL), normal + 1, "day 1 pays a data cache")
 	eq(LoginBonus.claim(db, p, "2026-11-01"), {}, "once a day")
 	# A missed week still continues the track at day 2.
 	got = LoginBonus.claim(db, p, "2026-11-09")
 	eq(int(got["day"]), 2)
-	LoginBonus.claim(db, p, "2026-11-10")
-	var normal := p.pack_count(Packs.NORMAL)
-	got = LoginBonus.claim(db, p, "2026-11-11")
-	eq(int(got["day"]), 4)
-	eq(p.pack_count(Packs.NORMAL), normal + 1, "day 4 pays a data cache")
-	for d in range(12, 14):
+	for d in range(10, 14):
 		LoginBonus.claim(db, p, "2026-11-%02d" % d)
 	eq(int(p.login["day"]), 6)
-	check(int(scrap[5]) > int(scrap[0]), "scrap escalates")
+	eq(p.pack_count(Packs.NORMAL), normal + 6, "days 1-6 pay a data cache each")
+	check(int(scrap[6]) > int(scrap[0]), "scrap escalates")
 	var premium := p.pack_count(Packs.PREMIUM)
 	got = LoginBonus.claim(db, p, "2026-11-15")
 	eq(int(got["day"]), 7)
 	eq(p.pack_count(Packs.PREMIUM), premium + 1, "day 7 pays a Zero-day cache")
+	eq(p.pack_count(Packs.NORMAL), normal + 6, "instead of a data cache")
 	eq(int(LoginBonus.claim(db, p, "2026-11-16")["day"]), 1, "cycle restarts")
 	var again := Profile.from_dict(p.to_dict(), db)
 	eq(again.login, p.login, "saved")
