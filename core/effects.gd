@@ -32,7 +32,7 @@ const OPS := {
 	"revive": ["enemy", "pct"],
 	"lose_hp": ["amount", "to"],
 	"damage_per_status": ["status", "mult", "base", "consume", "to", "of"],
-	"amplify": ["status", "mult", "to"],
+	"amplify": ["status", "mult", "base", "to"],
 	"strip": ["to"],
 	"sacrifice": ["effect", "mult", "to"],
 	"interrupt": ["kinds", "effects", "to"],
@@ -183,6 +183,8 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 			var st2 := str(e.get("status", ""))
 			for t in targets(c, e, src, target, "target"):
 				var extra := int(t.status(st2) * (float(e.get("mult", 2.0)) - 1.0))
+				if t.status(st2) <= 0:
+					extra = int(e.get("base", 0))  # "base": gain this many instead when there are none to multiply.
 				if extra > 0:
 					t.add_status(st2, extra)
 					c.emit("status", {"target": t.id, "status": st2, "stacks": extra, "total": t.status(st2)})
@@ -456,6 +458,10 @@ static func _describe(e: Dictionary) -> String:
 			var m2 := float(e.get("mult", 2.0))
 			var word: String = {2.0: "Double", 3.0: "Triple"}.get(m2, "Multiply by %s" % str(m2))
 			var whose := "each enemy's" if to == "all_enemies" else ("your" if to == "self" else "the target's")
+			var b := int(e.get("base", 0))
+			if b > 0:
+				var gain := "gain %d" % b if to == "self" else "apply %d" % b
+				return "%s %s %s (%s if there is none)." % [word, whose, st2, gain]
 			return "%s %s %s." % [word, whose, st2]
 		"strip":
 			return "Strip all helpful statuses from %s." % ("ALL enemies" if to == "all_enemies" else "the target")

@@ -44,7 +44,7 @@ static func play_turn(c: Combat) -> void:
 	# Hive Link: a daemon on its last turn would close at the start of next turn anyway; cash it in before the enemy moves.
 	if c.can_shutdown():
 		for i in range(c.units.size() - 1, -1, -1):
-			if c.units[i].hp <= 1 and c.can_shutdown():
+			if i < c.units.size() and c.units[i].hp <= 1 and c.can_shutdown():
 				c.shutdown_daemon(i)
 	if c.phase == Combat.Phase.PLAYER:
 		c.end_turn()
@@ -184,6 +184,8 @@ static func _effect_value(c: Combat, e: Dictionary, target: Fighter, ward: int) 
 			var s := 0.0
 			for f in (foes if to == "all_enemies" else ([c.player] if to == "self" else ([target] if target != null else []))):
 				var extra := float(int(f.status(st) * (float(e.get("mult", 2.0)) - 1.0)))
+				if f.status(st) <= 0:
+					extra = float(e.get("base", 0))
 				if extra > 0:
 					s += _self_status_value(c, st, extra) if f == c.player else _enemy_status_value(c, f, st, extra)
 			return s
@@ -235,6 +237,8 @@ static func _effect_value(c: Combat, e: Dictionary, target: Fighter, ward: int) 
 		"energy":
 			return n * 4.5
 		"summon":
+			# A daemon run in the first turns works for the whole fight; the greedy per-RAM pick
+			# otherwise always prefers a cheap attack and never spends 2+ RAM on one.
 			return _summon_value(c, e)
 		"rally":
 			var rv := 0.0
