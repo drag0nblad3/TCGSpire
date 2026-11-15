@@ -227,9 +227,11 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 				for fx in e.get("effects", []):
 					resolve(c, fx, src, t)
 		"fuel":
-			# Burns the target's own buff as fuel: only when it has the full amount; pays once per enemy.
+			# Burns a status as fuel: an enemy's buff, or with "to": "self" your own debuff (the bonus
+			# then still lands on the card's target). Only when it has the full amount; pays once per body.
 			var st3 := str(e.get("status", "might"))
 			var need := maxi(int(e.get("stacks", 1)), 1)
+			var own := str(e.get("to", "")) == "self"
 			for t in targets(c, e, src, target, "target"):
 				if t.status(st3) < need:
 					continue
@@ -237,7 +239,7 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 				c.emit("status", {"target": t.id, "status": st3, "stacks": -need, "total": t.status(st3)})
 				c.emit("fuel", {"target": t.id, "status": st3, "stacks": need})
 				for fx in e.get("effects", []):
-					resolve(c, fx, src, t)
+					resolve(c, fx, src, target if own else t)
 		_:
 			push_error("Unknown effect op: %s" % op)
 
@@ -498,7 +500,7 @@ static func _describe(e: Dictionary) -> String:
 			return txt2
 		"fuel":
 			var bonus2: Array = e.get("effects", [])
-			return "Fuel %d %s%s: %s" % [maxi(int(e.get("stacks", 1)), 1), Lexicon.status(str(e.get("status", "might"))),
+			return "Fuel %d %s%s%s: %s" % [maxi(int(e.get("stacks", 1)), 1), "of your " if to == "self" else "", Lexicon.status(str(e.get("status", "might"))),
 				" (each enemy)" if to == "all_enemies" else "", " ".join(bonus2.map(func(fx: Dictionary) -> String: return describe(fx)))]
 		"sacrifice":
 			var m3 := float(e.get("mult", 1.0))

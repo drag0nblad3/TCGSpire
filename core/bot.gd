@@ -199,6 +199,14 @@ static func _effect_value(c: Combat, e: Dictionary, target: Fighter, ward: int) 
 			var s3 := 0.0
 			var st4 := str(e.get("status", "might"))
 			var need2 := maxi(int(e.get("stacks", 1)), 1)
+			if to == "self":
+				# Your own debuff as fuel: shedding it is worth about what it would cost you.
+				if c.player.status(st4) < need2:
+					return 0.0
+				s3 = need2 * (1.5 if st4 == "burn" else 1.0)
+				for fx in e.get("effects", []):
+					s3 += _effect_value(c, fx, target, ward)
+				return s3
 			for f in (foes if to == "all_enemies" else ([target] if target != null else [])):
 				if f.status(st4) < need2:
 					continue

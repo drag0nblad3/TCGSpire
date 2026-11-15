@@ -422,6 +422,19 @@ func test_fuel_burns_boost_for_the_bonus() -> void:
 	check(Effects.describe(fx).begins_with("Fuel 2 Boost: Gain 4"), Effects.describe(fx))
 
 
+func test_fuel_can_burn_your_own_debuff() -> void:
+	var en: Fighter = c.enemies[0]
+	var fx := {"op": "fuel", "status": "burn", "stacks": 3, "to": "self", "effects": [{"op": "damage", "amount": 5}]}
+	c.player.add_status("burn", 4)
+	var hp := en.hp
+	Effects.resolve(c, fx, c.player, en)
+	eq(c.player.status("burn"), 1, "your Virus pays")
+	eq(en.hp, hp - 5, "bonus still hits the card's target")
+	Effects.resolve(c, fx, c.player, en)
+	eq(en.hp, hp - 5, "not enough Virus left: no bonus")
+	check(Effects.describe(fx).begins_with("Fuel 3 of your Virus: Deal 5"), Effects.describe(fx))
+
+
 func test_interrupt_cancels_only_the_named_part() -> void:
 	_interrupt_fight([{"name": "Combo", "effects": [{"op": "damage", "amount": 6}, {"op": "ward", "amount": 5}]}])
 	var en: Fighter = c.enemies[0]

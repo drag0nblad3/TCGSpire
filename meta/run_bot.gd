@@ -234,9 +234,15 @@ static func fit_mult(c: CardDef, others: Array) -> float:
 	var def_n := built.filter(func(o: CardDef) -> bool: return "def" in roles(o)).size()
 	var r := roles(c)
 	if "off" in r and off_n < 4:
-		m *= 1.3
+		m *= 1.7 if off_n < 2 else 1.3  # a deck that can't kill loses every long fight
+	elif off_n < 2 and built.size() >= 3:
+		m *= 0.8
 	if "def" in r and def_n < 3:
 		m *= 1.25
+	if "amp" in r and not others.is_empty():
+		# Boost and Exposed only multiply hits: worth more the bigger the deck's share of attacks.
+		var hitters := others.filter(func(o: CardDef) -> bool: return "off" in roles(o)).size()
+		m *= clampf(0.6 + 1.6 * float(hitters) / others.size(), 0.6, 1.4)
 	if "eng" in r and not ("off" in r or "def" in r):
 		# Engine pays off once the deck can already fight; worth more the more is built.
 		m *= (1.0 + minf(0.04 * built.size(), 0.35)) if off_n >= 3 and def_n >= 2 else 0.85
@@ -244,7 +250,8 @@ static func fit_mult(c: CardDef, others: Array) -> float:
 
 
 ## What a card does for a deck: "off" (damage), "def" (Firewall, Throttled, healing...),
-## "eng" (draw, RAM, powers, daemons, buffs that grow other cards).
+## "eng" (draw, RAM, powers, daemons, buffs that grow other cards), "amp" (Boost and
+## Exposed: damage multipliers, only as good as the deck's attacks).
 static func roles(c: CardDef) -> Array:
 	var out: Array = []
 	if c == null:
@@ -256,12 +263,15 @@ static func roles(c: CardDef) -> Array:
 	for e in c.effects:
 		var op := str(e.get("op", ""))
 		var st := str(e.get("status", ""))
-		if op.begins_with("damage") or op in ["cooldown", "relay_cashout"] or st in ["burn", "brittle"]:
+		# Exposed only multiplies damage the deck already deals, so it is not offense by itself.
+		if op.begins_with("damage") or op in ["cooldown", "relay_cashout", "sacrifice"] or st == "burn":
 			out.append("off")
 		if op in ["ward", "heal", "plant", "relay"] or st in ["weaken", "fortify", "regen", "thorns", "stall"] or (op == "interrupt" and "attack" in e.get("kinds", [])):
 			out.append("def")
 		if op in ["draw", "energy", "summon", "rally", "amplify", "recover", "compile"] or st in ["might", "surge", "charge"] or e.has("loop") or e.has("per"):
 			out.append("eng")
+		if op in ["apply", "amplify"] and st in ["might", "brittle"]:
+			out.append("amp")
 	return out
 
 
