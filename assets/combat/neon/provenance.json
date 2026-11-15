@@ -1,0 +1,100 @@
+{
+  "cell_size": [
+    440,
+    340
+  ],
+  "sheets": {
+    "ember": {
+      "columns": 3,
+      "base_count": 7,
+      "elite_rear_slot": 7,
+      "elite_front_slot": 8,
+      "sources": [
+        {
+          "name": "exec-f261d26f-ee9b-4fd3-a31c-ce70a3902414.png",
+          "sha256": "d7b39fb70813e73fecd1f2d40f5e8b43e09c7f2aa3a1205b56e87a7903e61349"
+        }
+      ]
+    },
+    "tide": {
+      "columns": 3,
+      "base_count": 7,
+      "elite_rear_slot": 7,
+      "elite_front_slot": 8,
+      "sources": [
+        {
+          "name": "exec-442fe626-a4d2-42e9-b26b-fcc302305277.png",
+          "sha256": "e568b56d9d489e83ec3e12347f160c6aa3106ce47e8f66632fb6f0e970c45e60"
+        }
+      ]
+    },
+    "bloom": {
+      "columns": 3,
+      "base_count": 7,
+      "elite_rear_slot": 7,
+      "elite_front_slot": 8,
+      "sources": [
+        {
+          "name": "exec-0fb58076-e2a7-43da-b7b6-92fceb589189.png",
+          "sha256": "b3d6aacee347ac869a2d53c2acc87c490f4a051f93d1e001a72a055fc1d3a06a"
+        }
+      ]
+    },
+    "void": {
+      "columns": 3,
+      "base_count": 7,
+      "elite_rear_slot": 7,
+      "elite_front_slot": 8,
+      "sources": [
+        {
+          "name": "exec-5339bb40-924f-47a7-b549-747c1a17af20.png",
+          "sha256": "c270fd6d83fae7fe835896f555fbcc8647b019d5bf7f1ed33f12e7ebadca1ab5"
+        }
+      ]
+    },
+    "chrome": {
+      "columns": 3,
+      "base_count": 7,
+      "elite_rear_slot": 7,
+      "elite_front_slot": 8,
+      "sources": [
+        {
+          "name": "exec-b6193e10-f77a-4909-80c7-d89d5f2d65bc.png",
+          "sha256": "46d935388268ba5591b7c90ccb3ff082cd15f641cd9be9a00a8b0ce1959d907f"
+        }
+      ]
+    },
+    "noise": {
+      "columns": 3,
+      "base_count": 7,
+      "elite_rear_slot": 7,
+      "elite_front_slot": 8,
+      "sources": [
+        {
+          "name": "exec-e968f8f7-5d09-44e1-aef1-01415b536455.png",
+          "sha256": "10ae2bf96542dbcb07a4ab361884e34db26f1e7462c025c40254ae137b441274"
+        }
+      ]
+    },
+    "neutral": {
+      "columns": 5,
+      "base_count": 25,
+      "elite_rear_slot": 25,
+      "elite_front_slot": 26,
+      "sources": [
+        {
+          "name": "exec-ce8bcc4f-1038-4cb6-bfc0-2242331421cc.png",
+          "sha256": "2dccb56dfc2c272c7ad9aaee775e0c9d8fef0ab676b1fdd2b6238a9dbb2020d0"
+        },
+        {
+          "name": "exec-b7d9941e-2316-4f5e-abd1-38f18e954c16.png",
+          "sha256": "9c1d21657ef1961c71d87fb66a6b8ac234c48faccc2ec836031ea546ebaa0b6a"
+        },
+        {
+          "name": "exec-c9d1b88d-a714-4bbc-9f79-70208924e6e0.png",
+          "sha256": "7b23739996e22a88b9f54bb5ae7e52542758f8fbb8affdeacb800c7c8b1c82e0"
+        }
+      ]
+    }
+  }
+}

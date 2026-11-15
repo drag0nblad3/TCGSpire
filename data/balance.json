@@ -230,7 +230,7 @@
   "xp_boss": 60,
   "xp_per_act": 40,
   "packs_per_boss": 1,
-  "xp_mult": 0.75,
+  "xp_mult": 0.525,
   "shards_per_elite": 1,
   "shards_per_pack": 3,
   "packs_full_run": 1
@@ -352,11 +352,6 @@
   "faction_boss_share": 0.75,
   "rep_mult": 0.75
  },
- "rig_rank_cost": [
-  2,
-  6,
-  12
- ],
  "contracts": {
   "per_job": 2,
   "rep_mult": 1.0
