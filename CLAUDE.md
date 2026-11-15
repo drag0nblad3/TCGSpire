@@ -72,7 +72,7 @@ Original design only: don't copy cards, names, characters or look from existing 
   binders (own every card of a crew rarity page: dust, full set = card back + title), daily breach (fixed seed/job per
   date, one try, scored), weekly challenge (`meta/weekly.gd`: Monday-keyed job at balance.weekly.heat, rule modifiers
   from `data/weekly.json` (perk-shaped: mods/heat/triggers/pickup + text), own cards but no rig/firmware, first clear pays a premium pack,
-  never unlocks heat), daily login bonus (`meta/login_bonus.gd`, balance.login: 6 scrap days, a normal pack on day 4, a premium pack on day 7, missed days never reset), quick scrap in pack opening (`Profile.quick_scrap`: only copies beyond the deck limit), glitch foils (`pack.foil_chance`, `shaders/glitch_foil.gdshader`), 3 saved loadouts per crew.
+  never unlocks heat), daily login bonus (`meta/login_bonus.gd`, balance.login: every day one normal pack plus scrap, day 7 upgrades it to premium, missed days never reset), quick scrap in pack opening (`Profile.quick_scrap`: only copies beyond the deck limit), glitch foils (`pack.foil_chance`, `shaders/glitch_foil.gdshader`), 3 saved loadouts per crew.
 - Card abilities wave (`data/cards/abilities.json`, 4 per crew; art pending, `test_card_art` AWAITING_ART):
   X cost (`"cost": "X"` = `CardDef.X_COST`; spends all RAM, `Combat.x_spent`; cost mods don't fit). Scaling: any effect may carry
   `per` (`Effects.PER_SOURCES`: x, draw_pile, discard_pile, hand, wiped, dumped) + `per_mult` + `per_key` (default `LOOP_KEY`):
