@@ -60,7 +60,9 @@ static func free_damage_cantrip(effects: Array, keywords: Array, ram: int) -> bo
 		var op := str(e.get("op", ""))
 		if op in _DAMAGE_OPS or (op == "apply" and str(e.get("status", "")) == "might"):
 			hurts = true
-		if op == "draw" or (op == "handshake" and e.get("effects", []).any(func(x: Dictionary) -> bool: return x.get("op", "") == "draw")):
+		if op == "fuel" and e.get("effects", []).any(func(x: Dictionary) -> bool: return str(x.get("op", "")) in _DAMAGE_OPS):
+			hurts = true  # Boost is common enough on enemies that Fuel isn't a long shot
+		if op == "draw" or (op in ["handshake", "fuel"] and e.get("effects", []).any(func(x: Dictionary) -> bool: return x.get("op", "") == "draw")):
 			draws = true
 		if op == "lose_hp":
 			return false

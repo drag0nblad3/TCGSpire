@@ -36,6 +36,7 @@ const OPS := {
 	"strip": ["to"],
 	"sacrifice": ["effect", "mult", "to"],
 	"interrupt": ["kinds", "effects", "to"],
+	"fuel": ["status", "stacks", "effects", "to"],
 	"dump": ["amount"],
 	"recover": ["from", "into", "amount"],
 }
@@ -223,6 +224,18 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 				t.interrupted.append_array(cut)
 				t.state["revealed"] = true
 				c.emit("interrupt", {"target": t.id, "kinds": cut})
+				for fx in e.get("effects", []):
+					resolve(c, fx, src, t)
+		"fuel":
+			# Burns the target's own buff as fuel: only when it has the full amount; pays once per enemy.
+			var st3 := str(e.get("status", "might"))
+			var need := maxi(int(e.get("stacks", 1)), 1)
+			for t in targets(c, e, src, target, "target"):
+				if t.status(st3) < need:
+					continue
+				t.add_status(st3, -need)
+				c.emit("status", {"target": t.id, "status": st3, "stacks": -need, "total": t.status(st3)})
+				c.emit("fuel", {"target": t.id, "status": st3, "stacks": need})
 				for fx in e.get("effects", []):
 					resolve(c, fx, src, t)
 		_:
@@ -483,6 +496,10 @@ static func _describe(e: Dictionary) -> String:
 			if not bonus.is_empty():
 				txt2 += " If it cancels: %s" % " ".join(bonus.map(func(fx: Dictionary) -> String: return describe(fx)))
 			return txt2
+		"fuel":
+			var bonus2: Array = e.get("effects", [])
+			return "Fuel %d %s%s: %s" % [maxi(int(e.get("stacks", 1)), 1), Lexicon.status(str(e.get("status", "might"))),
+				" (each enemy)" if to == "all_enemies" else "", " ".join(bonus2.map(func(fx: Dictionary) -> String: return describe(fx)))]
 		"sacrifice":
 			var m3 := float(e.get("mult", 1.0))
 			var x := "its HP" if m3 == 1.0 else "%sx its HP" % (str(int(m3)) if m3 == int(m3) else str(m3))
@@ -534,6 +551,15 @@ static func validate(e: Dictionary, where: String) -> Array[String]:
 		for fx in e.get("effects", []):
 			errs.append_array(validate(fx, where))
 			if fx.get("op", "") in ["handshake", "sequence", "cooldown", "compile", "relay_cashout", "interrupt"]:
+				errs.append("%s: nested program condition" % where)
+	if op == "fuel":
+		if not Statuses.is_known(str(e.get("status", ""))) or int(e.get("stacks", 0)) <= 0:
+			errs.append("%s: fuel needs a known status and stacks" % where)
+		if e.get("effects", []).is_empty():
+			errs.append("%s: fuel pays nothing" % where)
+		for fx in e.get("effects", []):
+			errs.append_array(validate(fx, where))
+			if fx.get("op", "") in ["handshake", "sequence", "cooldown", "compile", "relay_cashout", "interrupt", "fuel"]:
 				errs.append("%s: nested program condition" % where)
 	if op == "sequence":
 		if e.get("types", []).is_empty():

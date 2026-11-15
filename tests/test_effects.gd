@@ -406,6 +406,22 @@ func _interrupt_fight(moves: Array) -> void:
 	c.enemies[1].moves = []
 
 
+func test_fuel_burns_boost_for_the_bonus() -> void:
+	_interrupt_fight([{"name": "Hit", "effects": [{"op": "damage", "amount": 6}]}])
+	var en: Fighter = c.enemies[0]
+	var fx := {"op": "fuel", "status": "might", "stacks": 2, "effects": [{"op": "ward", "amount": 4}]}
+	en.add_status("might", 1)
+	var hand := c.player.ward
+	Effects.resolve(c, fx, c.player, en)
+	eq(en.status("might"), 1, "too little Boost: nothing removed")
+	eq(c.player.ward, hand, "and no bonus")
+	en.add_status("might", 2)
+	Effects.resolve(c, fx, c.player, en)
+	eq(en.status("might"), 1, "removes exactly the Fuel amount")
+	eq(c.player.ward, hand + 4, "bonus fired")
+	check(Effects.describe(fx).begins_with("Fuel 2 Boost: Gain 4"), Effects.describe(fx))
+
+
 func test_interrupt_cancels_only_the_named_part() -> void:
 	_interrupt_fight([{"name": "Combo", "effects": [{"op": "damage", "amount": 6}, {"op": "ward", "amount": 5}]}])
 	var en: Fighter = c.enemies[0]
