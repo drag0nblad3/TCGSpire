@@ -6,7 +6,9 @@ const ATLAS: Texture2D = preload("res://assets/cards/field_service.webp")
 const EXPANSION_ATLAS: Texture2D = preload("res://assets/cards/field_service_expansion.webp")
 const PROGRAMS_ATLAS: Texture2D = preload("res://assets/cards/field_service_programs.webp")
 const WAVE2_ATLAS: Texture2D = preload("res://assets/cards/field_service_programs_wave2.webp")
+const ABILITIES_ATLAS: Texture2D = preload("res://assets/cards/field_service_abilities.webp")
 const SPORE_ART: Texture2D = preload("res://assets/cards/spore_pod.webp")
+static var _abilities_regions: Dictionary = {}
 static var _wave2_regions: Dictionary = {}
 static var _program_regions: Dictionary = {}
 static var _expansion_regions: Dictionary = {}
@@ -32,6 +34,10 @@ static func regions() -> Dictionary:
 		if wave2 is Dictionary:
 			_wave2_regions = wave2
 			_regions.merge(wave2)
+		var abilities: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/card_art_abilities.json"))
+		if abilities is Dictionary:
+			_abilities_regions = abilities
+			_regions.merge(abilities)
 		_regions["spore_pod"] = [0, 0, 448, 168]
 		_loaded = true
 	return _regions
@@ -49,6 +55,8 @@ static func texture_for(id: String) -> Texture2D:
 		texture.atlas = PROGRAMS_ATLAS
 	if _wave2_regions.has(id):
 		texture.atlas = WAVE2_ATLAS
+	if _abilities_regions.has(id):
+		texture.atlas = ABILITIES_ATLAS
 	if id == "spore_pod":
 		texture.atlas = SPORE_ART
 	texture.region = Rect2(bounds[0], bounds[1], bounds[2], bounds[3])

@@ -1,0 +1,422 @@
+{
+  "null_route": {
+    "name": "Null Route",
+    "source": "4f2ef2b8-b29a-4874-8b56-b0613b965017",
+    "crop": [
+      7,
+      6,
+      1022,
+      190
+    ]
+  },
+  "slack_water": {
+    "name": "Slack Water",
+    "source": "4f2ef2b8-b29a-4874-8b56-b0613b965017",
+    "crop": [
+      1027,
+      6,
+      2042,
+      190
+    ]
+  },
+  "bad_signal": {
+    "name": "Bad Signal",
+    "source": "4f2ef2b8-b29a-4874-8b56-b0613b965017",
+    "crop": [
+      7,
+      196,
+      1022,
+      381
+    ]
+  },
+  "line_cut": {
+    "name": "Line Cut",
+    "source": "4f2ef2b8-b29a-4874-8b56-b0613b965017",
+    "crop": [
+      1027,
+      196,
+      2042,
+      381
+    ]
+  },
+  "flashover": {
+    "name": "Flashover",
+    "source": "4f2ef2b8-b29a-4874-8b56-b0613b965017",
+    "crop": [
+      7,
+      387,
+      1022,
+      571
+    ]
+  },
+  "failover": {
+    "name": "Failover",
+    "source": "4f2ef2b8-b29a-4874-8b56-b0613b965017",
+    "crop": [
+      1027,
+      387,
+      2042,
+      571
+    ]
+  },
+  "antibody": {
+    "name": "Antibody",
+    "source": "4f2ef2b8-b29a-4874-8b56-b0613b965017",
+    "crop": [
+      7,
+      577,
+      1022,
+      761
+    ]
+  },
+  "script_kiddie": {
+    "name": "Script Kiddie",
+    "source": "06287a12-d0dc-47e7-a64d-a2c2361d393b",
+    "crop": [
+      6,
+      6,
+      540,
+      253
+    ]
+  },
+  "black_hat": {
+    "name": "Black Hat",
+    "source": "06287a12-d0dc-47e7-a64d-a2c2361d393b",
+    "crop": [
+      548,
+      6,
+      1081,
+      253
+    ]
+  },
+  "clear_cache": {
+    "name": "Clear Cache",
+    "source": "06287a12-d0dc-47e7-a64d-a2c2361d393b",
+    "crop": [
+      6,
+      260,
+      540,
+      496
+    ]
+  },
+  "deep_clean": {
+    "name": "Deep Clean",
+    "source": "06287a12-d0dc-47e7-a64d-a2c2361d393b",
+    "crop": [
+      548,
+      260,
+      1081,
+      496
+    ]
+  },
+  "full_send": {
+    "name": "Full Send",
+    "source": "06287a12-d0dc-47e7-a64d-a2c2361d393b",
+    "crop": [
+      6,
+      503,
+      540,
+      720
+    ]
+  },
+  "undelete": {
+    "name": "Undelete",
+    "source": "06287a12-d0dc-47e7-a64d-a2c2361d393b",
+    "crop": [
+      548,
+      503,
+      1081,
+      720
+    ]
+  },
+  "pilot_light": {
+    "name": "Pilot Light",
+    "source": "06287a12-d0dc-47e7-a64d-a2c2361d393b",
+    "crop": [
+      6,
+      726,
+      540,
+      941
+    ]
+  },
+  "wildfire": {
+    "name": "Wildfire",
+    "source": "06287a12-d0dc-47e7-a64d-a2c2361d393b",
+    "crop": [
+      548,
+      726,
+      1081,
+      941
+    ]
+  },
+  "zero_day_window": {
+    "name": "Zero-day Window",
+    "source": "06287a12-d0dc-47e7-a64d-a2c2361d393b",
+    "crop": [
+      6,
+      948,
+      540,
+      1187
+    ]
+  },
+  "burn_the_logs": {
+    "name": "Burn the Logs",
+    "source": "06287a12-d0dc-47e7-a64d-a2c2361d393b",
+    "crop": [
+      548,
+      948,
+      1081,
+      1187
+    ]
+  },
+  "thermal_runaway": {
+    "name": "Thermal Runaway",
+    "source": "06287a12-d0dc-47e7-a64d-a2c2361d393b",
+    "crop": [
+      6,
+      1193,
+      540,
+      1440
+    ]
+  },
+  "sandbag_wall": {
+    "name": "Sandbag Wall",
+    "source": "d8f9c791-1c93-426d-b5d1-e8f96df3478e",
+    "crop": [
+      7,
+      6,
+      540,
+      287
+    ]
+  },
+  "seawall": {
+    "name": "Seawall",
+    "source": "d8f9c791-1c93-426d-b5d1-e8f96df3478e",
+    "crop": [
+      548,
+      6,
+      1081,
+      287
+    ]
+  },
+  "swap_file": {
+    "name": "Swap File",
+    "source": "d8f9c791-1c93-426d-b5d1-e8f96df3478e",
+    "crop": [
+      7,
+      294,
+      540,
+      576
+    ]
+  },
+  "bulkhead": {
+    "name": "Bulkhead",
+    "source": "d8f9c791-1c93-426d-b5d1-e8f96df3478e",
+    "crop": [
+      548,
+      294,
+      1081,
+      576
+    ]
+  },
+  "rewind_buffer": {
+    "name": "Rewind Buffer",
+    "source": "d8f9c791-1c93-426d-b5d1-e8f96df3478e",
+    "crop": [
+      7,
+      583,
+      540,
+      832
+    ]
+  },
+  "seed_pod": {
+    "name": "Seed Pod",
+    "source": "d8f9c791-1c93-426d-b5d1-e8f96df3478e",
+    "crop": [
+      548,
+      583,
+      1081,
+      832
+    ]
+  },
+  "bloomhost": {
+    "name": "Bloomhost",
+    "source": "d8f9c791-1c93-426d-b5d1-e8f96df3478e",
+    "crop": [
+      7,
+      838,
+      540,
+      1120
+    ]
+  },
+  "cuttings": {
+    "name": "Cuttings",
+    "source": "d8f9c791-1c93-426d-b5d1-e8f96df3478e",
+    "crop": [
+      548,
+      838,
+      1081,
+      1120
+    ]
+  },
+  "shed_skin": {
+    "name": "Shed Skin",
+    "source": "d8f9c791-1c93-426d-b5d1-e8f96df3478e",
+    "crop": [
+      7,
+      1126,
+      540,
+      1440
+    ]
+  },
+  "mother_culture": {
+    "name": "Mother Culture",
+    "source": "d8f9c791-1c93-426d-b5d1-e8f96df3478e",
+    "crop": [
+      548,
+      1126,
+      1081,
+      1440
+    ]
+  },
+  "echo_probe": {
+    "name": "Echo Probe",
+    "source": "fcc2a798-3dbf-4de6-a036-3d6f98b2c005",
+    "crop": [
+      6,
+      6,
+      540,
+      254
+    ]
+  },
+  "echo_array": {
+    "name": "Echo Array",
+    "source": "fcc2a798-3dbf-4de6-a036-3d6f98b2c005",
+    "crop": [
+      548,
+      6,
+      1080,
+      254
+    ]
+  },
+  "cold_boot": {
+    "name": "Cold Boot",
+    "source": "fcc2a798-3dbf-4de6-a036-3d6f98b2c005",
+    "crop": [
+      6,
+      260,
+      540,
+      496
+    ]
+  },
+  "null_sink": {
+    "name": "Null Sink",
+    "source": "fcc2a798-3dbf-4de6-a036-3d6f98b2c005",
+    "crop": [
+      548,
+      260,
+      1080,
+      496
+    ]
+  },
+  "blind_drop": {
+    "name": "Blind Drop",
+    "source": "fcc2a798-3dbf-4de6-a036-3d6f98b2c005",
+    "crop": [
+      6,
+      502,
+      540,
+      757
+    ]
+  },
+  "scrap_drone": {
+    "name": "Scrap Drone",
+    "source": "fcc2a798-3dbf-4de6-a036-3d6f98b2c005",
+    "crop": [
+      548,
+      502,
+      1080,
+      757
+    ]
+  },
+  "war_drone": {
+    "name": "War Drone",
+    "source": "fcc2a798-3dbf-4de6-a036-3d6f98b2c005",
+    "crop": [
+      6,
+      764,
+      540,
+      1021
+    ]
+  },
+  "drone_reel": {
+    "name": "Drone Reel",
+    "source": "fcc2a798-3dbf-4de6-a036-3d6f98b2c005",
+    "crop": [
+      548,
+      764,
+      1080,
+      1021
+    ]
+  },
+  "mass_deploy": {
+    "name": "Mass Deploy",
+    "source": "fcc2a798-3dbf-4de6-a036-3d6f98b2c005",
+    "crop": [
+      6,
+      1028,
+      540,
+      1354
+    ]
+  },
+  "watchdog_boot": {
+    "name": "Watchdog Boot",
+    "source": "fcc2a798-3dbf-4de6-a036-3d6f98b2c005",
+    "crop": [
+      548,
+      1028,
+      1080,
+      1354
+    ]
+  },
+  "index_scan": {
+    "name": "Index Scan",
+    "source": "de687769-3fd5-48dc-8dac-12c6c295ec69",
+    "crop": [
+      8,
+      9,
+      1020,
+      380
+    ]
+  },
+  "white_noise": {
+    "name": "White Noise",
+    "source": "de687769-3fd5-48dc-8dac-12c6c295ec69",
+    "crop": [
+      1029,
+      9,
+      2040,
+      380
+    ]
+  },
+  "backlog": {
+    "name": "Backlog",
+    "source": "de687769-3fd5-48dc-8dac-12c6c295ec69",
+    "crop": [
+      8,
+      389,
+      1020,
+      759
+    ]
+  },
+  "signal_jam": {
+    "name": "Signal Jam",
+    "source": "de687769-3fd5-48dc-8dac-12c6c295ec69",
+    "crop": [
+      1029,
+      389,
+      2040,
+      759
+    ]
+  }
+}

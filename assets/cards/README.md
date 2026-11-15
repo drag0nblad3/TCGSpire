@@ -39,3 +39,10 @@ Generation notes and source crops are in `programs_provenance.json`.
 Wave two adds fourteen unique illustrations in `field_service_programs_wave2.webp`,
 with regions in `data/card_art_programs_wave2.json` and generation/crop notes in
 `programs_wave2_provenance.json`. The first batch's artwork is unchanged.
+
+## Interrupts and card abilities
+
+The 7 Interrupt cards and 35 cards from the abilities expansion use
+`field_service_abilities.webp` and `data/card_art_abilities.json`. They use the
+same 448 × 168 regions and two-pixel gutters. Crop and source records are in
+`abilities_provenance.json`.
