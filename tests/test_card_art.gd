@@ -1,16 +1,9 @@
 extends TestCase
 
-## The Interrupt programs and the card abilities wave (data/cards/abilities.json) draw the
-## procedural fallback until their art is made.
-const AWAITING_ART := ["flashover", "slack_water", "antibody", "null_route", "failover", "bad_signal", "line_cut",
-	"script_kiddie", "black_hat", "clear_cache", "deep_clean", "full_send", "undelete", "pilot_light", "wildfire", "zero_day_window", "burn_the_logs", "thermal_runaway", "sandbag_wall", "seawall", "swap_file", "bulkhead", "rewind_buffer", "seed_pod", "bloomhost", "cuttings", "shed_skin", "mother_culture", "echo_probe", "echo_array", "cold_boot", "null_sink", "blind_drop", "scrap_drone", "war_drone", "drone_reel", "mass_deploy", "watchdog_boot", "index_scan", "white_noise", "backlog", "signal_jam"]
-
-
 func test_every_card_has_distinct_in_bounds_art() -> void:
 	var regions := CardArt.regions()
-	var awaiting_art := AWAITING_ART
 	for id in db.cards:
-		check(regions.has(id) or id in awaiting_art, "card has illustration: " + id)
+		check(regions.has(id), "card has illustration: " + id)
 	for id in regions:
 		check(db.cards.has(id), "art for unknown card: " + id)
 	var used := {}
@@ -31,7 +24,7 @@ func test_every_card_has_distinct_in_bounds_art() -> void:
 
 func test_primary_daemon_summons_have_portraits() -> void:
 	for definition: CardDef in db.cards.values():
-		if definition.type != "unit" or definition.id in AWAITING_ART:
+		if definition.type != "unit" or definition.effects.is_empty():
 			continue
 		var effect: Dictionary = definition.effects[0]
 		if effect.get("op", "") != "summon":
