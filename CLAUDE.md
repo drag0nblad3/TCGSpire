@@ -99,6 +99,7 @@ Original design only: don't copy cards, names, characters or look from existing 
   escorts: `BossRules.guard_target`), `bond` (survivor heals + status). Ops added: `devour` (eats `Fighter.spawned` helpers), `revive`, `add_card` `"pile": "draw"`; card field `"hatch"` (Spore Pod
   spawns that enemy if discarded unplayed). One-off moves use `Fighter.override`. Extra boss bodies/pylons use transparent art via `BossSupportArt`, with animation in `VirtualBossArt`. The hatchable Spore Pod has dedicated Field Service card art. Balance of these is untested by sims.
   `scripts/shot.sh screen=boss enc=<encounter id>` renders any boss fight.
+- Offer nudge (`meta/offer_nudge.gd`, `balance.nudge`): hidden weights inside a rolled rarity for run offers (rewards, rerolls, shop cards/implants, implant drops; never packs): missing Handshake partner, answers to this act's boss rules, deck strategy themes, implants that fit the deck. Capped per card; at most half an offer (rounded up) comes from weighted picks.
 - Combat animation: `CombatScreen._play_events` replays `combat.events` step by step (input blocked);
   damage/ward/heal events carry `hp`/`ward` after the change for the bars. `step_scale = 0` in tests.
 - `data/` all content as JSON: `cards/<faction>.json` (one card per line), `enemies/`,
