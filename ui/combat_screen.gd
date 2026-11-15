@@ -240,6 +240,10 @@ func _rebuild() -> void:
 	_pile_btns["exhaust"].text = "Wiped %d" % combat.exhaust_pile.size()
 	_pile_btns["deck"].text = "Deck %d" % _all_cards().size()
 	var inc := combat.incoming_damage()
+	# A jammed intent hides its damage, so the total (and the lethal warning) can't be shown either.
+	var jam: bool = combat.living(combat.enemies).any(func(en: Fighter) -> bool: return BossRules.jammed(combat, en))
+	if jam:
+		inc = 0
 	if _crash_mode and not combat.can_shutdown():
 		_crash_mode = false
 	_player_view.targetable = _ally_mode()
@@ -250,7 +254,7 @@ func _rebuild() -> void:
 	elif _selected >= 0:
 		_hint.text = "%s\nTap a highlighted enemy" % combat.hand[_selected].display_name()
 	else:
-		_hint.text = ("Incoming %d damage" % inc if inc > 0 else "No attacks incoming") + ("  ·  Firewall %d" % combat.player.ward if combat.player.ward > 0 else "")
+		_hint.text = ("Incoming ? (signal jammed)" if jam else ("Incoming %d damage" % inc if inc > 0 else "No attacks incoming")) + ("  ·  Firewall %d" % combat.player.ward if combat.player.ward > 0 else "")
 	# Lethal: what's coming beats your HP and Firewall together. Red hint, red pulse on you
 	# and on every enemy lining up an attack.
 	var lethal := combat.phase == Combat.Phase.PLAYER and inc > 0 and inc >= combat.player.hp + combat.player.ward and combat.player.hp > 0
@@ -584,6 +588,63 @@ func _play_events(played: CardView) -> Array:
 				if v != null:
 					_float_text(v, "Interrupted", Palette.UPGRADED)
 				await _wait(0.1)
+			"immune":
+				if v != null:
+					v.firewall_flash = 1.0
+					_float_text(v, "Shielded", Palette.WARD)
+				await _wait(0.1)
+			"sync":
+				if v != null:
+					v.shown_hp = int(e["hp"])
+			"phase":
+				if v != null:
+					v.boss_action = 1.0
+					v.frozen_intents = null
+				await _banner(str(e.get("name", "")) if str(e.get("name", "")) != "" else "Phase %d" % int(e["index"]), Palette.ENEMY)
+			"gauge":
+				if v != null:
+					_float_text(v, "Heat %d/%d" % [int(e["value"]), int(e["max"])], Palette.faction("ember"), -30)
+			"gauge_full":
+				if v != null:
+					v.frozen_intents = null
+					_float_text(v, "%s next move" % str(e["name"]), Palette.HP, -50, true)
+				await _wait(0.2)
+			"twin_down":
+				var tv2: FighterView = _views.get(str(e["by"]))
+				if tv2 != null and is_instance_valid(tv2):
+					_float_text(tv2, "Will restore its twin", Palette.ENEMY, -40, true)
+				await _wait(0.25)
+			"bond":
+				if v != null:
+					v.boss_action = 1.0
+					_float_text(v, "Bond broken: enraged", Palette.ENEMY, -40, true)
+				await _wait(0.25)
+			"shield_down":
+				if v != null:
+					_float_text(v, "Shield down", Palette.UPGRADED, -40, true)
+				await _wait(0.25)
+			"shield_up":
+				if v != null:
+					v.firewall_flash = 1.0
+					_float_text(v, "Shield restored", Palette.WARD, -40, true)
+				await _wait(0.2)
+			"devour":
+				var dv: FighterView = _views.get(str(e["source"]))
+				if dv != null and is_instance_valid(dv):
+					_float_text(dv, "Devoured %d" % int(e["count"]), Palette.ENEMY, -40, true)
+				await _wait(0.2)
+			"tide":
+				if v != null and int(combat.turn) > 1:
+					_float_text(v, "Low tide" if e["state"] == "low" else "High tide", Palette.faction("tide"), -40)
+			"timer":
+				if v != null and int(e["left"]) == 0:
+					_float_text(v, "Trace complete", Palette.HP, -40, true)
+			"infect":
+				_float_text(_player_view, "%d %s shuffled into your draw pile" % [int(e["amount"]), Lexicon.card_name(str(e["card"]))], Palette.ENEMY, -60, true)
+				await _wait(0.25)
+			"hatch":
+				_float_text(_player_view, "%s hatched" % Lexicon.card_name(str(e["card"]).trim_suffix("+")), Palette.ENEMY, -60, true)
+				await _wait(0.2)
 			"strip":
 				if v != null:
 					_float_text(v, "Stripped", Palette.faction("void"))
@@ -666,7 +727,7 @@ func _play_events(played: CardView) -> Array:
 				if en != null:
 					var nv := _add_enemy_view(en, combat.enemies.find(en))
 					nv.freeze()
-					nv.shown_hp = en.max_hp
+					nv.shown_hp = int(e.get("hp", en.max_hp))
 					nv.shown_ward = 0
 					_pop_in(nv)
 				await _wait(0.25)

@@ -26,8 +26,10 @@ const OPS := {
 	"summon": ["name", "hp", "rule"],
 	"rally": ["amount"],
 	"cleanse": ["to"],
-	"add_card": ["card", "amount", "upgraded"],
+	"add_card": ["card", "amount", "upgraded", "pile"],
 	"spawn": ["enemy"],
+	"devour": ["amount", "stacks"],
+	"revive": ["enemy", "pct"],
 	"lose_hp": ["amount", "to"],
 	"damage_per_status": ["status", "mult", "base", "consume", "to", "of"],
 	"amplify": ["status", "mult", "to"],
@@ -90,6 +92,7 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 				var before: int = t.hp
 				t.hp = mini(t.max_hp, t.hp + n)
 				c.emit("heal", {"target": t.id, "amount": t.hp - before, "hp": t.hp})
+				BossRules.after_heal(c, t)
 		"apply":
 			var s := str(e.get("status", ""))
 			var stacks := int(e.get("stacks", 1))
@@ -120,6 +123,14 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 					t.statuses.erase(s)
 				c.emit("cleanse", {"target": t.id})
 		"add_card":
+			if str(e.get("pile", "hand")) == "draw":
+				# Shuffled into your draw pile (spores).
+				for i in maxi(n, 1):
+					var planted := c.db.instance(str(e.get("card", "")), bool(e.get("upgraded", false)))
+					if planted != null:
+						c.draw_pile.insert(c.rng.range_i(0, c.draw_pile.size()), planted)
+				c.emit("infect", {"card": str(e.get("card", "")), "amount": maxi(n, 1)})
+				return
 			for i in maxi(n, 1):
 				if c.hand.size() >= Combat.MAX_HAND:
 					break
@@ -129,6 +140,19 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 					c.emit("draw", {"card": inst.key(), "created": true})
 		"spawn":
 			c.spawn(str(e.get("enemy", "")))
+		"revive":
+			c.spawn(str(e.get("enemy", "")), float(e.get("pct", 0.5)))
+		"devour":
+			# Eats every helper it called in: repair and a status per helper eaten.
+			var eaten: Array = c.living(c.enemies).filter(func(f: Fighter) -> bool: return f != src and f.spawned)
+			for f in eaten:
+				f.hp = 0
+				c.emit("death", {"target": f.id, "devoured": true})
+			if not eaten.is_empty():
+				c.emit("devour", {"source": src.id, "count": eaten.size()})
+				resolve(c, {"op": "heal", "amount": n * eaten.size(), "to": "self"}, src, src)
+				if int(e.get("stacks", 0)) > 0:
+					resolve(c, {"op": "apply", "status": "might", "stacks": int(e["stacks"]) * eaten.size(), "to": "self"}, src, src)
 		"damage_per_status":
 			var st := str(e.get("status", ""))
 			var on_target := str(e.get("of", "")) == "target"
@@ -170,9 +194,12 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 			# Cancels the named parts of each target's next move; "effects" pay off once per enemy cut.
 			for t in targets(c, e, src, target, "target"):
 				var cut: Array = Intents.matching(t, e.get("kinds", []))
+				if t.rules.has("jam"):
+					t.state["revealed"] = true
 				if cut.is_empty():
 					continue
 				t.interrupted.append_array(cut)
+				t.state["revealed"] = true
 				c.emit("interrupt", {"target": t.id, "kinds": cut})
 				for fx in e.get("effects", []):
 					resolve(c, fx, src, t)
@@ -217,8 +244,8 @@ static func targets(c: Combat, e: Dictionary, src: Fighter, target: Fighter, def
 			return [src]
 		"target":
 			if target != null and not target.is_dead():
-				return [target]
-			return foes.slice(0, 1)
+				return [BossRules.guard_target(c, target)] if friendly else [target]
+			return _front(c, foes, friendly)
 		"all_enemies":
 			return foes
 		"all_allies":
@@ -227,11 +254,18 @@ static func targets(c: Combat, e: Dictionary, src: Fighter, target: Fighter, def
 			return [c.rule_daemon] if c.rule_daemon != null and c.units.has(c.rule_daemon) else []
 		"front":
 			if friendly:
-				return foes.slice(0, 1)
+				return _front(c, foes, friendly)
 			return c.units.slice(0, 1) if not c.units.is_empty() else [c.player]
 		"daemon":
 			return [] if friendly else c.units.slice(0, 1)
 	return []
+
+
+## The first foe in line; for your programs a guarded boss's escort stands in front of it.
+static func _front(c: Combat, foes: Array, friendly: bool) -> Array:
+	if foes.is_empty():
+		return []
+	return [BossRules.guard_target(c, foes[0])] if friendly else [foes[0]]
 
 
 static func describe(e: Dictionary) -> String:
@@ -316,9 +350,16 @@ static func _describe(e: Dictionary) -> String:
 			return "Purge your harmful statuses."
 		"add_card":
 			var nm := Lexicon.card_name(str(e.get("card", "?"))) + ("+" if e.get("upgraded", false) else "")
+			if str(e.get("pile", "hand")) == "draw":
+				return "Shuffle %d %s into your draw pile." % [maxi(n, 1), nm]
 			return "Add %s to your hand." % nm if maxi(n, 1) == 1 else "Add %d %s to your hand." % [n, nm]
 		"spawn":
 			return "Call in a %s." % Lexicon.enemy_name(str(e.get("enemy", "?")))
+		"devour":
+			var boost := int(e.get("stacks", 0))
+			return "Devour every helper it called in: repair %d HP%s for each one eaten." % [n, (" and gain %d %s" % [boost, Lexicon.status("might")]) if boost > 0 else ""]
+		"revive":
+			return "Restore its crashed twin at %d%% HP." % roundi(float(e.get("pct", 0.5)) * 100)
 		"lose_hp":
 			return "Lose %d HP." % n
 		"damage_per_status":
