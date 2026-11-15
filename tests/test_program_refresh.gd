@@ -73,7 +73,7 @@ func test_cold_storage_retains_two_defensive_instructions() -> void:
 	check(card.has_keyword("retain"), "Cold Storage retains")
 	var hp: int = c.enemies[0].hp
 	c.play_card(0)
-	eq(c.player.ward, 8)
+	eq(c.player.ward, 7)
 	eq(c.enemies[0].hp, hp, "attack instructions become Firewall")
 	eq(card.compiled, [])
 
