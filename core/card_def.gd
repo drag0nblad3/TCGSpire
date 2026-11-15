@@ -51,6 +51,8 @@ var evolve: Dictionary = {}
 var on_dump: Array = []
 ## Fields replaced when the card is upgraded: any of cost, effects, keywords, text.
 var upgrade: Dictionary = {}
+## Spores only: the enemy id this card hatches into if it is discarded unplayed at end of turn.
+var hatch := ""
 
 
 static func from_dict(d: Dictionary) -> CardDef:
@@ -73,6 +75,7 @@ static func from_dict(d: Dictionary) -> CardDef:
 	if c.upgrade.has("cost"):
 		c.upgrade = c.upgrade.duplicate()
 		c.upgrade["cost"] = _parse_cost(c.upgrade["cost"])
+	c.hatch = str(d.get("hatch", ""))
 	return c
 
 

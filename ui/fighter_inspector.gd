@@ -23,7 +23,9 @@ static func rows(view: FighterView) -> Array:
 	var f: Fighter = view.fighter
 	var out: Array = []
 	if view.kind == "enemy" and not f.is_dead():
-		out.append(["Next move", Intents.explain(f), Palette.ENEMY])
+		out.append(["Next move", Intents.explain(f, view.combat), Palette.ENEMY])
+		for r in BossRules.rows(view.combat, f):
+			out.append([r[0], r[1], Palette.ENERGY])
 	if view.kind == "unit":
 		out.append(["Daemon rule", DaemonRules.describe(f.rule), Palette.ENERGY])
 		out.append(["Countdown", "Its HP is its countdown: it loses 1 at the start of each of your turns and 1 per hit taken. Purge moves take more. At 0 it closes and the rule ends.", Palette.TEXT_DIM])

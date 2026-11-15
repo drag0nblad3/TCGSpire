@@ -65,6 +65,8 @@ var enemy_dmg_mult := 1.0
 var daemon_hp := 0
 ## Multiplier on a daemon program's base HP (implant "daemon": {"hp_mult": x}), applied before daemon_hp.
 var daemon_hp_mult := 1.0
+## Shared HP totals by pool name (BossRules "pool").
+var pools: Dictionary = {}
 
 
 ## deck: Array of CardInstance (copied, not mutated). hp < 0 means full HP.
@@ -113,6 +115,7 @@ static func create(db_in: CardDB, deck: Array, encounter_id: String, rng_in: Gam
 	c.enemy_hp_mult = float(opts.get("enemy_hp_mult", 1.0)) * float(act_hp_mult.get(str(int(enc.get("act", 1))), 1.0))
 	for eid in enc.get("enemies", []):
 		c.enemies.append(c._make_enemy(str(eid)))
+	BossRules.link(c)
 	c.draw_pile = deck.map(func(card: CardInstance) -> CardInstance:
 		var cp := card.copy()
 		cp.origin = card
@@ -140,6 +143,7 @@ func _make_enemy(eid: String) -> Fighter:
 	f.def_id = eid
 	f.dmg_mult = enemy_dmg_mult
 	f.moves = d.get("moves", [])
+	BossRules.setup(f, d)
 	if d.get("random_start", false) and not f.moves.is_empty():
 		f.move_idx = rng.range_i(0, f.moves.size() - 1)
 	return f
@@ -167,6 +171,7 @@ func _start_player_turn() -> void:
 		player.ward = ceili(player.ward * ward_retention)
 	energy = maxi(max_energy - player.status("overcharge"), 0)
 	player.statuses.erase("overcharge")
+	BossRules.on_player_turn(self)
 	emit("turn_start", {"turn": turn, "ward": player.ward})
 	# Daemons run down: HP is the countdown, so a daemon with N HP lasts N rounds if left alone.
 	for u in units.duplicate():
@@ -256,7 +261,8 @@ func play_card(hand_idx: int, target_idx: int = -1, chosen: Array = []) -> bool:
 			target_idx = enemies.find(_first_living(enemies))
 		if target_idx < 0 or target_idx >= enemies.size() or enemies[target_idx].is_dead():
 			return false
-		target = enemies[target_idx]
+		# Formation: a guarded boss's escorts take hits aimed at it.
+		target = BossRules.guard_target(self, enemies[target_idx])
 	if needs_ally(card):
 		var allies: Array = [player] + units
 		if target_idx >= allies.size():
@@ -403,6 +409,11 @@ func end_turn() -> void:
 			kept.append(card)
 		elif card.has_keyword("ethereal"):
 			exhaust_pile.append(card)
+		elif card.def.hatch != "":
+			# Spore: left unplayed, it is used up and hatches on the enemy side.
+			exhaust_pile.append(card)
+			emit("hatch", {"card": card.key(), "enemy": card.def.hatch})
+			spawn(card.def.hatch)
 		else:
 			CardPrograms.on_discard(card)
 			discard_pile.append(card)
@@ -420,6 +431,7 @@ func end_turn() -> void:
 			return
 		if en.is_dead():
 			continue
+		BossRules.before_move(self, en)
 		if en.status("stall") > 0:
 			# Lagged: skips this move; the same intent waits for next turn.
 			en.add_status("stall", -1)
@@ -435,6 +447,7 @@ func end_turn() -> void:
 				Effects.resolve(self, e, en, player)
 			en.interrupted = []
 			en.advance_move()
+			BossRules.after_move(en)
 		Statuses.on_turn_end(self, en)
 		_check_end()
 		if is_over():
@@ -479,6 +492,7 @@ func attack(src: Fighter, t: Fighter, base: int) -> int:
 	if t == player and src != null and enemies.has(src):
 		amount = maxi(amount - rule_sum("guard"), 0)
 	var dealt := deal_damage(t, amount, src.id if src != null else "")
+	BossRules.on_attacked(self, src, t)
 	# Thorns: being attacked hurts the attacker (even if Ward absorbed the hit).
 	var thorns := t.status("thorns") + (rule_sum("thorns") if t == player else 0)
 	if thorns > 0 and src != null and not src.is_dead():
@@ -492,10 +506,17 @@ func deal_damage(t: Fighter, amount: int, source_id: String = "", kind: String =
 	# A daemon's HP is turns, not toughness: any hit costs it 1. Only Purge takes more.
 	if units.has(t) and kind != "purge":
 		amount = 1
+	if not t.rules.is_empty():
+		amount = BossRules.scale(self, t, amount, kind)
+		if amount <= 0:
+			emit("immune", {"target": t.id})
+			return 0
 	# Daemon Firewall (Daemon Plating) only absorbs attacks: Purge, Virus and HP loss go straight through.
 	var blocked := mini(t.ward, amount) if not (units.has(t) and kind != "attack") else 0
 	t.ward -= blocked
 	var dealt := amount - blocked
+	if not t.rules.is_empty():
+		dealt = BossRules.limit(t, dealt)
 	t.hp = maxi(t.hp - dealt, 0)
 	var saved := t == player and t.hp <= 0 and second_wind > 0 and not second_wind_used
 	if saved:
@@ -506,13 +527,17 @@ func deal_damage(t: Fighter, amount: int, source_id: String = "", kind: String =
 		t.ward += second_wind
 		emit("second_wind", {"target": t.id})
 		emit("ward", {"target": t.id, "amount": second_wind, "ward": t.ward})
+	if not t.rules.is_empty() and dealt > 0:
+		BossRules.after_damage(self, t)
 	if t.is_dead():
 		emit("death", {"target": t.id})
 		if units.has(t):
 			units.erase(t)
 			_daemon_closed(t)
-		elif enemies.has(t) and phase == Phase.PLAYER:
-			Talismans.fire(self, "kill", {"target": t})
+		elif enemies.has(t):
+			BossRules.on_death(self, t)
+			if phase == Phase.PLAYER:
+				Talismans.fire(self, "kill", {"target": t})
 	return dealt
 
 
@@ -635,12 +660,19 @@ func rule_sum(flag: String) -> int:
 
 
 ## Enemy-side summon (op "spawn"). Max 5 enemies alive.
-func spawn(enemy_id: String) -> bool:
+## hp_pct < 1 brings it in hurt (a restored twin); those are not "spawned" helpers.
+func spawn(enemy_id: String, hp_pct: float = 1.0) -> bool:
 	if living(enemies).size() >= 5 or not db.enemies.has(enemy_id):
 		return false
 	var f := _make_enemy(enemy_id)
+	f.spawned = hp_pct >= 1.0
+	if hp_pct < 1.0:
+		f.hp = maxi(roundi(f.max_hp * hp_pct), 1)
+	var pool := str(f.rules.get("pool", ""))
+	if pool != "" and pools.has(pool):
+		f.hp = int(pools[pool])
 	enemies.append(f)
-	emit("spawn", {"target": f.id, "enemy": enemy_id})
+	emit("spawn", {"target": f.id, "enemy": enemy_id, "hp": f.hp})
 	return true
 
 

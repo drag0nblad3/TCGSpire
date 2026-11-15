@@ -14,7 +14,7 @@ Original design only: don't copy cards, names, characters or look from existing 
   bot picks/offers and plays/damage/Firewall per play; writes `report.tsv` in `out`. ~10 min for every card at n=80 on 4 cores. Low plays/run = bot blind spot.
 - `scripts/sim_matrix.sh` — the standard balance check Tyler wants: 150 runs per cell, new heat 0-1, experienced 1-3, veteran 2-5, max 4-6.
 - `scripts/shot.sh screen=<name|all> out=/tmp/x.png [plays=2] [end_turn=1] [inspect_enemy=1] [theme=archive] [hand=id,id] [pick=1]` — real render to PNG (xvfb). `hand=` sets the combat hand; `pick=1` opens the Dump/recover pick overlay.
-  Screens: hub hub_heat map combat reward rest shop event collection picker pack pack_open pack_shelf pack_premium pack_crew weekly weekly_map login signal_result ice deep end inspect rules jobs rig perk tinker crew firmware recompile menu settings resume tutorial coach foil lethal. Uses a throwaway profile.
+  Screens: hub hub_heat map combat reward rest shop event collection picker pack pack_open pack_shelf pack_premium pack_crew weekly weekly_map login signal_result ice deep end boss inspect rules jobs rig perk tinker crew firmware recompile menu settings resume tutorial coach foil lethal. Uses a throwaway profile.
 - Godot binary: `godot` on PATH, or set `GODOT=/path/to/godot`. Cloud sessions: download
   `Godot_v4.4.1-stable_linux.x86_64.zip` from the godotengine GitHub releases.
 
@@ -92,6 +92,13 @@ Original design only: don't copy cards, names, characters or look from existing 
   first; each deep Core still pays a crew pack (`deep_cores`), but no rep/act XP; depth sets `stats.best_depth`. The run bot always jacks out.
 - ICE database (Records screen "ICE" tab): `RunState.ice` counts enemies per fight (`Records.tally_ice`), folded into `Profile.ice` at run end;
   `balance.ice_db.reveal` fights decode an entry (moves + `data/ice_lore.json` line; every enemy needs one, `Records.validate`).
+- Boss rules (`core/boss_rules.gd`, enemy def `"rules": {...}`; hooks called by Combat, chips/inspector/rules page/ICE text generated from it): `phases` (new moves at HP marks, a hit can't
+  carry past a mark, debuffs wiped), `timer` (Trace: Boost every move after N moves), `tide` (high/low damage-taken cycle by round, `low_move`), `gauge` (your attack hits add heat; full = effects
+  stapled to its next move via `Fighter.bonus`), `jam` (intent hidden every Nth turn; Exposed or any Interrupt clears it), `twin` (survivor's move after next is Restore = op `revive`, counts as Repair
+  for Interrupt), `pool` + `leaves_at` (bodies share one HP total, `Combat.pools`), `taken` (multiplier per damage kind), `shielded_by` + `respawn` (pylons), `guarded` (single-target hits land on
+  escorts: `BossRules.guard_target`), `bond` (survivor heals + status). Ops added: `devour` (eats `Fighter.spawned` helpers), `revive`, `add_card` `"pile": "draw"`; card field `"hatch"` (Spore Pod
+  spawns that enemy if discarded unplayed). One-off moves use `Fighter.override`. Extra boss bodies/pylons draw the glyph fallback (allowlist in `tests/test_enemy_art.gd`). Balance of these is untested by sims.
+  `scripts/shot.sh screen=boss enc=<encounter id>` renders any boss fight.
 - Combat animation: `CombatScreen._play_events` replays `combat.events` step by step (input blocked);
   damage/ward/heal events carry `hp`/`ward` after the change for the bars. `step_scale = 0` in tests.
 - `data/` all content as JSON: `cards/<faction>.json` (one card per line), `enemies/`,

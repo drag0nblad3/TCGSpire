@@ -310,8 +310,16 @@ static func _summon_value(c: Combat, e: Dictionary) -> float:
 static func _hit_value(c: Combat, f: Fighter, amount: int, hits: int) -> float:
 	if f == null or f.is_dead():
 		return 0.0
-	var per := Statuses.modify_attack(amount + c.rule_sum("attack_bonus"), c.player, f)
+	# Boss rules: escorts take the hit, shields stop it, tides and plating scale it, phases cap it.
+	f = BossRules.guard_target(c, f)
+	var per := BossRules.scale(c, f, Statuses.modify_attack(amount + c.rule_sum("attack_bonus"), c.player, f), "attack")
+	if per <= 0:
+		return 0.0
+	var twins: Array = c.living(c.enemies).filter(func(e: Fighter) -> bool: return e != f and e.rules.has("twin")) if f.rules.has("twin") else []
 	var hp := f.hp
+	var mark := BossRules.phase_floor(f)
+	if mark > 0 and hp > mark:
+		hp -= mark
 	var ward := f.ward
 	var v := 0.0
 	for i in hits:
@@ -323,9 +331,13 @@ static func _hit_value(c: Combat, f: Fighter, amount: int, hits: int) -> float:
 		if f.status("thorns") > 0:
 			v -= f.status("thorns") * 0.8
 		if hp <= 0:
-			# Lethal: also removes that enemy's incoming attack.
-			v += 4.0 + c.intent_damage(f) * 1.2
+			# Lethal: also removes that enemy's incoming attack. (A phase mark is not a kill.)
+			if mark <= 0 or f.hp <= mark:
+				v += 4.0 + c.intent_damage(f) * 1.2
 			break
+	# Twin Cores: keep them level so both fall together; a lone survivor is the priority.
+	if f.rules.has("twin"):
+		v *= 1.4 if twins.is_empty() else (0.6 if twins.any(func(e: Fighter) -> bool: return e.hp > f.hp + per) else 1.0)
 	return v
 
 

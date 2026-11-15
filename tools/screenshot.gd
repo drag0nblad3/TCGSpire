@@ -5,7 +5,7 @@ extends SceneTree
 ##                   [out=/tmp/shot.png] [frames=30] [plays=2] [seed=1] [theme=archive] [end_turn=1] [give=sparring_dummy,drone_swarm]
 ## Under --headless it still runs (smoke test for script errors) but writes no image.
 
-const SCREENS := ["hub", "hub_heat", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "pack_open", "pack_shelf", "pack_premium", "pack_crew", "end", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume", "records", "exploits", "ice", "deep", "daily", "signal_result", "weekly", "weekly_map", "login", "tutorial", "coach", "map_walls", "map_jump", "foil", "lethal"]
+const SCREENS := ["hub", "hub_heat", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "pack_open", "pack_shelf", "pack_premium", "pack_crew", "end", "boss", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume", "records", "exploits", "ice", "deep", "daily", "signal_result", "weekly", "weekly_map", "login", "tutorial", "coach", "map_walls", "map_jump", "foil", "lethal"]
 
 
 func _initialize() -> void:
@@ -33,10 +33,11 @@ func _initialize() -> void:
 		for n in main.get_children():
 			if n is DeckOverlay:
 				n.free()
+		_enc = str(opts.get("enc", ""))
 		_go(main, scr, int(opts["seed"]), str(opts.get("card", "flare_volley")))
 		for i in 3:
 			await process_frame
-		if scr == "combat" and opts["give"] != "":
+		if scr in ["combat", "boss"] and opts["give"] != "":
 			# give=id,id: hand-place those programs and run them (e.g. to show daemons).
 			var gs = main.get("_screen")
 			var gc: Combat = gs.combat
@@ -65,7 +66,7 @@ func _initialize() -> void:
 					if not hc.pick_request(i).is_empty():
 						hs._on_card_pressed(null, i)
 						break
-		if scr == "combat":
+		if scr in ["combat", "boss"]:
 			for p in int(opts["plays"]):
 				var cs = main.get("_screen")
 				var c: Combat = cs.combat
@@ -83,9 +84,13 @@ func _initialize() -> void:
 				# Hold on the first enemy with a few statuses on it: the inspect pop-up.
 				var ics = main.get("_screen")
 				var foe: Fighter = ics.combat.living(ics.combat.enemies)[0]
-				foe.statuses["burn"] = 1
-				foe.statuses["brittle"] = 1
-				foe.statuses["weaken"] = 3
+				for cand in ics.combat.living(ics.combat.enemies):
+					if not BossPresentation.PROFILES.get(cand.def_id, {}).is_empty():
+						foe = cand
+				if scr == "combat" and _enc == "":
+					foe.statuses["burn"] = 1
+					foe.statuses["brittle"] = 1
+					foe.statuses["weaken"] = 3
 				ics._inspect_fighter(ics._views[foe.id])
 				for f in 20:
 					await process_frame
@@ -116,6 +121,9 @@ func _idle(cs) -> void:
 		await process_frame
 		if not cs.is_busy():
 			return
+
+
+var _enc := ""
 
 
 func _go(main: Control, scr: String, seed_in: int, inspect_card: String = "flare_volley") -> void:
@@ -277,7 +285,10 @@ func _go(main: Control, scr: String, seed_in: int, inspect_card: String = "flare
 			main._show(HubScreen.new().setup(db, main.profile, "Layer 2 · Node 17 · HP 40/60"))
 		"combat":
 			main.run.enter(main.run.available_nodes()[0])  # floor 1: shows the soft-entry hint
-			main._start_combat({"type": "fight", "encounter": "wisp_court"})
+			main._start_combat({"type": "boss" if _enc != "" else "fight", "encounter": _enc if _enc != "" else "wisp_court"})
+		"boss":
+			# A Core with boss rules: three bodies on one HP total (enc=<encounter id> picks another).
+			main._start_combat({"type": "boss", "encounter": _enc if _enc != "" else "tide_a2b"})
 		"lethal":
 			# Combat where the incoming hit would flatline you: red hint and pulsing panels.
 			main.run.enter(main.run.available_nodes()[0])
