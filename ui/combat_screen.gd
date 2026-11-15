@@ -392,8 +392,6 @@ func _on_card_pressed(_view: CardView, idx: int) -> void:
 		var c: CardInstance = combat.hand[idx]
 		if c.has_keyword("unplayable"):
 			UiKit.toast(self, "%s can't be played." % c.display_name())
-		elif combat.was_played_this_turn(c):
-			UiKit.toast(self, "%s can be played again next turn." % c.display_name())
 		elif c.cost() > combat.energy:
 			UiKit.toast(self, "Not enough RAM (%d needed)." % c.cost())
 		elif combat.dump_need(c) > combat.hand.size() - 1:

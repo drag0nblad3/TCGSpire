@@ -63,7 +63,7 @@ func test_wave2_specialist_compiler_and_four_slot_forge() -> void:
 	eq(c.enemies[0].hp, hp - 16)
 	eq(c.hand[0].relay, 2)
 
-func test_wave2_extended_handshakes_and_once_per_turn() -> void:
+func test_wave2_extended_handshakes_and_recovery() -> void:
 	var c := arena()
 	c.play_card(give(c, "uplink"))
 	c.draw_pile = db.make_deck(["brace"])
@@ -71,9 +71,7 @@ func test_wave2_extended_handshakes_and_once_per_turn() -> void:
 	c.hand = [checksum]
 	c.play_card(0)
 	eq(c.hand.size(), 1, "checksum draws after uplink")
-	c.discard_pile.erase(checksum)
-	c.hand.append(checksum)
-	check(not c.play_card(1), "checksum redraw cannot loop")
+	eq(c.draw_pile.size() + c.hand.size(), 2, "checksum shuffled Uplink back in before drawing")
 	var d := arena()
 	d.play_card(give(d, "downlink"), 0)
 	var encore := db.instance("encore_buffer")
@@ -83,9 +81,7 @@ func test_wave2_extended_handshakes_and_once_per_turn() -> void:
 	var ram := d.energy
 	d.play_card(0, 0)
 	eq(d.energy, ram, "encore refunds cost after rebroadcast")
-	d.discard_pile.erase(encore)
-	d.hand.append(encore)
-	check(not d.play_card(d.hand.find(encore), 0), "encore repeat blocked")
+	check(d.draw_pile.back().def.id == "rebroadcast", "encore puts the last program back on top")
 
 func test_wave2_sequence_orders_and_reserve_payload() -> void:
 	var c := arena()
@@ -93,6 +89,8 @@ func test_wave2_sequence_orders_and_reserve_payload() -> void:
 	c.play_card(give(c, "brace"))
 	c.play_card(give(c, "ghost_key"), 0)
 	eq(c.enemies[0].status("brittle"), 1)
+	eq(c.energy, 0, "Ghost Key is X cost")
+	c.energy = 30
 	c.play_card(give(c, "brace"))
 	c.play_card(give(c, "backdoor"), 0)
 	eq(c.enemies[0].status("brittle"), 3, "attack-script order enables Backdoor")

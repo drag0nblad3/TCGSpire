@@ -17,7 +17,6 @@ var draw_pile: Array = []
 var hand: Array = []
 var discard_pile: Array = []
 var exhaust_pile: Array = []
-var _played_once_per_turn: Array[CardInstance] = []
 var played_ids: Array = []
 var played_types: Array = []
 var energy := 0
@@ -162,7 +161,6 @@ func start() -> void:
 func _start_player_turn() -> void:
 	turn += 1
 	phase = Phase.PLAYER
-	_played_once_per_turn.clear()
 	played_ids.clear()
 	played_types.clear()
 	if player.status("fortify") <= 0 and rule_sum("keep_ward") <= 0:
@@ -198,7 +196,7 @@ func can_play(hand_idx: int) -> bool:
 	if phase != Phase.PLAYER or hand_idx < 0 or hand_idx >= hand.size():
 		return false
 	var card: CardInstance = hand[hand_idx]
-	if card.has_keyword("unplayable") or card.cost() > energy or was_played_this_turn(card):
+	if card.has_keyword("unplayable") or card.cost() > energy:
 		return false
 	if units.size() >= board_slots and _summons(card) and not _refreshes(card):
 		return false
@@ -235,10 +233,6 @@ func pick_request(hand_idx: int) -> Dictionary:
 			if pool.size() > maxi(int(e.get("amount", 1)), 1):
 				return {"kind": "recover", "amount": maxi(int(e.get("amount", 1)), 1), "cards": pool, "from": str(e.get("from", "discard")), "into": str(e.get("into", "draw"))}
 	return {}
-
-
-func was_played_this_turn(card: CardInstance) -> bool:
-	return card in _played_once_per_turn
 
 
 func needs_target(card: CardInstance) -> bool:
@@ -278,8 +272,6 @@ func play_card(hand_idx: int, target_idx: int = -1, chosen: Array = []) -> bool:
 		energy = 0
 	else:
 		energy -= card.cost()
-	if card.has_keyword("once_per_turn"):
-		_played_once_per_turn.append(card)
 	var play_ev := {"card": card.key(), "target": target.id if target != null else ""}
 	if card.is_x():
 		play_ev["x"] = x_spent

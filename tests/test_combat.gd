@@ -28,20 +28,6 @@ func test_discard_and_reshuffle() -> void:
 	check(c.events.any(func(e: Dictionary) -> bool: return e["t"] == "reshuffle"), "no reshuffle event")
 
 
-func test_once_per_turn_cannot_repeat_after_being_redrawn_in_the_same_turn() -> void:
-	var c := make_combat(["checksum", "focus+", "arc_bolt"], "last_mirror")
-	c.start()
-	var once: CardInstance = c.hand.filter(func(card: CardInstance) -> bool: return card.def.id == "checksum")[0]
-	check(c.play_card(c.hand.find(once)), "first Checksum")
-	check(c.play_card(c.hand.find_custom(func(card: CardInstance) -> bool: return card.def.id == "arc_bolt")), "Arc Bolt")
-	check(c.play_card(c.hand.find_custom(func(card: CardInstance) -> bool: return card.def.id == "focus")), "Defrag")
-	check(c.hand.has(once), "Defrag redrew Checksum")
-	check(not c.play_card(c.hand.find(once)), "the redrawn copy is blocked")
-	check(c.play_card(give(c, "checksum")), "a different copy still plays")
-	c.end_turn()
-	check(c.can_play(c.hand.find(once)), "the first copy is ready next turn")
-
-
 func test_overclock_is_wiped_after_one_use() -> void:
 	var c := make_combat([])
 	c.start()

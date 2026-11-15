@@ -7,7 +7,7 @@ const TYPES := ["attack", "skill", "unit", "power"]
 ## "ally": you or one of your daemons (hand-picked when a daemon is running).
 const TARGETS := ["enemy", "ally", "none"]
 const RARITIES := ["starter", "common", "uncommon", "rare", "mythic", "curse"]
-const KEYWORDS := ["exhaust", "retain", "unplayable", "innate", "ethereal", "once_per_turn"]
+const KEYWORDS := ["exhaust", "retain", "unplayable", "innate", "ethereal"]
 ## Rules glossary for keywords (shown by the card inspector and the rules screen).
 const KEYWORD_DESC := {
 	"exhaust": "After it runs, the program is wiped for the rest of this fight.",
@@ -15,7 +15,6 @@ const KEYWORD_DESC := {
 	"unplayable": "Can't be run. It just clogs your hand.",
 	"innate": "Always loaded into your opening hand.",
 	"ethereal": "If it's still in your hand at the end of your turn, it is wiped.",
-	"once_per_turn": "After you run a copy, it can't run again that turn, even if you redraw it.",
 	"loop": "Each time you run this copy, every number marked Loop +N grows by N for the rest of the fight.",
 	"x_cost": "Costs all your RAM. X is the RAM you spent, so the card grows with every point you have left.",
 	"evolve": "This copy counts its runs for the whole job. After enough runs it turns into its evolved form for the rest of the run (it keeps its upgrade, firmware and mod).",

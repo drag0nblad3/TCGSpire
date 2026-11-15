@@ -35,7 +35,6 @@ const KEYWORD := {
 	"unplayable": "Locked",
 	"innate": "Preload",
 	"ethereal": "Volatile",
-	"once_per_turn": "Once per turn",
 	"loop": "Loop",
 	"x_cost": "X cost",
 	"evolve": "Evolve",

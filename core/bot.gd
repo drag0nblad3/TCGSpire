@@ -106,7 +106,7 @@ static func score(c: Combat, card: CardInstance, t: int = -1) -> float:
 		for effect in card.effects():
 			if effect.get("op") == "compile":
 				capacity = int(effect.get("cap", 3))
-		if card.compiled.size() < capacity and c.hand.any(func(other: CardInstance) -> bool: return other != card and other.cost() <= c.energy and not other.has_keyword("unplayable") and not c.was_played_this_turn(other)):
+		if card.compiled.size() < capacity and c.hand.any(func(other: CardInstance) -> bool: return other != card and other.cost() <= c.energy and not other.has_keyword("unplayable")):
 			v *= 0.25
 	# Loop programs get better every run this fight, so running one early pays later.
 	if card.has_loop():
