@@ -19,6 +19,7 @@ func _initialize() -> void:
 		var kv := a.split("=", true, 1)
 		if kv.size() == 2:
 			opts[kv[0]] = kv[1]
+	RunBot.stochastic = opts.get("greedy", "0") != "1"
 	var db := CardDB.load_from(CardDB.DATA_ROOT)
 	if not db.errors.is_empty():
 		for e in db.errors:
