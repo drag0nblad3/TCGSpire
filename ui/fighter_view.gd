@@ -175,6 +175,8 @@ func _draw() -> void:
 			var height := art_height if fighter.def_id == "burner_tagger" else art_height * 0.94
 			var bounds := Vector2(w - 18.0, height) * (1.10 if elite else 0.93)
 			EnemyPortraits.draw(self, c, bounds, enemy_portrait, t + float(fighter.id.hash() % 29) * 0.11, elite)
+		elif kind == "enemy" and BossSupportArt.PROFILES.has(fighter.def_id):
+			BossSupportArt.draw(self, fighter.def_id, c, Vector2(w - 18.0, art_height), t + float(fighter.id.hash() % 29) * 0.11, boss_action, hp() > 0)
 		elif portrait != null:
 			var art_size := portrait.get_size()
 			art_size *= minf((w - 20.0) / art_size.x, art_height / art_size.y)

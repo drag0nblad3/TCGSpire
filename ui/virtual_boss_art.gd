@@ -6,6 +6,13 @@ const ANIMATED := ["kiln_mother", "undertow_broker", "chief_surgeon", "zero_prim
 
 # effect, body frequency, body amplitude, effect speed, anchor x/y, radius.
 const PROFILES := {
+	"bear_desk": ["vortex", 1.5, 0.006, -0.6, 0.5, 0.58, 0.28],
+	"bull_desk": ["vortex", 2.4, 0.008, 0.8, 0.5, 0.58, 0.28],
+	"surgeon_clone": ["cells", 2.0, 0.008, 0.5, 0.5, 0.65, 0.16],
+	"co_anchor": ["sound", 4.3, 0.011, 0.8, 0.5, 0.42, 0.30],
+	"aegis_drone": ["grid", 1.3, 0.003, 0.5, 0.5, 0.52, 0.29],
+	"capacitor": ["storm", 2.8, 0.004, 0.7, 0.5, 0.42, 0.23],
+	"mirror_shard": ["mirror", 1.7, 0.010, 0.7, 0.5, 0.5, 0.23],
 	"furnace_king": ["crown", 3.0, 0.005, 0.7, 0.5, 0.25, 0.20],
 	"tidal_exchange": ["vortex", 2.0, 0.014, 1.2, 0.5, 0.67, 0.24],
 	"gene_saint": ["spores", 1.5, 0.007, 0.4, 0.5, 0.48, 0.32],

@@ -4,7 +4,7 @@ extends TestCase
 func test_every_card_has_distinct_in_bounds_art() -> void:
 	var regions := CardArt.regions()
 	# The Interrupt programs draw the procedural fallback until their art sheet is made.
-	var awaiting_art := ["flashover", "slack_water", "antibody", "null_route", "failover", "bad_signal", "line_cut", "spore_pod"]
+	var awaiting_art := ["flashover", "slack_water", "antibody", "null_route", "failover", "bad_signal", "line_cut"]
 	for id in db.cards:
 		check(regions.has(id) or id in awaiting_art, "card has illustration: " + id)
 	for id in regions:

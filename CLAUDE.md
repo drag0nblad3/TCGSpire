@@ -86,7 +86,7 @@ Original design only: don't copy cards, names, characters or look from existing 
   stapled to its next move via `Fighter.bonus`), `jam` (intent hidden every Nth turn; Exposed or any Interrupt clears it), `twin` (survivor's move after next is Restore = op `revive`, counts as Repair
   for Interrupt), `pool` + `leaves_at` (bodies share one HP total, `Combat.pools`), `taken` (multiplier per damage kind), `shielded_by` + `respawn` (pylons), `guarded` (single-target hits land on
   escorts: `BossRules.guard_target`), `bond` (survivor heals + status). Ops added: `devour` (eats `Fighter.spawned` helpers), `revive`, `add_card` `"pile": "draw"`; card field `"hatch"` (Spore Pod
-  spawns that enemy if discarded unplayed). One-off moves use `Fighter.override`. Extra boss bodies/pylons draw the glyph fallback (allowlist in `tests/test_enemy_art.gd`). Balance of these is untested by sims.
+  spawns that enemy if discarded unplayed). One-off moves use `Fighter.override`. Extra boss bodies/pylons use transparent art via `BossSupportArt`, with animation in `VirtualBossArt`. The hatchable Spore Pod has dedicated Field Service card art. Balance of these is untested by sims.
   `scripts/shot.sh screen=boss enc=<encounter id>` renders any boss fight.
 - Combat animation: `CombatScreen._play_events` replays `combat.events` step by step (input blocked);
   damage/ward/heal events carry `hp`/`ward` after the change for the bars. `step_scale = 0` in tests.
