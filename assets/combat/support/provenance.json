@@ -1,0 +1,86 @@
+{
+  "bear_desk": {
+    "source": "exec-b2c8a692-edf0-487f-8ced-47016c247eab.png",
+    "sha256": "009b8780f1993d4c19f2d1337a34fa9cf499a8cd7d61732b881f47896807a4a4",
+    "crop": [
+      25,
+      15,
+      1413,
+      1086
+    ],
+    "packing": "aspect fit within 480x368; centered in transparent 512x400",
+    "generator": "built-in imagegen"
+  },
+  "bull_desk": {
+    "source": "exec-fdec988c-c1d3-4f77-a7f6-fd95f10c3eed.png",
+    "sha256": "5cf16ca20f9eceb333082c3e22048aab77dbffa814ee0ffb9cce536b3724dfc3",
+    "crop": [
+      0,
+      17,
+      1414,
+      1072
+    ],
+    "packing": "aspect fit within 480x368; centered in transparent 512x400",
+    "generator": "built-in imagegen"
+  },
+  "surgeon_clone": {
+    "source": "exec-e4b90334-e98a-4a08-939f-4d3254c4682b.png",
+    "sha256": "f572b42ec7faadf34fcfef9d7e337f8bbbb75c06d294eeec6c613759b9f5ea8b",
+    "crop": [
+      0,
+      19,
+      1432,
+      1070
+    ],
+    "packing": "aspect fit within 480x368; centered in transparent 512x400",
+    "generator": "built-in imagegen"
+  },
+  "co_anchor": {
+    "source": "exec-6246420b-1d5a-409c-b86a-cc4c1ef1f6ff.png",
+    "sha256": "947f1f80f384775333b19ad891f50ade534a66e91a14422fdd994e692b3c2045",
+    "crop": [
+      57,
+      1,
+      1331,
+      1086
+    ],
+    "packing": "aspect fit within 480x368; centered in transparent 512x400",
+    "generator": "built-in imagegen"
+  },
+  "aegis_drone": {
+    "source": "exec-59a46001-2fd0-40f1-b63f-3894c677774f.png",
+    "sha256": "4a379e6a4151107c81259de7cef00e7512287592beaf6e87575297f86581f3f8",
+    "crop": [
+      0,
+      22,
+      1396,
+      1062
+    ],
+    "packing": "aspect fit within 480x368; centered in transparent 512x400",
+    "generator": "built-in imagegen"
+  },
+  "capacitor": {
+    "source": "exec-fe0638e0-a579-4c78-af26-baff82193485.png",
+    "sha256": "6f8efd53d6e73a9877882600f91e5ca7968c3ebd43a40aad50c06b8e9cf440a2",
+    "crop": [
+      49,
+      17,
+      1430,
+      1068
+    ],
+    "packing": "aspect fit within 480x368; centered in transparent 512x400",
+    "generator": "built-in imagegen"
+  },
+  "mirror_shard": {
+    "source": "exec-0b07020a-4aa0-41d1-8949-efed1730eea6.png",
+    "sha256": "081519a15dcda7f7fc9ae04be081f6d6fbce7251a056e73adfdb79c9e6b2137f",
+    "crop": [
+      25,
+      7,
+      1428,
+      1086
+    ],
+    "packing": "aspect fit within 480x368; centered in transparent 512x400",
+    "generator": "built-in imagegen"
+  }
+}

@@ -2,7 +2,7 @@ extends TestCase
 
 ## The Interrupt programs and the card abilities wave (data/cards/abilities.json) draw the
 ## procedural fallback until their art is made.
-const AWAITING_ART := ["flashover", "slack_water", "antibody", "null_route", "failover", "bad_signal", "line_cut", "spore_pod",
+const AWAITING_ART := ["flashover", "slack_water", "antibody", "null_route", "failover", "bad_signal", "line_cut",
 	"script_kiddie", "black_hat", "clear_cache", "deep_clean", "full_send", "undelete", "pilot_light", "wildfire", "zero_day_window", "burn_the_logs", "thermal_runaway", "sandbag_wall", "seawall", "swap_file", "bulkhead", "rewind_buffer", "seed_pod", "bloomhost", "cuttings", "shed_skin", "mother_culture", "echo_probe", "echo_array", "cold_boot", "null_sink", "blind_drop", "scrap_drone", "war_drone", "drone_reel", "mass_deploy", "watchdog_boot", "index_scan", "white_noise", "backlog", "signal_jam"]
 
 
