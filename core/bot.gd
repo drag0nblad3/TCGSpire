@@ -239,7 +239,7 @@ static func _effect_value(c: Combat, e: Dictionary, target: Fighter, ward: int) 
 		"summon":
 			# A daemon run in the first turns works for the whole fight; the greedy per-RAM pick
 			# otherwise always prefers a cheap attack and never spends 2+ RAM on one.
-			return _summon_value(c, e) * (1.4 if c.turn <= 2 else 1.0)
+			return _summon_value(c, e)
 		"rally":
 			var rv := 0.0
 			for u in c.units:
