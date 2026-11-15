@@ -24,6 +24,9 @@ static func can_apply(m: Dictionary, card: CardInstance) -> bool:
 		return false
 	if card.base_cost() < int(m.get("min_cost", 0)):
 		return false
+	# X cost already spends all your RAM: cost mods don't fit.
+	if card.is_x() and int(m.get("cost", 0)) != 0:
+		return false
 	if m.has("needs_keyword"):
 		var kws := d.get_keywords(card.upgraded)
 		if not m["needs_keyword"].any(func(k: String) -> bool: return k in kws):

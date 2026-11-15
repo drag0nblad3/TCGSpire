@@ -190,7 +190,7 @@ func _draw() -> void:
 		Color(Palette.UPGRADED, dim) if card.upgraded else ink)
 	var orb := rect.position + Vector2(15, 16)
 	draw_circle(orb, 11, Color(Palette.ENERGY, dim))
-	draw_string(title_font, orb + Vector2(-11, 5), str(card.cost()), HORIZONTAL_ALIGNMENT_CENTER, 22, 14, Palette.CARD_BG)
+	draw_string(title_font, orb + Vector2(-11, 5), card.cost_label(), HORIZONTAL_ALIGNMENT_CENTER, 22, 14, Palette.CARD_BG)
 	Symbols.draw_on(self, rect.position + Vector2(SIZE.x - 11, 16), 8, d.faction, Color(fc, dim))
 	if d.faction2 != "":
 		# Joint op: the second crew's mark sits beside the home crew's.

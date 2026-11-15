@@ -114,10 +114,11 @@ func make_deck(ids: Array) -> Array:
 	return out
 
 
+## Collectible cards matching pred. Tokens (evolved forms) are left out: they only exist inside runs.
 func ids_where(pred: Callable) -> Array:
 	var out: Array = []
 	for id in cards:
-		if pred.call(cards[id]):
+		if not cards[id].token and pred.call(cards[id]):
 			out.append(id)
 	return out
 
@@ -126,6 +127,15 @@ func validate() -> Array[String]:
 	var errs: Array[String] = []
 	for id in cards:
 		errs.append_array(cards[id].validate())
+		var ev: Dictionary = cards[id].evolve
+		if not ev.is_empty():
+			var into: CardDef = cards.get(str(ev.get("into", "")))
+			if into == null:
+				errs.append("card '%s': evolves into unknown card '%s'" % [id, ev.get("into", "")])
+			elif not into.token or not into.evolve.is_empty() or into.type != cards[id].type or into.faction != cards[id].faction:
+				errs.append("card '%s': evolved form must be a token of the same crew and type that doesn't evolve again" % id)
+		if cards[id].token and cards[id].evolve.is_empty() and not cards.values().any(func(c: CardDef) -> bool: return str(c.evolve.get("into", "")) == id):
+			errs.append("card '%s': token that nothing evolves into" % id)
 	for id in enemies:
 		var d: Dictionary = enemies[id]
 		if d.get("moves", []).is_empty():

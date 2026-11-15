@@ -69,7 +69,29 @@ static func score(c: Combat, card: CardInstance, t: int = -1) -> float:
 	var v := 0.0
 	var ward := c.player.ward
 	var effects := CardPrograms.effects(c, card)
-	for e in effects:
+	var dumped := 0
+	for raw in effects:
+		var e: Dictionary = raw
+		match str(e.get("op", "")):
+			"dump":
+				var res := _dump_value(c, card, int(e.get("amount", 0)))
+				v += res[0]
+				dumped = res[1]
+				continue
+			"recover":
+				var pool := c.recover_pool(str(e.get("from", "discard")))
+				if not pool.is_empty():
+					var best := 0
+					for k: CardInstance in pool:
+						best = maxi(best, 3 if k.is_x() else k.cost())
+					v += (2.0 + best * 1.2) * (0.6 if str(e.get("into", "draw")) == "draw" else 1.0)
+				continue
+		if e.has("per"):
+			var per := str(e["per"])
+			var n := c.energy if per == "x" else (dumped if per == "dumped" else Effects.per_count(c, per))
+			if per == "hand":
+				n = maxi(n - 1, 0)
+			e = Effects.with_per(e, n)
 		# The bot plays "ally" programs on itself (target -1), so value them that way.
 		var ev: Dictionary = e
 		if c.needs_ally(card) and not e.has("to"):
@@ -89,8 +111,37 @@ static func score(c: Combat, card: CardInstance, t: int = -1) -> float:
 	# Loop programs get better every run this fight, so running one early pays later.
 	if card.has_loop():
 		v *= 1.2
-	# Free cards are always worth it; otherwise prefer value per RAM.
-	return v / maxf(card.cost(), 0.6) + 0.01
+	if card.evolve_left() > 0:
+		v *= 1.05
+	# Free cards are always worth it; otherwise prefer value per RAM. X spends it all.
+	var spend := float(c.energy) if card.is_x() else float(card.cost())
+	return v / maxf(spend, 0.6) + 0.01
+
+
+## [value, cards dumped] of Dump n (0 = whole hand) from this play, picked the way Combat.dump picks.
+static func _dump_value(c: Combat, card: CardInstance, n: int) -> Array:
+	var others := c.hand.filter(func(k: CardInstance) -> bool: return k != card)
+	var count := others.size() if n <= 0 else mini(n, others.size())
+	var ranked: Array = []
+	for r in 3:
+		for k: CardInstance in others:
+			var rank := 0 if not k.def.get_on_dump(k.upgraded).is_empty() else (1 if k.has_keyword("unplayable") else 2)
+			if rank == r:
+				ranked.append(k)
+	var v := 0.0
+	var left := c.energy - card.cost()
+	for k: CardInstance in ranked.slice(0, count):
+		if not k.def.get_on_dump(k.upgraded).is_empty():
+			for fx in k.def.get_on_dump(k.upgraded):
+				v += _effect_value(c, fx, c.living(c.enemies)[0] if not c.living(c.enemies).is_empty() else null, c.player.ward)
+			if k.has_keyword("unplayable"):
+				v += 1.5
+		elif k.has_keyword("unplayable"):
+			v += 1.5
+		else:
+			v -= 2.0 if k.cost() > left else 2.5 + 0.5 * k.cost()
+		v += k.cooldown * 0.1
+	return [v, count]
 
 
 static func _effect_value(c: Combat, e: Dictionary, target: Fighter, ward: int) -> float:

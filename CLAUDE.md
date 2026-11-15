@@ -13,7 +13,7 @@ Original design only: don't copy cards, names, characters or look from existing 
   forced into the starter picks on its crew's job, scored by floor reached vs seed-paired baseline runs (`rel` = vs crew median), plus
   bot picks/offers and plays/damage/Firewall per play; writes `report.tsv` in `out`. ~10 min for every card at n=80 on 4 cores. Low plays/run = bot blind spot.
 - `scripts/sim_matrix.sh` — the standard balance check Tyler wants: 150 runs per cell, new heat 0-1, experienced 1-3, veteran 2-5, max 4-6.
-- `scripts/shot.sh screen=<name|all> out=/tmp/x.png [plays=2] [end_turn=1] [inspect_enemy=1] [theme=archive]` — real render to PNG (xvfb).
+- `scripts/shot.sh screen=<name|all> out=/tmp/x.png [plays=2] [end_turn=1] [inspect_enemy=1] [theme=archive] [hand=id,id] [pick=1]` — real render to PNG (xvfb). `hand=` sets the combat hand; `pick=1` opens the Dump/recover pick overlay.
   Screens: hub hub_heat map combat reward rest shop event collection picker pack pack_open pack_shelf pack_premium pack_crew weekly weekly_map login signal_result ice deep end inspect rules jobs rig perk tinker crew firmware recompile menu settings resume tutorial coach foil lethal. Uses a throwaway profile.
 - Godot binary: `godot` on PATH, or set `GODOT=/path/to/godot`. Cloud sessions: download
   `Godot_v4.4.1-stable_linux.x86_64.zip` from the godotengine GitHub releases.
@@ -60,7 +60,7 @@ Original design only: don't copy cards, names, characters or look from existing 
   turns, -1 per hit taken, Purge moves (enemy damage `"to": "daemon"`) take their full number. Re-running a daemon
   that is up tops its HP back up. Daemon-only trigger `closed` fires when that daemon shuts down (ran out, hit, crashed); re-running a daemon with a `closed` rule restarts it instead (payoff fires, fresh HP): Botnet Lease. Implant trigger `daemon_closed` and Hive Link's blast fire on "destroyed or refreshed": shut down, and also when re-running tops a daemon up. Hive Link (`manual_crash` mod) adds a combat "Shut down" button (`Combat.shutdown_daemon`). Rig mods may list the total per rank (`[10, 25, 45]`, `Perks.mod_at`). Scaling: `daemon_hp` (rig/subroutine mod, implant `"daemon": {"hp": n}`),
   `rally` (+HP to all daemons), Patch on a daemon (cards with `"target": "ally"`). In a daemon rule trigger, `"to": "this"` targets that daemon (Leech Line repairs itself).
-- Card pool: every crew (Street included) has 8 common / 9 uncommon / 5 rare / 2 mythic (`test_data` enforces it).
+- Card pool: every crew (Street included) has 10 common / 10 uncommon / 6 rare / 2 mythic (`test_data` enforces it).
   Joint ops (`data/cards/joint.json`, `"faction2"`): one per non-rival crew pair, on top of the spread. They count as
   both crews for job picks (`CardDef.is_of`), are banned if either crew is a target (`banned_by`), stay out of binders,
   and firmware is paid in the home crew's rep. Cards without an entry in `card_art.json` draw the procedural fallback.
@@ -73,6 +73,17 @@ Original design only: don't copy cards, names, characters or look from existing 
   date, one try, scored), weekly challenge (`meta/weekly.gd`: Monday-keyed job at balance.weekly.heat, rule modifiers
   from `data/weekly.json` (perk-shaped: mods/heat/triggers/pickup + text), own cards but no rig/firmware, first clear pays a premium pack,
   never unlocks heat), daily login bonus (`meta/login_bonus.gd`, balance.login: 6 scrap days, a normal pack on day 4, a premium pack on day 7, missed days never reset), quick scrap in pack opening (`Profile.quick_scrap`: only copies beyond the deck limit), glitch foils (`pack.foil_chance`, `shaders/glitch_foil.gdshader`), 3 saved loadouts per crew.
+- Card abilities wave (`data/cards/abilities.json`, 4 per crew; art pending, `test_card_art` AWAITING_ART):
+  X cost (`"cost": "X"` = `CardDef.X_COST`; spends all RAM, `Combat.x_spent`; cost mods don't fit). Scaling: any effect may carry
+  `per` (`Effects.PER_SOURCES`: x, draw_pile, discard_pile, hand, wiped, dumped) + `per_mult` + `per_key` (default `LOOP_KEY`):
+  number = printed + floor(count x per_mult), text "6X"/"3+N". Dump (`dump` op, amount 0 = whole hand) is a cost: needs that many
+  other cards (`Combat.dump_need`); player picks via `play_card(idx, target, picks)` (UI overlay from `Combat.pick_request`), the rest
+  are picked "When dumped" cards first, then Locked, then left to right. Card field `on_dump` (upgrade may replace it) fires when dumped.
+  `recover` op (`from` discard/wiped, `into` draw/top): shuffle a picked card back in; no Rootkits or recover cards back from Wipe.
+  Evolve: card field `"evolve": {"after": 20, "into": id}`; `CardInstance.uses` counts runs for the whole job (saved in the run deck),
+  the copy turns into the evolved card mid-fight (keeps upgrade/firmware/mod); combat copies keep `origin`, `Combat.sync_origins()`
+  (called by `RunState.finish_combat`) writes progress back. Evolved forms are `"token": true`: `CardDB.ids_where` skips them, so
+  they never drop, sell or count for binders.
 - Interrupt (`interrupt` op: `kinds` from `Intents.INTERRUPTIBLE`, optional `effects` paid once per enemy cut): cancels only the named
   intent kinds of the target's next move (`Fighter.interrupted`, cleared after the move); misses if the intent isn't there. `Intents.kind_of`
   classifies a move effect. One uncommon Interrupt program per crew (spread is now 9 uncommons); they await art (`test_card_art` allowlist).

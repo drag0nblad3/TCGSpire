@@ -14,7 +14,7 @@ func _initialize() -> void:
 		return [ca.faction, CardDef.RARITIES.find(ca.rarity), a] < [cb.faction, CardDef.RARITIES.find(cb.rarity), b])
 	for id in ids:
 		var c: CardDef = db.cards[id]
-		var line := "%-15s %-7s %-8s %-6s %d | %s || + %d | %s" % [id, c.faction, c.rarity, c.type, c.cost, c.get_text(false), c.get_cost(true), c.get_text(true)]
+		var line := "%-15s %-7s %-8s %-6s %d | %s || + %d | %s" % [id, c.faction, c.rarity, c.type, c.cost_label(false), c.get_text(false), c.cost_label(true), c.get_text(true)]
 		if filter == "" or filter in line:
 			print(line)
 	quit(0)

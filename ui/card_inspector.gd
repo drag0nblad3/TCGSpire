@@ -23,6 +23,12 @@ static func glossary(card: CardInstance) -> Array[String]:
 		out.append("%s: %s" % [Lexicon.keyword(str(k)), CardDef.KEYWORD_DESC.get(k, "")])
 	if card.has_loop():
 		out.append("%s: %s" % [Lexicon.keyword("loop"), CardDef.KEYWORD_DESC["loop"]])
+	if card.is_x():
+		out.append("%s: %s" % [Lexicon.keyword("x_cost"), CardDef.KEYWORD_DESC["x_cost"]])
+	if not card.def.evolve.is_empty():
+		out.append("Evolve: %s Evolves into %s after %d runs (%d so far)." % [CardDef.KEYWORD_DESC["evolve"], Lexicon.card_name(str(card.def.evolve.get("into", ""))), int(card.def.evolve.get("after", 20)), card.uses])
+	if not card.def.get_on_dump(card.upgraded).is_empty():
+		out.append("%s: %s" % [Lexicon.keyword("on_dump"), CardDef.KEYWORD_DESC["on_dump"]])
 	var seen := {}
 	for e in card.effects():
 		var op := str(e.get("op", ""))
