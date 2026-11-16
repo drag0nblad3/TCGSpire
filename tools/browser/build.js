@@ -15,16 +15,21 @@ for (const f of fs.readdirSync(path.join(ROOT, "data/cards")).filter((f) => f.en
 const enemies = [];
 for (const f of fs.readdirSync(path.join(ROOT, "data/enemies")).filter((f) => f.endsWith(".json")).sort())
   read("data/enemies/" + f).forEach((e) => enemies.push({ file: "data/enemies/" + f, raw: e }));
+const implants = read("data/talismans.json").map((t) => ({ file: "data/talismans.json", raw: t }));
 const encounters = read("data/encounters.json");
 const factions = read("data/factions.json");
 
 const names = { cards: {}, enemies: {} };
 cards.forEach((c) => (names.cards[c.raw.id] = c.raw.name));
 enemies.forEach((e) => (names.enemies[e.raw.id] = e.raw.name));
+names.implants = {}; implants.forEach((t) => (names.implants[t.raw.id] = t.raw.name));
+names.mods = T.names.mods; names.perks = T.names.perks;
 const tables = {
   statuses: T.statuses, keywords: T.keywords, types: T.types, type_desc: T.type_desc, factions: T.factions,
   intents: T.intents, daemon_flags: T.daemon_flags, trigger_labels: T.trigger_labels, per_sources: T.per_sources,
   loop_key: T.loop_key, ops: T.ops, rarities: T.rarities, names,
+  trigger_list: T.trigger_list, run_triggers: T.run_triggers, run_labels: T.run_labels, mod_keys: T.mod_keys,
+  implant_rarities: T.implant_rarities, run_ops: T.run_ops,
 };
 D.setTables(tables);
 
@@ -45,9 +50,10 @@ enemies.forEach((e) => {
   e.moves = g.moves; e.phase_moves = g.phase_moves; e.rules = g.rules;
   (e.raw.moves || []).forEach((m, i) => check(e.raw.id + "/" + m.name, D.enemyMoveText(m), g.moves[i]));
 });
+implants.forEach((t) => check("implant " + t.raw.id, D.implantText(t.raw), T.implants[t.raw.id]));
 console.log(`describe.js: ${checked - bad}/${checked} texts match the game`);
 
-const data = { built: new Date().toISOString(), commit: process.env.COMMIT || "", tables, cards, enemies, encounters, factions };
+const data = { built: new Date().toISOString(), commit: process.env.COMMIT || "", tables, cards, enemies, implants, encounters, factions };
 fs.mkdirSync(outDir, { recursive: true });
 const tpl = fs.readFileSync(path.join(__dirname, "page.html"), "utf8");
 const js = fs.readFileSync(path.join(__dirname, "describe.js"), "utf8");

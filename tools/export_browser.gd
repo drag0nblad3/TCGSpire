@@ -26,6 +26,14 @@ func _initialize() -> void:
 				pm.append(" ".join(m.get("effects", []).map(func(e: Dictionary) -> String: return Effects.describe(e))))
 			phases.append(pm)
 		enemies[id] = {"moves": moves, "phase_moves": phases, "rules": BossRules.describe(d.get("rules", {}))}
+	var implants := {}
+	for id in db.talismans:
+		implants[id] = Talismans.describe(db.talismans[id])
+	var names := {"mods": {}, "perks": {}}
+	for id in db.mods:
+		names["mods"][id] = str(db.mods[id].get("name", id))
+	for id in db.perks:
+		names["perks"][id] = str(db.perks[id].get("name", id))
 	var statuses := {}
 	for k in Statuses.DEFS:
 		statuses[k] = {"name": Lexicon.status(k), "debuff": Statuses.DEFS[k].get("debuff", false), "desc": Statuses.DEFS[k].get("desc", "")}
@@ -33,7 +41,9 @@ func _initialize() -> void:
 	for k in CardDef.KEYWORD_DESC:
 		keywords[k] = {"name": Lexicon.keyword(k), "desc": CardDef.KEYWORD_DESC[k]}
 	var out := {
-		"cards": cards, "enemies": enemies, "statuses": statuses, "keywords": keywords,
+		"cards": cards, "enemies": enemies, "implants": implants, "names": names,
+		"trigger_list": Talismans.TRIGGERS, "run_triggers": Talismans.RUN_TRIGGERS, "run_labels": Talismans.RUN_LABEL,
+		"mod_keys": Talismans.MOD_KEYS, "implant_rarities": Talismans.RARITIES, "run_ops": RunOutcomes.OPS, "statuses": statuses, "keywords": keywords,
 		"types": Lexicon.TYPE, "type_desc": CardDef.TYPE_DESC, "factions": Lexicon.FACTION, "intents": Lexicon.INTENT,
 		"daemon_flags": DaemonRules.FLAGS, "trigger_labels": Talismans.LABEL, "per_sources": Effects.PER_SOURCES,
 		"loop_key": Effects.LOOP_KEY, "ops": Effects.OPS,
@@ -42,5 +52,5 @@ func _initialize() -> void:
 	var f := FileAccess.open(out_path, FileAccess.WRITE)
 	f.store_string(JSON.stringify(out))
 	f.close()
-	print("wrote %s: %d cards, %d enemies" % [out_path, cards.size(), enemies.size()])
+	print("wrote %s: %d cards, %d enemies, %d implants" % [out_path, cards.size(), enemies.size(), implants.size()])
 	quit(0)

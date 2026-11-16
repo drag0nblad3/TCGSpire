@@ -211,6 +211,85 @@
     return parts.join(" ");
   }
 
+  // ---- implants (Talismans.describe, Perks.describe_mod, RunOutcomes.describe) ----
+  const plural = (n) => (n === 1 ? "" : "s");
+  const pct = (v) => roundi(Number(v) * 100);
+  function describeMod(k, v) {
+    v = Number(v); const n = int(v);
+    switch (k) {
+      case "jumps": return "+" + n + " jump" + plural(n) + " per layer: leap diagonally to the next floor through walls, into sealed vaults too.";
+      case "max_hp": return "+" + n + " max HP.";
+      case "start_gold": return "Start runs with +" + n + " creds.";
+      case "gold_pct": return "+" + pct(v) + "% creds from fights.";
+      case "rest_heal_pct": return "Safehouses repair " + pct(v) + "% more.";
+      case "shop_discount_pct": return "Fixer prices " + pct(v) + "% lower.";
+      case "reward_choices": return "+" + n + " program choice" + plural(n) + " after fights.";
+      case "reward_rerolls": return "Reroll program rewards after fights " + n + " time" + plural(n) + " per run.";
+      case "event_rerolls": return "Reroll a Signal before choosing " + n + " time" + plural(n) + " per run.";
+      case "combat_heal": return "Repair " + n + " HP after each fight you win.";
+      case "start_ward": return "Jack in with " + n + " Firewall.";
+      case "ward_retention": return "Keep " + pct(v) + "% of remaining Firewall at the start of your turn, rounded up.";
+      case "daemon_death_damage": return "When one of your daemons is destroyed or refreshed, it explodes for " + n + " damage to all enemies.";
+      case "manual_crash": return "In fights, you can shut down your own daemons.";
+      case "daemon_heal": return "Each time you run a daemon, repair " + n + " HP.";
+      case "daemon_ward": return "Your daemons start with " + n + " Firewall that blocks attacks and doesn't decay.";
+      case "second_wind": return "Once per fight, the first hit that would flatline you leaves you at 1 HP and gives you " + n + " Firewall.";
+      case "start_mods": return "Start runs with " + n + " random mod" + plural(n) + " installed.";
+      case "start_perks": return "Start runs with " + n + " random subroutine" + plural(n) + ".";
+      case "rep_pct": return "+" + pct(v) + "% rep from jobs.";
+      case "max_energy": return "+" + n + " RAM every turn.";
+      case "hand_size": return "Draw " + Math.abs(n) + " " + (v < 0 ? "fewer" : "more") + " program" + plural(Math.abs(n)) + " each turn.";
+      case "board_slots": return (n >= 0 ? "+" : "") + n + " daemon slot" + plural(Math.abs(n)) + ".";
+      case "daemon_hp": return "Your daemons have +" + n + " HP.";
+      case "perk_choices": return "+" + n + " subroutine choice" + plural(n) + ".";
+      case "remove_discount_pct": return "Deleting a program at the Fixer costs " + pct(v) + "% less.";
+      case "turn_ward": return "Gain " + n + " Firewall at the start of each turn.";
+      case "remove_discount": return "Deleting a program at the Fixer costs " + n + " less.";
+      case "run_scrap": return "When the run ends, gain " + n + " Scrap.";
+      case "bonus_packs": return "If you breach at least one Core, the run pays " + n + " more Data cache" + plural(n) + ".";
+      case "enemy_hp_pct": return "Enemies have " + Math.abs(pct(v)) + "% " + (v < 0 ? "less" : "more") + " HP.";
+      case "enemy_dmg_pct": return "Enemies deal " + Math.abs(pct(v)) + "% " + (v < 0 ? "less" : "more") + " damage.";
+    }
+    return "?";
+  }
+  function describeOutcome(o) {
+    const n = int(o.amount || 0);
+    switch (String(o.op || "")) {
+      case "gold":
+        if (o.pct !== undefined) return "Gain " + pct(o.pct) + "% of the creds you hold.";
+        return (n >= 0 ? "Gain" : "Lose") + " " + Math.abs(n) + " creds.";
+      case "heal": return o.pct !== undefined ? "Repair " + int(Number(o.pct) * 100) + "% of max HP." : "Heal " + n + ".";
+      case "lose_hp": return "Lose " + n + " HP.";
+      case "max_hp": return (n >= 0 ? "Gain" : "Lose") + " " + Math.abs(n) + " max HP.";
+      case "add_card":
+        if (o.card !== undefined) return "Add " + cardName(String(o.card)) + " to your deck.";
+        return "Add a random " + (o.rarity || "common") + (o.faction !== undefined ? " " + (G.factions[o.faction] || cap(o.faction)) : "") + " card.";
+      case "remove_card": return "Remove " + Math.max(n, 1) + " starter card" + plural(Math.max(n, 1)) + ".";
+      case "upgrade": return "Upgrade " + Math.max(n, 1) + " random card" + plural(Math.max(n, 1)) + ".";
+      case "talisman": return o.id === undefined ? "Gain a " + (o.rarity || "random") + " implant." : "Gain " + ((G.names.implants || {})[o.id] || o.id) + ".";
+      case "mod": {
+        const cnt = Math.max(n, 1);
+        if (o.id !== undefined) return "Install " + ((G.names.mods || {})[o.id] || o.id) + " on a random program.";
+        return "Install " + cnt + " random " + (o.rarity !== undefined ? o.rarity + " " : "") + "mod" + plural(cnt) + ".";
+      }
+      case "perk": return o.id !== undefined ? "Load the " + ((G.names.perks || {})[o.id] || o.id) + " subroutine." : "Load a random subroutine.";
+    }
+    return "?";
+  }
+  function implantText(t) {
+    const parts = [];
+    (t.pickup || []).forEach((o) => parts.push(describeOutcome(o)));
+    const dm = t.daemon || {};
+    if (dm.hp_mult !== undefined) { const m = Number(dm.hp_mult); parts.push(Math.abs(m - 2) < 1e-5 ? "Your daemons start with double HP." : "Your daemons start with " + roundi((m - 1) * 100) + "% more HP (rounded up)."); }
+    if (dm.hp !== undefined) parts.push("Your daemons have +" + int(dm.hp) + " HP.");
+    const flags = t.flags || {};
+    if (Object.keys(flags).length) { let f = describeRule({ flags }); if (t.flags_while_daemon) f = "While you run a daemon: " + f; parts.push(f); }
+    Object.keys(t.mods || {}).forEach((k) => parts.push(describeMod(k, t.mods[k])));
+    (t.run || []).forEach((trig) => parts.push((G.run_labels[String(trig.on || "")] || "?") + ": " + (trig.outcomes || []).map(describeOutcome).join(" ")));
+    if ((t.triggers || []).length) parts.push(describeTriggers(t.triggers));
+    return parts.join(" ");
+  }
+
   // ---- card level (CardDef) ----
   const isUp = (c) => c.upgrade && Object.keys(c.upgrade).length > 0;
   const costOf = (c, up) => { const v = up && c.upgrade && c.upgrade.cost !== undefined ? c.upgrade.cost : c.cost; return v === "X" ? "X" : int(num(v, 1)); };
@@ -233,6 +312,6 @@
 
   function enemyMoveText(m) { return fx(m.effects); }
 
-  root.Describe = { setTables, describe, describeRule, cardText, costLabel, enemyMoveText, isUp, effectsOf, keywordsOf, status, keyword, typeName, cardName, enemyName };
+  root.Describe = { setTables, implantText, describeMod, describeOutcome, describe, describeRule, cardText, costLabel, enemyMoveText, isUp, effectsOf, keywordsOf, status, keyword, typeName, cardName, enemyName };
   if (typeof module !== "undefined") module.exports = root.Describe;
 })(typeof window !== "undefined" ? window : globalThis);

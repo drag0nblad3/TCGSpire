@@ -1,6 +1,6 @@
 // Applies edits exported from the data browser (or read from its shared store) to data/.
 //   node tools/browser/apply.js edits.json
-// edits.json: {"edits": [{"kind": "card"|"enemy", "id", "file", "isNew", "data": {...}}]}
+// edits.json: {"edits": [{"kind": "card"|"enemy"|"implant", "id", "file", "isNew", "data": {...}}]}
 // Files keep one entry per line; an edited entry's line is replaced, a new one is appended.
 const fs = require("fs");
 const path = require("path");
@@ -10,7 +10,7 @@ const list = Array.isArray(input) ? input : input.edits;
 let failed = 0;
 for (const ed of list) {
   const rel = ed.file;
-  if (!/^data\/(cards|enemies)\/[a-z0-9_]+\.json$/.test(rel)) { console.log(`skip ${ed.id}: bad file ${rel}`); failed++; continue; }
+  if (!/^data\/((cards|enemies)\/[a-z0-9_]+|talismans)\.json$/.test(rel)) { console.log(`skip ${ed.id}: bad file ${rel}`); failed++; continue; }
   const file = path.join(ROOT, rel);
   const lines = fs.readFileSync(file, "utf8").split("\n");
   const entries = JSON.parse(lines.join("\n"));

@@ -69,7 +69,7 @@ main { display: grid; gap: 16px; padding-block: 0 40px; }
 .rtext { color: var(--dim); font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .pill { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; border-radius: 999px; padding: 0 7px; border: 1px solid currentColor; }
 .pill.edit { color: var(--hot); } .pill.new { color: var(--up); } .pill.r-common { color: var(--dim); } .pill.r-uncommon { color: var(--accent); }
-.pill.r-rare { color: var(--warn); } .pill.r-mythic { color: var(--hot); } .pill.r-starter, .pill.r-curse { color: var(--dim); }
+.pill.r-rare { color: var(--warn); } .pill.r-mythic, .pill.r-boss { color: var(--hot); } .pill.r-starter, .pill.r-curse { color: var(--dim); }
 .pill.k-elite { color: var(--warn); } .pill.k-boss { color: var(--hot); }
 .empty { color: var(--dim); padding: 24px 4px; }
 .more { border: 1px dashed var(--line); background: transparent; border-radius: var(--r); padding: 10px; color: var(--dim); }
@@ -139,6 +139,7 @@ textarea.json { width: 100%; min-height: 220px; font: 13px/1.45 var(--mono); bac
     <nav class="tabs" role="tablist">
       <button class="tab" role="tab" id="tab-cards" data-view="cards">Cards<span class="count" id="n-cards"></span></button>
       <button class="tab" role="tab" id="tab-enemies" data-view="enemies">ICE<span class="count" id="n-enemies"></span></button>
+      <button class="tab" role="tab" id="tab-implants" data-view="implants">Implants<span class="count" id="n-implants"></span></button>
       <button class="tab" role="tab" id="tab-changes" data-view="changes">Edits<span class="count" id="n-changes"></span></button>
     </nav>
   </div>
@@ -171,9 +172,15 @@ const crewName = (f) => T.factions[f] || f;
 const fc = (f) => `var(--f-${CREWS.includes(f) ? f : "neutral"})`;
 const RAR = T.rarities;
 const TYPES = Object.keys(T.types);
+const IRAR = T.implant_rarities;
+const VIEW_KIND = { cards: "card", enemies: "enemy", implants: "implant" };
+const KIND_VIEW = { card: "cards", enemy: "enemies", implant: "implants" };
+const RUN_OPS = Array.isArray(T.run_ops) ? T.run_ops : Object.keys(T.run_ops || {});
+const HOOKS = [["triggers", "In-fight trigger"], ["flags", "Rule flag"], ["mods", "Run mod"], ["run", "Map trigger"], ["pickup", "On pickup"], ["daemon", "Daemon HP"]];
 
 // ---------- base data and overlay of saved edits ----------
-const base = { card: {}, enemy: {} };
+const base = { card: {}, enemy: {}, implant: {} };
+DATA.implants.forEach((t) => (base.implant[t.raw.id] = t));
 DATA.cards.forEach((c) => (base.card[c.raw.id] = c));
 DATA.enemies.forEach((e) => (base.enemy[e.raw.id] = e));
 const edits = {}; // key "card:id" -> {kind,id,file,data,note,isNew,updated}
@@ -190,7 +197,8 @@ function allIds(kind) {
   return ids;
 }
 function refreshNames() {
-  T.names.cards = {}; T.names.enemies = {};
+  T.names.cards = {}; T.names.enemies = {}; T.names.implants = {};
+  allIds("implant").forEach((id) => (T.names.implants[id] = (current("implant", id) || {}).name));
   allIds("card").forEach((id) => (T.names.cards[id] = (current("card", id) || {}).name));
   allIds("enemy").forEach((id) => (T.names.enemies[id] = (current("enemy", id) || {}).name));
 }
@@ -216,9 +224,10 @@ function enemyInfo(id) {
 }
 
 // ---------- filters ----------
-const S = { view: "cards", q: "", sel: null, limit: 60, sort: { cards: "crew", enemies: "act" },
+const S = { view: "cards", q: "", sel: null, limit: 60, sort: { cards: "crew", enemies: "act", implants: "rarity" },
   f: { cards: { crew: new Set(), rarity: new Set(), type: new Set(), cost: new Set(), kw: new Set(), state: new Set() },
-       enemies: { crew: new Set(), kind: new Set(), act: new Set(), state: new Set() } } };
+       enemies: { crew: new Set(), kind: new Set(), act: new Set(), state: new Set() },
+       implants: { rarity: new Set(), crew: new Set(), hook: new Set(), state: new Set() } } };
 try { const v = localStorage.getItem("sdd-view"); if (v) S.view = v; } catch (e) {}
 
 function cardKeywords(c) {
@@ -246,10 +255,17 @@ const FILTERS = {
     { k: "act", label: "Act", opts: () => [["1", "Act 1"], ["2", "Act 2"], ["3", "Act 3"]] },
     { k: "state", label: "Show", opts: () => [["edited", "Edited only"], ["rules", "Has boss rules"]] },
   ],
+  implants: [
+    { k: "rarity", label: "Rarity", opts: () => IRAR.map((r) => [r, cap(r)]) },
+    { k: "crew", label: "Crew", opts: () => [["", "Any crew"], ...CREWS.map((f) => [f, crewName(f), f])] },
+    { k: "hook", label: "Works by", opts: () => HOOKS },
+    { k: "state", label: "Show", opts: () => [["edited", "Edited only"]] },
+  ],
 };
 const SORTS = {
   cards: [["crew", "Crew, rarity"], ["cost", "RAM cost"], ["name", "Name"], ["rarity", "Rarity"]],
   enemies: [["act", "Act, kind"], ["hp", "HP"], ["name", "Name"]],
+  implants: [["rarity", "Rarity"], ["crew", "Crew"], ["name", "Name"]],
 };
 function cap(s) { return String(s).charAt(0).toUpperCase() + String(s).slice(1); }
 
@@ -286,6 +302,53 @@ function cardRows() {
     rarity: (a, b) => ri(b.c.rarity) - ri(a.c.rarity) || a.c.name.localeCompare(b.c.name),
   }[S.sort.cards];
   return out.sort(by);
+}
+function implantRows() {
+  const F = S.f.implants;
+  const out = [];
+  allIds("implant").forEach((id) => {
+    const t = current("implant", id);
+    if (!t) return;
+    if (F.rarity.size && !F.rarity.has(t.rarity || "common")) return;
+    if (F.crew.size && !F.crew.has(t.faction || "")) return;
+    if (F.hook.size && ![...F.hook].some((h) => t[h] !== undefined && JSON.stringify(t[h]) !== "[]" && JSON.stringify(t[h]) !== "{}")) return;
+    if (F.state.has("edited") && !edits[key("implant", id)]) return;
+    const text = Describe.implantText(t);
+    if (!matchQ([t.name, id, text, t.faction ? crewName(t.faction) : "", t.rarity].join(" ").toLowerCase())) return;
+    out.push({ id, t, text });
+  });
+  const ri = (r) => IRAR.indexOf(r || "common");
+  const by = {
+    rarity: (a, b) => ri(a.t.rarity) - ri(b.t.rarity) || a.t.name.localeCompare(b.t.name),
+    crew: (a, b) => CREWS.indexOf(a.t.faction || "neutral") - CREWS.indexOf(b.t.faction || "neutral") || ri(a.t.rarity) - ri(b.t.rarity) || a.t.name.localeCompare(b.t.name),
+    name: (a, b) => a.t.name.localeCompare(b.t.name),
+  }[S.sort.implants];
+  return out.sort(by);
+}
+function implantRowHtml({ id, t, text }) {
+  const ed = edits[key("implant", id)];
+  return `<button class="row" data-id="${esc(id)}" style="--fc:${t.faction ? fc(t.faction) : "var(--line)"}" aria-current="${S.sel === id}">
+    <span class="cost">${esc((t.rarity || "c")[0].toUpperCase())}</span>
+    <span style="min-width:0;display:grid;gap:2px">
+      <span class="rhead"><span class="rname">${esc(t.name)}</span>
+        <span class="pill r-${esc(t.rarity || "common")}">${esc(t.rarity || "common")}</span>
+        ${ed ? `<span class="pill ${ed.isNew ? "new" : "edit"}">${ed.isNew ? "new" : "edited"}</span>` : ""}</span>
+      <span class="meta">${t.faction ? esc(crewName(t.faction)) : "Any crew"}${t.unlock_level ? " · unlocks at level " + esc(t.unlock_level) : ""}</span>
+      <span class="rtext">${esc(text)}</span>
+    </span></button>`;
+}
+function implantSheet(id, t) {
+  const b = base.implant[id];
+  const text = Describe.implantText(t);
+  return `<div class="shead"><h2 id="pv-name">${esc(t.name)}</h2><button class="close" data-close>Close</button></div>
+    <div class="cardface" id="pv-face" style="--fc:${t.faction ? fc(t.faction) : "var(--line)"}">${implantFaceHtml(t)}</div>
+    <div class="kv"><span>id <b>${esc(id)}</b></span><span>file <b>${esc(b ? b.file : "new")}</b></span></div>
+    <div id="pv-gloss">${glossFor([text])}</div>`;
+}
+function implantFaceHtml(t) {
+  return `<div class="facetop"><span class="pill r-${esc(t.rarity || "common")}">${esc(t.rarity || "common")}</span>
+      <span class="meta">${t.faction ? esc(crewName(t.faction)) + " implant · never drops when " + esc(crewName(t.faction)) + " is a target" : "Any crew"}${t.unlock_level ? " · unlocks at level " + esc(t.unlock_level) : ""}</span></div>
+    <div class="face-text">${esc(Describe.implantText(t))}</div>`;
 }
 function enemyRows() {
   const F = S.f.enemies;
@@ -362,17 +425,18 @@ function renderList() {
   const list = $("#list");
   $("#searchrow").hidden = S.view === "changes";
   if (S.view === "changes") { renderChanges(); return; }
-  const rows = S.view === "cards" ? cardRows() : enemyRows();
-  const total = allIds(S.view === "cards" ? "card" : "enemy").length;
-  $("#sum").textContent = `${rows.length} of ${total} ${S.view === "cards" ? "programs" : "ICE"}`;
+  const rows = { cards: cardRows, enemies: enemyRows, implants: implantRows }[S.view]();
+  const total = allIds(VIEW_KIND[S.view]).length;
+  $("#sum").textContent = `${rows.length} of ${total} ${{ cards: "programs", enemies: "ICE", implants: "implants" }[S.view]}`;
   const shown = rows.slice(0, S.limit);
-  list.innerHTML = rows.length ? shown.map(S.view === "cards" ? cardRowHtml : enemyRowHtml).join("") +
+  list.innerHTML = rows.length ? shown.map({ cards: cardRowHtml, enemies: enemyRowHtml, implants: implantRowHtml }[S.view]).join("") +
     (rows.length > S.limit ? `<button class="more" id="more">Show ${Math.min(60, rows.length - S.limit)} more</button>` : "")
     : `<div class="empty">Nothing matches. Clear a filter or change the search.</div>`;
 }
 function renderCounts() {
   $("#n-cards").textContent = allIds("card").length;
   $("#n-enemies").textContent = allIds("enemy").length;
+  $("#n-implants").textContent = allIds("implant").length;
   const n = Object.keys(edits).length;
   $("#n-changes").textContent = n || "";
   document.querySelectorAll(".tab").forEach((t) => t.setAttribute("aria-selected", t.dataset.view === S.view));
@@ -390,14 +454,14 @@ function glossFor(texts) {
 function renderSheet() {
   const sh = $("#sheet");
   if (!S.sel || S.view === "changes") { sh.hidden = true; sh.innerHTML = ""; return; }
-  const kind = S.view === "cards" ? "card" : "enemy";
+  const kind = VIEW_KIND[S.view];
   const obj = current(kind, S.sel);
   if (!obj) { sh.hidden = true; return; }
   sh.hidden = false;
   // keep an open editor's typing intact: only re-render when the selection changed or forced
   if (sh.dataset.for === kind + ":" + S.sel && sh.dataset.keep === "1") { updatePreview(); return; }
   sh.dataset.for = kind + ":" + S.sel;
-  sh.innerHTML = `<div class="sheet-in wrap">${kind === "card" ? cardSheet(S.sel, obj) : enemySheet(S.sel, obj)}${editorHtml(kind, S.sel, obj)}</div>`;
+  sh.innerHTML = `<div class="sheet-in wrap">${{ card: cardSheet, enemy: enemySheet, implant: implantSheet }[kind](S.sel, obj)}${editorHtml(kind, S.sel, obj)}</div>`;
   sh.dataset.keep = "1";
   if (window.matchMedia("(max-width: 899px)").matches) sh.scrollTop = 0;
   initEditor(kind, S.sel, obj);
@@ -468,6 +532,12 @@ function editorHtml(kind, id, obj) {
       <label class="field"><span class="lbl">Rarity</span><select id="f-rarity">${RAR.map((r) => `<option>${r}</option>`).join("")}</select></label>
       <label class="field"><span class="lbl">Type</span><select id="f-type">${TYPES.map((t) => `<option value="${t}">${T.types[t]}</option>`).join("")}</select></label>
       <label class="field"><span class="lbl">Crew</span><select id="f-faction">${CREWS.map((f) => `<option value="${f}">${crewName(f)}</option>`).join("")}</select></label>
+    </div>` : kind === "implant" ? `
+    <div class="fields">
+      <label class="field"><span class="lbl">Name</span><input id="f-name"></label>
+      <label class="field"><span class="lbl">Rarity</span><select id="f-rarity">${IRAR.map((r) => `<option>${r}</option>`).join("")}</select></label>
+      <label class="field"><span class="lbl">Crew</span><select id="f-faction"><option value="">Any crew</option>${CREWS.map((f) => `<option value="${f}">${crewName(f)}</option>`).join("")}</select></label>
+      <label class="field"><span class="lbl">Unlock level</span><input id="f-unlock" placeholder="none" inputmode="numeric"></label>
     </div>` : `
     <div class="fields">
       <label class="field"><span class="lbl">Name</span><input id="f-name"></label>
@@ -504,6 +574,11 @@ function tweakGroups(kind, d) {
     (d.effects || []).forEach((e, i) => groups.push({ title: "Base", path: ["effects", i], text: () => Describe.describe(getP(ED.draft, ["effects", i]) || {}) }));
     ((d.upgrade || {}).effects || []).forEach((e, i) => groups.push({ title: "Recompiled", path: ["upgrade", "effects", i], text: () => Describe.describe(getP(ED.draft, ["upgrade", "effects", i]) || {}) }));
     (d.on_dump || []).forEach((e, i) => groups.push({ title: "When dumped", path: ["on_dump", i], text: () => Describe.describe(getP(ED.draft, ["on_dump", i]) || {}) }));
+  } else if (kind === "implant") {
+    const part = (k) => () => Describe.implantText({ [k]: getP(ED.draft, [k]) });
+    ["pickup", "daemon", "flags", "mods"].forEach((k) => { if (d[k] !== undefined) groups.push({ title: { pickup: "On pickup", daemon: "Daemon HP", flags: "Rule flags", mods: "Run mods" }[k], path: [k], text: part(k) }); });
+    (d.run || []).forEach((r, i) => groups.push({ title: "Map trigger", path: ["run", i], text: () => Describe.implantText({ run: [getP(ED.draft, ["run", i]) || {}] }) }));
+    (d.triggers || []).forEach((r, i) => groups.push({ title: "Trigger", path: ["triggers", i], text: () => Describe.implantText({ triggers: [getP(ED.draft, ["triggers", i]) || {}] }) }));
   } else {
     (d.moves || []).forEach((m, i) => groups.push({ title: m.name, path: ["moves", i, "effects"], text: () => Describe.enemyMoveText(getP(ED.draft, ["moves", i]) || {}) }));
     ((d.rules || {}).phases || []).forEach((p, pi) => (p.moves || []).forEach((m, i) =>
@@ -547,6 +622,10 @@ function syncFields() {
     $("#f-rarity").value = d.rarity || "common";
     $("#f-type").value = d.type || "skill";
     $("#f-faction").value = d.faction || "neutral";
+  } else if (ED.kind === "implant") {
+    $("#f-rarity").value = d.rarity || "common";
+    $("#f-faction").value = d.faction || "";
+    $("#f-unlock").value = d.unlock_level !== undefined ? d.unlock_level : "";
   } else {
     const hp = Array.isArray(d.hp) ? d.hp : [d.hp, d.hp];
     $("#f-hp0").value = hp[0]; $("#f-hp1").value = hp[1];
@@ -562,7 +641,8 @@ function fieldChanged(el) {
     case "f-ucost": { const n = parseNum(v); d.upgrade = d.upgrade || {}; if (n === null) delete d.upgrade.cost; else d.upgrade.cost = n; break; }
     case "f-rarity": d.rarity = v; break;
     case "f-type": d.type = v; break;
-    case "f-faction": d.faction = v; break;
+    case "f-faction": if (v === "") delete d.faction; else d.faction = v; break;
+    case "f-unlock": { const n = parseNum(v); if (n === null || n === "X") delete d.unlock_level; else d.unlock_level = n; break; }
     case "f-hp0": case "f-hp1": { const n = parseNum(v); if (n === null || n === "X") break; d.hp = Array.isArray(d.hp) ? d.hp : [d.hp, d.hp]; d.hp[el.id === "f-hp0" ? 0 : 1] = n; break; }
     default: return;
   }
@@ -582,6 +662,9 @@ function updatePreview() {
   if (ED.kind === "card") {
     const f = $("#pv-face"); if (f) f.innerHTML = cardFaceHtml(d);
     const g = $("#pv-gloss"); if (g) g.innerHTML = glossFor([Describe.cardText(d, false), Describe.cardText(d, true)]);
+  } else if (ED.kind === "implant") {
+    const f = $("#pv-face"); if (f) { f.innerHTML = implantFaceHtml(d); f.style.setProperty("--fc", d.faction ? fc(d.faction) : "var(--line)"); }
+    const g = $("#pv-gloss"); if (g) g.innerHTML = glossFor([Describe.implantText(d)]);
   } else {
     const m = $("#pv-moves"); if (m) m.innerHTML = movesHtml(d, ED.id);
   }
@@ -615,6 +698,20 @@ function validateDraft() {
     validateEffects(d.effects || [], "effects", errs);
     if (d.upgrade && d.upgrade.effects) validateEffects(d.upgrade.effects, "upgrade.effects", errs);
     if (d.on_dump) validateEffects(d.on_dump, "on_dump", errs);
+  } else if (ED.kind === "implant") {
+    if (!IRAR.includes(d.rarity || "common")) errs.push(`unknown rarity "${d.rarity}"`);
+    if (d.faction !== undefined && !CREWS.includes(d.faction)) errs.push(`unknown crew "${d.faction}"`);
+    (d.triggers || []).forEach((t, i) => {
+      if (!T.trigger_list.includes(t.on)) errs.push(`triggers[${i}]: unknown trigger "${t.on}" (use ${T.trigger_list.join(", ")})`);
+      validateEffects(t.effects || [], `triggers[${i}].effects`, errs);
+    });
+    Object.keys(d.mods || {}).forEach((k) => { if (!T.mod_keys.includes(k)) errs.push(`mods: "${k}" isn't a mod implants can carry`); });
+    Object.keys(d.flags || {}).forEach((k) => { if (T.daemon_flags[k] === undefined) errs.push(`flags: unknown flag "${k}"`); });
+    (d.run || []).forEach((r, i) => {
+      if (!T.run_triggers.includes(r.on)) errs.push(`run[${i}]: unknown map trigger "${r.on}"`);
+      (r.outcomes || []).forEach((o, j) => { if (!RUN_OPS.includes(o.op)) errs.push(`run[${i}].outcomes[${j}]: unknown outcome "${o.op}"`); });
+    });
+    (d.pickup || []).forEach((o, j) => { if (!RUN_OPS.includes(o.op)) errs.push(`pickup[${j}]: unknown outcome "${o.op}"`); });
   } else {
     if (!Array.isArray(d.hp) || d.hp.length !== 2) errs.push("hp must be [min, max]");
     else if (d.hp[0] > d.hp[1]) errs.push("HP min is above HP max");
@@ -669,6 +766,7 @@ async function revertEdit(k) {
   toast("Reverted " + (rec.data.name || rec.id));
 }
 function guessFile(kind, d) {
+  if (kind === "implant") return "data/talismans.json";
   if (kind === "card") return "data/cards/" + ((d.faction || "neutral") === "neutral" ? "neutral" : d.faction) + ".json";
   return d.faction ? "data/enemies/factions.json" : "data/enemies/act1.json";
 }
@@ -716,7 +814,7 @@ function renderChanges() {
         ${r.status ? `<span class="pill new">${esc(r.status)}</span>` : ""}</div>
         ${r.note ? `<div>${esc(r.note)}</div>` : ""}
         ${lines.map((l) => `<div class="diffline">${l}</div>`).join("")}
-        ${r.kind === "card" ? `<div class="hint">${esc(Describe.cardText(r.data, false))}</div>` : ""}
+        ${r.kind === "card" ? `<div class="hint">${esc(Describe.cardText(r.data, false))}</div>` : r.kind === "implant" ? `<div class="hint">${esc(Describe.implantText(r.data))}</div>` : ""}
         <div class="actions"><button class="btn" data-open="${esc(r.kind)}:${esc(r.id)}">Open</button><button class="btn danger" data-revert="${esc(key(r.kind, r.id))}">Revert</button></div></div>`;
     }).join("")}`;
 }
@@ -746,13 +844,13 @@ document.addEventListener("click", (ev) => {
   if (t.id === "more") { S.limit += 60; renderList(); return; }
   if (t.classList.contains("row")) { S.sel = t.dataset.id; $("#sheet").dataset.keep = "0"; renderList(); renderSheet(); return; }
   if (t.dataset.close !== undefined) { S.sel = null; renderList(); renderSheet(); return; }
-  if (t.dataset.step) { const p = JSON.parse(t.dataset.p); const v = Number(getP(ED.draft, p)) + Number(t.dataset.step); setP(ED.draft, p, v); t.parentElement.querySelector("input").value = v; draftChanged({ json: true }); return; }
+  if (t.dataset.step) { const p = JSON.parse(t.dataset.p); const cur = Number(getP(ED.draft, p)); const v = Number.isInteger(cur) ? cur + Number(t.dataset.step) : Math.round((cur + 0.05 * Number(t.dataset.step)) * 100) / 100; setP(ED.draft, p, v); t.parentElement.querySelector("input").value = v; draftChanged({ json: true }); return; }
   if (t.id === "f-save") { saveEdit(); return; }
   if (t.id === "f-reset") { initEditor(ED.kind, ED.id, current(ED.kind, ED.id) || ED.orig); updatePreview(); showStatus(""); return; }
   if (t.id === "f-revert") { revertEdit(); return; }
   if (t.id === "f-dup") { duplicate(); return; }
   if (t.dataset.revert) { revertEdit(t.dataset.revert); return; }
-  if (t.dataset.open) { const [k, id] = t.dataset.open.split(":"); S.view = k === "card" ? "cards" : "enemies"; S.sel = id; $("#sheet").dataset.keep = "0"; render(); return; }
+  if (t.dataset.open) { const [k, id] = t.dataset.open.split(":"); S.view = KIND_VIEW[k]; S.sel = id; $("#sheet").dataset.keep = "0"; render(); return; }
   if (t.id === "dl") { download(); return; }
   if (t.id === "cp") { copyEdits(); return; }
 });
