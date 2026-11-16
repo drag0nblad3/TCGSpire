@@ -120,7 +120,8 @@ func test_hydraulic_damage_mods_survive_rework() -> void:
 	check(CardMods.can_apply(mod, card), "charged attacks still accept damage mods")
 	card.mod = mod
 	CardPrograms.on_discard(card)
-	eq(int(card.effects()[0]["amount"]), 12)
+	var slam: Array = card.effects().filter(func(e: Dictionary) -> bool: return e.get("op", "") == "cooldown")
+	eq(int(slam[0]["amount"]), 12)
 	eq(card.cooldown, 4, "mod does not increase charge step")
 	var c := arena()
 	c.hand = [card]
