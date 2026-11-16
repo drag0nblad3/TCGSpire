@@ -203,7 +203,7 @@ static func _effect_value(c: Combat, e: Dictionary, target: Fighter, ward: int) 
 				# Your own debuff as fuel: shedding it is worth about what it would cost you.
 				if c.player.status(st4) < need2:
 					return 0.0
-				s3 = need2 * (1.5 if st4 == "burn" else 1.0)
+				s3 = need2 * (1.5 if st4 == "burn" else 1.0) * (2.0 if st4 == "burn" and _in_danger(c, ward) else 1.0)
 				for fx in e.get("effects", []):
 					s3 += _effect_value(c, fx, target, ward)
 				return s3
@@ -241,10 +241,11 @@ static func _effect_value(c: Combat, e: Dictionary, target: Fighter, ward: int) 
 			return _effect_value(c, fx, target, ward) - DaemonRules.value({"hp": u.hp, "rule": u.rule}) * 0.6
 		"ward":
 			var gain := Effects.ward_gain(c.player, int(n) + c.rule_sum("ward_bonus"))
-			var need := maxf(c.incoming_damage() - ward, 0.0)
 			var retention := c.ward_retention
 			if c.player.status("fortify") > 0 or c.rule_sum("keep_ward") > 0:
 				retention = 1.0
+			# Your Virus ticks after Firewall drops, so only Firewall that carries over can soak it.
+			var need := maxf(c.incoming_damage() + _virus_tick(c) * retention - ward, 0.0)
 			return minf(gain, need) * 1.15 + maxf(gain - need, 0.0) * lerpf(0.08, 0.45, retention)
 		"apply":
 			var st := str(e.get("status", ""))
@@ -271,15 +272,27 @@ static func _effect_value(c: Combat, e: Dictionary, target: Fighter, ward: int) 
 				rv += DaemonRules.value({"hp": 1, "rule": u.rule}) * n * 0.6
 			return rv
 		"heal":
-			return minf(n, c.player.max_hp - c.player.hp) * 0.9
+			# Missing HP plus your Virus about to tick; worth double when that would kill you.
+			return minf(n, c.player.max_hp - c.player.hp + _virus_tick(c)) * 0.9 * (2.0 if _in_danger(c, ward) else 1.0)
 		"lose_hp":
 			# HP lost stays lost for the rest of the run.
 			return -n * (1.2 + 1.5 * (1.0 - float(c.player.hp) / maxf(c.player.max_hp, 1.0)))
 		"cleanse":
-			return Statuses.debuffs(c.player).size() * 3.0
+			var tick := float(_virus_tick(c))
+			return Statuses.debuffs(c.player).size() * 3.0 + tick * 1.5 * (2.0 if _in_danger(c, ward) else 1.0)
 		"add_card":
 			return 2.0 * maxf(n, 1.0)
 	return 0.0
+
+
+## Virus on you deals its full stacks at the start of your next turn.
+static func _virus_tick(c: Combat) -> int:
+	return c.player.status("burn")
+
+
+## The enemies' next hits past your Firewall plus your Virus tick would take your last HP.
+static func _in_danger(c: Combat, ward: float) -> bool:
+	return c.player.hp <= maxf(c.incoming_damage() - ward, 0.0) + _virus_tick(c)
 
 
 ## A daemon is worth its rule for the turns (HP) it adds; one that is already up only tops up.
@@ -403,7 +416,7 @@ static func _self_status_value(c: Combat, st: String, stacks: float) -> float:
 			return stacks * clampf(hits * 0.8, 2.5, 10.0)
 		"regen":
 			# Repairs damage taken later this fight too, not only what is missing now.
-			return minf(stacks * (stacks + 1.0) / 2.0, c.player.max_hp - c.player.hp + c.incoming_damage()) * 0.8
+			return minf(stacks * (stacks + 1.0) / 2.0, c.player.max_hp - c.player.hp + c.incoming_damage() + _virus_tick(c)) * 0.8
 		"thorns":
 			var hits := 0
 			for f in c.living(c.enemies):
