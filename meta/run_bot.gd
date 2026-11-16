@@ -247,6 +247,9 @@ static func fit_mult(c: CardDef, others: Array) -> float:
 		m *= 0.8
 	if "def" in r and def_n < 3:
 		m *= 1.25
+	# Act-3 Cores and many elites bring adds or pylons: want a couple of hit-ALL cards.
+	if "aoe" in r and built.filter(func(o: CardDef) -> bool: return "aoe" in roles(o)).size() < 2:
+		m *= 1.5
 	if "amp" in r and not others.is_empty():
 		# Boost and Exposed only multiply hits: worth more the bigger the deck's share of attacks.
 		var hitters := others.filter(func(o: CardDef) -> bool: return "off" in roles(o)).size()
@@ -258,7 +261,7 @@ static func fit_mult(c: CardDef, others: Array) -> float:
 
 
 ## What a card does for a deck: "off" (damage), "def" (Firewall, Throttled, healing...),
-## "eng" (draw, RAM, powers, daemons, buffs that grow other cards), "amp" (Boost and
+## "eng" (draw, RAM, powers, daemons, buffs that grow other cards), "aoe" (hits ALL enemies), "amp" (Boost and
 ## Exposed: damage multipliers, only as good as the deck's attacks).
 static func roles(c: CardDef) -> Array:
 	var out: Array = []
@@ -277,6 +280,8 @@ static func roles(c: CardDef) -> Array:
 			out.append("off")
 		if op in ["ward", "heal", "plant", "relay"] or st in ["weaken", "fortify", "regen", "thorns", "stall"] or (op == "interrupt" and "attack" in e.get("kinds", [])):
 			out.append("def")
+		if (op.begins_with("damage") or op == "sacrifice") and str(e.get("to", "")) == "all_enemies":
+			out.append("aoe")
 		if op in ["draw", "energy", "summon", "rally", "amplify", "recover", "compile"] or st in ["might", "surge", "charge", "uplink"] or e.has("loop") or e.has("per"):
 			out.append("eng")
 		if op in ["apply", "amplify"] and st in ["might", "brittle", "uplink"]:
@@ -321,7 +326,7 @@ static func card_value(c: CardDef, upgraded: bool = false) -> float:
 			v += float(e["loop"]) * 2.0 * aoe
 		match str(e.get("op", "")):
 			"cooldown":
-				v += n + float(e.get("step", 0)) * 0.5
+				v += n + float(e.get("step", 0))  # the charge usually lands at least once
 			"relay_cashout":
 				v += 2.0 * float(e.get("mult", 2))
 			"compile":
