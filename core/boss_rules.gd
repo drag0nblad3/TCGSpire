@@ -13,10 +13,11 @@ extends RefCounted
 ##   pool       "name" (+ leaves_at)           bodies share one HP total; a body shuts down at leaves_at of it
 ##   taken      {damage kind: multiplier}      e.g. {"attack": 0.5, "burn": 2}
 ##   shielded_by enemy id (+ respawn {count, after})  no damage while one of those is up; they come back
+##   grounded   status id (needs shielded_by)  the boss loses half that status (rounded up) each time its shield drops
 ##   guarded    true                           single-target hits land on its escorts first
 ##   bond       {status, stacks, heal}         when a bonded partner crashes, the survivors power up
 
-const KEYS := ["phases", "timer", "tide", "gauge", "jam", "twin", "pool", "leaves_at", "taken", "shielded_by", "respawn", "guarded", "bond"]
+const KEYS := ["phases", "timer", "tide", "gauge", "jam", "twin", "pool", "leaves_at", "taken", "shielded_by", "respawn", "grounded", "guarded", "bond"]
 
 ## Rules page / ICE database glossary: key -> [name, text].
 const DESC := {
@@ -29,6 +30,7 @@ const DESC := {
 	"pool": ["Shared HP", "These bodies share one HP total. Hit whichever is weakest to your programs; hit-all programs count once per body. Some bodies shut down as the total drops."],
 	"taken": ["Resistances", "Takes more or less damage from one kind of damage, such as attacks or Virus."],
 	"shielded_by": ["Shield pylons", "The boss takes no damage while a pylon is up. Crash the pylons to open a window; they come back after a few moves."],
+	"grounded": ["Grounded", "When the last pylon crashes, the boss loses half its stacks of one helpful status (rounded up). Crash the pylons again and again to keep its buildup in check."],
 	"guarded": ["Formation", "Escorts stand in front. Programs aimed at one enemy hit an escort first. Hit-all programs and Virus still reach the boss."],
 	"bond": ["Bonded", "When one of a bonded pair crashes, the survivor repairs itself and powers up. Choose which to finish first, or bring both down together."],
 }
@@ -238,6 +240,13 @@ static func on_death(c: Combat, t: Fighter) -> void:
 		if str(boss.rules.get("shielded_by", "")) == t.def_id and not shielded(c, boss):
 			boss.state["respawn"] = int(boss.rules.get("respawn", {}).get("after", 0))
 			c.emit("shield_down", {"target": boss.id})
+			if boss.rules.has("grounded"):
+				var st: String = str(boss.rules["grounded"])
+				var had: int = boss.status(st)
+				var drop: int = had - had / 2  # lose half, rounded up
+				if drop > 0:
+					boss.statuses[st] = had - drop
+					c.emit("status", {"target": boss.id, "status": st, "stacks": -drop, "total": had - drop})
 
 
 # --- turn hooks -----------------------------------------------------------------
@@ -393,6 +402,8 @@ static func describe(r: Dictionary, c: Combat = null, f: Fighter = null) -> Arra
 		if r.has("respawn"):
 			back = " %d come back %d moves after the last one falls." % [int(r["respawn"].get("count", 1)), int(r["respawn"].get("after", 3))]
 		out.append(["Shield pylons", "Takes no damage while a %s is up.%s" % [Lexicon.enemy_name(str(r["shielded_by"])), back]])
+	if r.has("grounded"):
+		out.append(["Grounded", "Loses half its %s (rounded up) each time the last pylon crashes." % Lexicon.status(str(r["grounded"]))])
 	if r.get("guarded", false):
 		out.append(["Formation", "While an escort is up, programs aimed at this enemy hit the front escort instead. Hit-all programs and Virus still reach it."])
 	if r.has("bond"):
@@ -454,6 +465,10 @@ static func validate(db: CardDB, id: String, r: Dictionary) -> Array[String]:
 		errs.append("%s: unknown pylon '%s'" % [where, r["shielded_by"]])
 	if r.has("respawn") and not r.has("shielded_by"):
 		errs.append("%s: respawn needs shielded_by" % where)
+	if r.has("grounded") and not r.has("shielded_by"):
+		errs.append("%s: grounded needs shielded_by" % where)
+	if r.has("grounded") and not Statuses.is_known(str(r["grounded"])):
+		errs.append("%s: unknown grounded status" % where)
 	if r.has("leaves_at") and not r.has("pool"):
 		errs.append("%s: leaves_at needs pool" % where)
 	if r.has("bond") and r["bond"].has("status") and not Statuses.is_known(str(r["bond"]["status"])):

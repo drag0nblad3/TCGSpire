@@ -189,6 +189,19 @@ func test_pylons_shield_the_boss_and_come_back() -> void:
 	check(BossRules.shielded(c, boss), "pylons return after %d moves" % after)
 
 
+func test_grounded_boss_loses_half_its_might_when_the_shield_drops() -> void:
+	var c := _fight("regent")
+	var boss := _enemy(c, "storm_regent")
+	boss.statuses["might"] = 7
+	var pylons: Array = c.enemies.filter(func(e: Fighter) -> bool: return e.def_id == "capacitor")
+	c.deal_damage(pylons[0], 9999, "player", "lose_hp")
+	eq(boss.status("might"), 7, "one pylon left: shield still up, Might kept")
+	c.deal_damage(pylons[1], 9999, "player", "lose_hp")
+	check(not BossRules.shielded(c, boss), "shield down")
+	eq(boss.status("might"), 3, "7 Might -> lose 4 (half, rounded up) -> 3")
+	check(BossRules.rows(c, boss).any(func(r: Array) -> bool: return r[0] == "Grounded"), "rules text names Grounded")
+
+
 func test_formation_redirects_single_target_hits() -> void:
 	var c := _fight("monarch")
 	var boss := _enemy(c, "hollow_monarch")
