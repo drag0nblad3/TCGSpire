@@ -148,11 +148,11 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 				c.emit("cleanse", {"target": t.id})
 		"add_card":
 			if str(e.get("pile", "hand")) == "draw":
-				# Shuffled into your draw pile (spores).
+				# Put on top of your draw pile (spores): drawn next turn. The pile is drawn from the back.
 				for i in maxi(n, 1):
 					var planted := c.db.instance(str(e.get("card", "")), bool(e.get("upgraded", false)))
 					if planted != null:
-						c.draw_pile.insert(c.rng.range_i(0, c.draw_pile.size()), planted)
+						c.draw_pile.append(planted)
 				c.emit("infect", {"card": str(e.get("card", "")), "amount": maxi(n, 1)})
 				return
 			for i in maxi(n, 1):
@@ -461,7 +461,7 @@ static func _describe(e: Dictionary) -> String:
 		"add_card":
 			var nm := Lexicon.card_name(str(e.get("card", "?"))) + ("+" if e.get("upgraded", false) else "")
 			if str(e.get("pile", "hand")) == "draw":
-				return "Shuffle %d %s into your draw pile." % [maxi(n, 1), nm]
+				return "Put %d %s on top of your draw pile." % [maxi(n, 1), nm]
 			return "Add %s to your hand." % nm if maxi(n, 1) == 1 else "Add %d %s to your hand." % [n, nm]
 		"spawn":
 			return "Call in a %s." % Lexicon.enemy_name(str(e.get("enemy", "?")))

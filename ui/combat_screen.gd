@@ -694,7 +694,7 @@ func _play_events(played: CardView) -> Array:
 				if v != null and int(e["left"]) == 0:
 					_float_text(v, "Trace complete", Palette.HP, -40, true)
 			"infect":
-				_float_text(_player_view, "%d %s shuffled into your draw pile" % [int(e["amount"]), Lexicon.card_name(str(e["card"]))], Palette.ENEMY, -60, true)
+				_float_text(_player_view, "%d %s put on top of your draw pile" % [int(e["amount"]), Lexicon.card_name(str(e["card"]))], Palette.ENEMY, -60, true)
 				await _wait(0.25)
 			"hatch":
 				_float_text(_player_view, "%s hatched" % Lexicon.card_name(str(e["card"]).trim_suffix("+")), Palette.ENEMY, -60, true)

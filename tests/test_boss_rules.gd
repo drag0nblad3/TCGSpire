@@ -223,7 +223,8 @@ func test_spores_hatch_when_left_unplayed() -> void:
 	var c := _fight("bloom_a2b")
 	var n := c.draw_pile.size()
 	Effects.resolve(c, {"op": "add_card", "card": "spore_pod", "amount": 2, "pile": "draw"}, c.enemies[0], c.player)
-	eq(c.draw_pile.size(), n + 2, "shuffled into the draw pile")
+	eq(c.draw_pile.size(), n + 2, "put on the draw pile")
+	eq(c.draw_pile.back().def.id, "spore_pod", "on top: drawn next")
 	c.enemies[0].moves = [{"name": "Idle", "effects": []}]
 	var i := give(c, "spore_pod")
 	c.energy = 3
