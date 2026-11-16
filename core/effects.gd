@@ -29,7 +29,7 @@ const OPS := {
 	"add_card": ["card", "amount", "upgraded", "pile"],
 	"spawn": ["enemy"],
 	"devour": ["amount", "stacks"],
-	"revive": ["enemy", "pct"],
+	"revive": ["enemy", "pct", "max"],
 	"lose_hp": ["amount", "to"],
 	"damage_per_status": ["status", "mult", "base", "consume", "to", "of"],
 	"amplify": ["status", "mult", "base", "to"],
@@ -165,7 +165,7 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 		"spawn":
 			c.spawn(str(e.get("enemy", "")))
 		"revive":
-			c.spawn(str(e.get("enemy", "")), float(e.get("pct", 0.5)))
+			c.spawn(str(e.get("enemy", "")), float(e.get("pct", 0.5)), int(e.get("max", 0)))
 		"devour":
 			# Eats every helper it called in: repair and a status per helper eaten.
 			var eaten: Array = c.living(c.enemies).filter(func(f: Fighter) -> bool: return f != src and f.spawned)
@@ -469,6 +469,8 @@ static func _describe(e: Dictionary) -> String:
 			var boost := int(e.get("stacks", 0))
 			return "Devour every helper it called in: repair %d HP%s for each one eaten." % [n, (" and gain %d %s" % [boost, Lexicon.status("might")]) if boost > 0 else ""]
 		"revive":
+			if int(e.get("max", 0)) > 0:
+				return "Restore its crashed twin at %d HP, its new max HP." % maxi(roundi(int(e["max"]) * float(e.get("pct", 0.5))), 1)
 			return "Restore its crashed twin at %d%% HP." % roundi(float(e.get("pct", 0.5)) * 100)
 		"lose_hp":
 			return "Lose %d HP." % n
