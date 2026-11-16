@@ -48,6 +48,7 @@ const PER_KEYS := ["per", "per_mult", "per_key"]
 const PER_SOURCES := {
 	"x": "", "draw_pile": "N = cards in your draw pile.", "discard_pile": "N = cards in your discard pile.",
 	"hand": "N = other cards in your hand.", "wiped": "N = your Wiped programs.", "dumped": "N = cards dumped.",
+	"daemons": "N = your daemons up.",
 }
 ## Where "recover" takes a card from, and where it puts it.
 const RECOVER_FROM := ["discard", "wiped"]
@@ -85,18 +86,24 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 			# CardPrograms expands these using the physical card and play history.
 			pass
 		"damage":
-			if src == c.player:
+			var by_daemon := src == c.player and c.rule_daemon != null
+			if by_daemon:
+				n += c.player.status("uplink")
+			elif src == c.player:
 				n += c.rule_sum("attack_bonus")
 			for i in int(e.get("hits", 1)):
 				for t in targets(c, e, src, target, "target"):
 					if str(e.get("to", "")) == "daemon":
 						c.deal_damage(t, n, src.id, "purge")
 					else:
-						c.attack(src, t, n)
+						c.attack(src, t, n, not by_daemon)
 		"damage_per_ward":
 			var amt := int(src.ward * float(e.get("mult", 1.0)))
+			var own := not (src == c.player and c.rule_daemon != null)
+			if not own:
+				amt += c.player.status("uplink")
 			for t in targets(c, e, src, target, "target"):
-				c.attack(src, t, amt)
+				c.attack(src, t, amt, own)
 		"ward":
 			for t in targets(c, e, src, target, "self"):
 				if t == c.player and src == c.player:
@@ -175,7 +182,8 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 			var on_target := str(e.get("of", "")) == "target"
 			for t in targets(c, e, src, target, "target"):
 				var holder: Fighter = t if on_target else src
-				c.attack(src, t, int(e.get("base", 0)) + int(holder.status(st) * float(e.get("mult", 1.0))))
+				var own := not (src == c.player and c.rule_daemon != null)
+				c.attack(src, t, int(e.get("base", 0)) + int(holder.status(st) * float(e.get("mult", 1.0))) + (0 if own else c.player.status("uplink")), own)
 				if e.get("consume", false) and on_target:
 					t.statuses.erase(st)
 			if e.get("consume", false) and not on_target:
@@ -253,6 +261,7 @@ static func per_count(c: Combat, per: String) -> int:
 		"hand": return c.hand.size()
 		"wiped": return c.exhaust_pile.size()
 		"dumped": return c.last_dumped
+		"daemons": return c.units.size()
 	return 0
 
 

@@ -15,6 +15,10 @@ static var stochastic := true
 const PICK_SPREAD := 0.2
 
 
+## Optional diagnostics hook: called as fight_hook.call(run, node, combat) after each fight.
+static var fight_hook: Callable = Callable()
+
+
 static func play(db: CardDB, profile: Profile, seed_in: int, heat: int = 0, job: String = "", forced: Array = [], stats = null) -> Dictionary:
 	var targets := Jobs.targets(db, job, Jobs.extra_targets(db, heat), GameRng.new(seed_in).fork("job")) if job != "" else []
 	var picks := best_picks(db, profile, job, targets, GameRng.new(seed_in).fork("bot_picks") if stochastic else null)
@@ -47,6 +51,8 @@ static func play(db: CardDB, profile: Profile, seed_in: int, heat: int = 0, job:
 				fights.append({"act": act_now, "kind": node["type"], "turns": int(res["turns"]), "won": c.phase == Combat.Phase.WON})
 				if stats != null:
 					tally_plays(c, stats)
+				if fight_hook.is_valid():
+					fight_hook.call(run, node, c)
 				var rewards := run.finish_combat(c)
 				if c.phase != Combat.Phase.WON:
 					died_to = node["encounter"]
@@ -220,9 +226,11 @@ static func fit_mult(c: CardDef, others: Array) -> float:
 	if c.type == "unit":
 		var units := others.filter(func(o: CardDef) -> bool: return o.type == "unit").size()
 		if others.any(func(o: CardDef) -> bool: return o.id == c.id):
-			m *= 0.55
-		if units >= 2:
-			m *= pow(0.7, units - 1)
+			m *= 0.85
+		# Daemons run out after a few turns, so 3 board slots carry about 4 daemon cards
+		# before they crowd each other.
+		if units >= 4:
+			m *= pow(0.8, units - 3)
 	# Second half of a Handshake pair: its partner is already in the deck, either way round.
 	var partners := func(k: CardDef) -> Array:
 		return k.effects.filter(func(e: Dictionary) -> bool: return str(e.get("op", "")) == "handshake").map(func(e: Dictionary) -> String: return str(e.get("card", "")))
@@ -264,13 +272,14 @@ static func roles(c: CardDef) -> Array:
 		var op := str(e.get("op", ""))
 		var st := str(e.get("status", ""))
 		# Exposed only multiplies damage the deck already deals, so it is not offense by itself.
-		if op.begins_with("damage") or op in ["cooldown", "relay_cashout", "sacrifice"] or st == "burn":
+		# Drones that hit every turn are the deck's offense too.
+		if op.begins_with("damage") or op in ["cooldown", "relay_cashout", "sacrifice"] or st == "burn" or (op == "summon" and Bot._rule_hits(e.get("rule", {}))):
 			out.append("off")
 		if op in ["ward", "heal", "plant", "relay"] or st in ["weaken", "fortify", "regen", "thorns", "stall"] or (op == "interrupt" and "attack" in e.get("kinds", [])):
 			out.append("def")
-		if op in ["draw", "energy", "summon", "rally", "amplify", "recover", "compile"] or st in ["might", "surge", "charge"] or e.has("loop") or e.has("per"):
+		if op in ["draw", "energy", "summon", "rally", "amplify", "recover", "compile"] or st in ["might", "surge", "charge", "uplink"] or e.has("loop") or e.has("per"):
 			out.append("eng")
-		if op in ["apply", "amplify"] and st in ["might", "brittle"]:
+		if op in ["apply", "amplify"] and st in ["might", "brittle", "uplink"]:
 			out.append("amp")
 	return out
 
@@ -339,7 +348,7 @@ static func card_value(c: CardDef, upgraded: bool = false) -> float:
 			"apply":
 				var st := str(e.get("status", ""))
 				var k := float(e.get("stacks", 1))
-				v += k * ({"burn": 2.2, "brittle": 2.5, "weaken": 3.0, "might": 3.0, "regen": 3.0, "thorns": 1.8, "fortify": 8.0, "charge": 1.6, "frail": 0.8, "overcharge": -3.0, "surge": 4.0, "stall": 10.0}.get(st, 1.5)) * aoe
+				v += k * ({"burn": 2.2, "brittle": 2.5, "weaken": 3.0, "might": 3.0, "regen": 3.0, "thorns": 1.8, "fortify": 8.0, "charge": 1.6, "frail": 0.8, "overcharge": -3.0, "surge": 4.0, "stall": 10.0, "uplink": 2.5}.get(st, 1.5)) * aoe
 			"draw":
 				v += n * 3.5
 			"energy":

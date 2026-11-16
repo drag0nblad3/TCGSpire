@@ -37,15 +37,29 @@ func test_hard_reset_sequence_strips_before_bonus_hit() -> void:
 	eq(d.enemies[0].hp, 991)
 	eq(d.enemies[0].status("might"), 2, "no sequence no strip")
 
-func test_overwatch_supports_daemon_and_defends() -> void:
+func test_overclock_grid_uplinks_per_daemon() -> void:
 	var c := arena()
-	c.summon("Test", 3)
-	c.hand = []
-	c.draw_pile = [db.instance("jab")]
+	c.summon("A", 3)
+	c.summon("B", 3)
 	c.play_card(give(c, "overwatch"))
-	eq(c.units[0].hp, 5)
-	eq(c.player.ward, 4)
-	eq(c.hand.size(), 1, "draws 1")
+	eq(c.player.status("uplink"), 2, "1 Uplink per daemon up")
+	eq(c.units[0].hp, 4, "rally 1")
+
+func test_hive_sync_boost_for_you_uplink_for_daemons() -> void:
+	var c := arena()
+	var rule := {"triggers": [{"on": "turn_end", "effects": [{"op": "damage", "amount": 2, "to": "front"}]}]}
+	c.summon("Drone", 4, rule)
+	c.play_card(give(c, "swarm_link"))
+	eq(c.player.status("might"), 1)
+	eq(c.player.status("uplink"), 1)
+	var front: Fighter = c.living(c.enemies)[0]
+	var before := front.hp + front.ward
+	Talismans.fire(c, "turn_end")
+	eq(before - (front.hp + front.ward), 3, "2 base + 1 Uplink; your Boost skips daemons")
+	var hp2 := front.hp
+	c.play_card(give(c, "jab"))
+	eq(hp2 - front.hp >= 7, true, "Uplink doesn't add to programs")
+	eq(hp2 - front.hp <= 7, true, "jab 6 + 1 Boost only")
 
 func test_dead_drop_draws_then_plants_on_following_card() -> void:
 	for up in [false, true]:
@@ -106,7 +120,8 @@ func test_hydraulic_damage_mods_survive_rework() -> void:
 	check(CardMods.can_apply(mod, card), "charged attacks still accept damage mods")
 	card.mod = mod
 	CardPrograms.on_discard(card)
-	eq(int(card.effects()[0]["amount"]), 12)
+	var slam: Array = card.effects().filter(func(e: Dictionary) -> bool: return e.get("op", "") == "cooldown")
+	eq(int(slam[0]["amount"]), 12)
 	eq(card.cooldown, 4, "mod does not increase charge step")
 	var c := arena()
 	c.hand = [card]

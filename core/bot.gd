@@ -404,6 +404,29 @@ static func _enemy_status_value(c: Combat, f: Fighter, st: String, stacks: float
 	return stacks * 1.5
 
 
+## Rough count of daemon hits still to come this fight: hits from damaging daemons up now
+## for their remaining HP, plus about two turns from each damaging daemon card left in piles.
+static func _daemon_hits(c: Combat) -> float:
+	var hits := 0.0
+	for u in c.units:
+		if _rule_hits(u.rule):
+			hits += minf(float(u.hp), 4.0)
+	for pile in [c.hand, c.draw_pile, c.discard_pile]:
+		for k: CardInstance in pile:
+			for e in k.def.effects:
+				if str(e.get("op", "")) == "summon" and _rule_hits(e.get("rule", {})):
+					hits += 2.0
+	return hits
+
+
+static func _rule_hits(rule: Dictionary) -> bool:
+	for trig in rule.get("triggers", []):
+		for fx in trig.get("effects", []):
+			if str(fx.get("op", "")).begins_with("damage"):
+				return true
+	return false
+
+
 static func _self_status_value(c: Combat, st: String, stacks: float) -> float:
 	match st:
 		"might":
@@ -414,6 +437,8 @@ static func _self_status_value(c: Combat, st: String, stacks: float) -> float:
 					if k.def.type == "attack":
 						hits += 1
 			return stacks * clampf(hits * 0.8, 2.5, 10.0)
+		"uplink":
+			return stacks * clampf(_daemon_hits(c), 1.0, 10.0)
 		"regen":
 			# Repairs damage taken later this fight too, not only what is missing now.
 			return minf(stacks * (stacks + 1.0) / 2.0, c.player.max_hp - c.player.hp + c.incoming_damage() + _virus_tick(c)) * 0.8
