@@ -1,0 +1,809 @@
+<title>Spire Data Deck</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one column of compact rows on a phone (tap opens a full sheet), list + sheet side by side on wide screens. */
+:root {
+  --bg: #eef3f8; --panel: #ffffff; --panel2: #e3ebf3; --line: #c5d2df;
+  --fg: #0d1a2b; --dim: #4f6177; --accent: #007f8f; --accent-fg: #ffffff;
+  --hot: #b4157f; --up: #11804f; --warn: #a35200; --bad: #b3123d;
+  --f-neutral: #65594b; --f-ember: #a33c17; --f-tide: #17588b; --f-bloom: #286631; --f-void: #703c95; --f-chrome: #485e75; --f-noise: #765600;
+  --display: "Orbitron", "Rajdhani", system-ui, sans-serif;
+  --body: "Rajdhani", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --r: 10px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #050a16; --panel: #0a1122; --panel2: #0f1a36; --line: #1d2d4f;
+  --fg: #eafcff; --dim: #8aa3bd; --accent: #2ef2ff; --accent-fg: #021018;
+  --hot: #ff4fdc; --up: #39ff9e; --warn: #ffb347; --bad: #ff4f7e;
+  --f-neutral: #aaa194; --f-ember: #ff865a; --f-tide: #59b7ff; --f-bloom: #67f482; --f-void: #cc91ff; --f-chrome: #e2efff; --f-noise: #ffe064;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #050a16; --panel: #0a1122; --panel2: #0f1a36; --line: #1d2d4f;
+  --fg: #eafcff; --dim: #8aa3bd; --accent: #2ef2ff; --accent-fg: #021018;
+  --hot: #ff4fdc; --up: #39ff9e; --warn: #ffb347; --bad: #ff4f7e;
+  --f-neutral: #aaa194; --f-ember: #ff865a; --f-tide: #59b7ff; --f-bloom: #67f482; --f-void: #cc91ff; --f-chrome: #e2efff; --f-noise: #ffe064;
+  color-scheme: dark; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--fg); font: 600 16px/1.35 var(--body); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--panel); }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--panel); border-bottom: 1px solid var(--line); }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding-block: 10px 8px; }
+.brand { font: 800 14px var(--display); letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }
+.brand b { color: var(--accent); }
+.tabs { display: flex; gap: 4px; margin-left: auto; }
+.tab { border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 4px 10px; font-weight: 700; color: var(--dim); }
+.tab[aria-selected="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.tab .count { font-family: var(--mono); font-size: 12px; margin-left: 4px; }
+.searchrow { display: flex; gap: 8px; padding-bottom: 8px; }
+.search { flex: 1; min-width: 0; padding: 8px 12px; border-radius: var(--r); border: 1px solid var(--line); background: var(--panel2); }
+.filterbtn { border: 1px solid var(--line); background: var(--panel2); border-radius: var(--r); padding: 0 12px; font-weight: 700; white-space: nowrap; }
+.filterbtn[data-on="true"] { border-color: var(--accent); color: var(--accent); }
+.filters { display: grid; gap: 6px; padding-bottom: 10px; }
+.frow { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; align-items: center; }
+.frow::-webkit-scrollbar { display: none; }
+.flabel { font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--dim); min-width: 52px; }
+.chip { border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 2px 10px; white-space: nowrap; font-weight: 700; color: var(--dim); }
+.chip[aria-pressed="true"] { color: var(--fg); border-color: currentColor; background: var(--panel2); }
+.chip.fc[aria-pressed="true"] { color: var(--fc); border-color: var(--fc); }
+.summary { display: flex; justify-content: space-between; align-items: center; gap: 8px; color: var(--dim); font-size: 14px; padding-block: 8px; }
+.summary select { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 2px 6px; }
+
+main { display: grid; gap: 16px; padding-block: 0 40px; }
+@media (min-width: 900px) { main { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); align-items: start; } #sheet { position: sticky; top: 150px; max-height: calc(100vh - 170px); overflow: auto; } }
+.list { display: grid; gap: 6px; min-width: 0; }
+.row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; text-align: left; width: 100%; border: 1px solid var(--line); border-left: 4px solid var(--fc, var(--line)); background: var(--panel); border-radius: var(--r); padding: 8px 10px; }
+.row[aria-current="true"] { border-color: var(--accent); border-left-color: var(--fc); box-shadow: 0 0 0 1px var(--accent); }
+.cost { min-width: 34px; height: 34px; padding: 0 4px; border-radius: 17px; display: grid; place-items: center; font: 800 16px var(--display); background: var(--panel2); border: 2px solid var(--fc, var(--line)); }
+.rhead { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.rname { font-weight: 700; font-size: 17px; }
+.meta { color: var(--dim); font-size: 13px; text-transform: uppercase; letter-spacing: .06em; }
+.rtext { color: var(--dim); font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pill { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; border-radius: 999px; padding: 0 7px; border: 1px solid currentColor; }
+.pill.edit { color: var(--hot); } .pill.new { color: var(--up); } .pill.r-common { color: var(--dim); } .pill.r-uncommon { color: var(--accent); }
+.pill.r-rare { color: var(--warn); } .pill.r-mythic { color: var(--hot); } .pill.r-starter, .pill.r-curse { color: var(--dim); }
+.pill.k-elite { color: var(--warn); } .pill.k-boss { color: var(--hot); }
+.empty { color: var(--dim); padding: 24px 4px; }
+.more { border: 1px dashed var(--line); background: transparent; border-radius: var(--r); padding: 10px; color: var(--dim); }
+
+/* detail sheet */
+#sheet { min-width: 0; }
+@media (max-width: 899px) {
+  #sheet:not([hidden]) { position: fixed; inset: 0; z-index: 20; background: var(--bg); overflow: auto; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+}
+.sheet-in { display: grid; gap: 14px; padding-block: 14px 60px; }
+.shead { display: flex; gap: 10px; align-items: center; }
+.shead h2 { margin: 0; font: 800 20px/1.15 var(--display); letter-spacing: .02em; text-wrap: balance; flex: 1; min-width: 0; }
+.close { border: 1px solid var(--line); background: var(--panel2); border-radius: 999px; padding: 4px 14px; font-weight: 700; }
+.cardface { border: 2px solid var(--fc); border-radius: 14px; background: var(--panel); padding: 14px; display: grid; gap: 10px; }
+.facetop { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.face-text { font-size: 17px; line-height: 1.4; }
+.updiff { border-top: 1px dashed var(--line); padding-top: 10px; display: grid; gap: 4px; }
+.updiff .lbl, .lbl { font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--dim); }
+.uptext { color: var(--up); }
+.kv { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 14px; color: var(--dim); }
+.kv b { color: var(--fg); }
+.gloss { display: grid; gap: 6px; font-size: 14px; color: var(--dim); }
+.gloss b { color: var(--fg); }
+.moves { display: grid; gap: 6px; }
+.move { border: 1px solid var(--line); border-radius: var(--r); padding: 8px 10px; background: var(--panel); }
+.move .mname { font-weight: 700; }
+.rule { border-left: 3px solid var(--hot); padding: 4px 10px; background: var(--panel); border-radius: 0 var(--r) var(--r) 0; }
+.encs { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* editor */
+details.ed { border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); }
+details.ed > summary { padding: 10px 12px; font-weight: 700; cursor: pointer; }
+.edbody { display: grid; gap: 12px; padding: 0 12px 12px; }
+.fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.field { display: grid; gap: 2px; min-width: 0; }
+.field input, .field select { width: 100%; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+.tweak { display: grid; gap: 6px; }
+.tgroup { border: 1px solid var(--line); border-radius: 8px; padding: 8px; display: grid; gap: 6px; }
+.tgroup .ttext { font-size: 14px; }
+.steprow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.steprow .sname { font-size: 13px; color: var(--dim); min-width: 0; flex: 1; font-family: var(--mono); }
+.stepper { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.stepper button { border: 0; background: var(--panel2); width: 38px; height: 34px; font-weight: 800; font-size: 18px; }
+.stepper input { width: 64px; text-align: center; border: 0; background: transparent; font-family: var(--mono); font-variant-numeric: tabular-nums; height: 34px; }
+textarea.json { width: 100%; min-height: 220px; font: 13px/1.45 var(--mono); background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 8px; resize: vertical; }
+.errs { color: var(--bad); font-size: 14px; display: grid; gap: 2px; }
+.okmsg { color: var(--up); font-size: 14px; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { border: 1px solid var(--line); background: var(--panel2); border-radius: var(--r); padding: 8px 14px; font-weight: 700; }
+.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.btn.danger { color: var(--bad); }
+.btn:disabled { opacity: .45; cursor: default; }
+.note { width: 100%; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; }
+.hint { color: var(--dim); font-size: 14px; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--fg); color: var(--bg); padding: 8px 16px; border-radius: 999px; z-index: 40; font-weight: 700; max-width: calc(100% - 32px); }
+.status { font-size: 13px; color: var(--dim); }
+.status.bad { color: var(--warn); }
+.chg { border: 1px solid var(--line); border-left: 4px solid var(--fc, var(--hot)); border-radius: var(--r); background: var(--panel); padding: 10px 12px; display: grid; gap: 6px; }
+.diffline { font: 12px/1.4 var(--mono); color: var(--dim); overflow-wrap: anywhere; }
+.diffline ins { color: var(--up); text-decoration: none; } .diffline del { color: var(--bad); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<header class="top wrap">
+  <div class="bar">
+    <div class="brand">Spire <b>Data</b> Deck</div>
+    <nav class="tabs" role="tablist">
+      <button class="tab" role="tab" id="tab-cards" data-view="cards">Cards<span class="count" id="n-cards"></span></button>
+      <button class="tab" role="tab" id="tab-enemies" data-view="enemies">ICE<span class="count" id="n-enemies"></span></button>
+      <button class="tab" role="tab" id="tab-changes" data-view="changes">Edits<span class="count" id="n-changes"></span></button>
+    </nav>
+  </div>
+  <div class="searchrow" id="searchrow">
+    <input class="search" id="q" type="search" placeholder="Search name, id or rules text" autocomplete="off">
+    <button class="filterbtn" id="ftoggle" aria-expanded="false">Filters</button>
+  </div>
+  <div class="filters" id="filters" hidden></div>
+</header>
+
+<div class="wrap">
+  <div class="summary"><span id="sum"></span><label id="sortwrap">Sort <select id="sort"></select></label></div>
+  <main>
+    <section class="list" id="list" aria-live="polite"></section>
+    <aside id="sheet" hidden></aside>
+  </main>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>/*DESCRIBE_JS*/</script>
+<script>
+const DATA = /*DATA_JSON*/null;
+const T = DATA.tables;
+Describe.setTables(T);
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const clone = (o) => JSON.parse(JSON.stringify(o));
+const CREWS = ["neutral", "ember", "tide", "bloom", "void", "chrome", "noise"];
+const crewName = (f) => T.factions[f] || f;
+const fc = (f) => `var(--f-${CREWS.includes(f) ? f : "neutral"})`;
+const RAR = T.rarities;
+const TYPES = Object.keys(T.types);
+
+// ---------- base data and overlay of saved edits ----------
+const base = { card: {}, enemy: {} };
+DATA.cards.forEach((c) => (base.card[c.raw.id] = c));
+DATA.enemies.forEach((e) => (base.enemy[e.raw.id] = e));
+const edits = {}; // key "card:id" -> {kind,id,file,data,note,isNew,updated}
+let dbRef = null, dbState = "connecting";
+const key = (kind, id) => kind + ":" + id;
+function current(kind, id) {
+  const ed = edits[key(kind, id)];
+  if (ed) return ed.data;
+  return base[kind][id] ? base[kind][id].raw : null;
+}
+function allIds(kind) {
+  const ids = Object.keys(base[kind]);
+  Object.values(edits).forEach((e) => { if (e.kind === kind && !base[kind][e.id] && !e.deleted) ids.push(e.id); });
+  return ids;
+}
+function refreshNames() {
+  T.names.cards = {}; T.names.enemies = {};
+  allIds("card").forEach((id) => (T.names.cards[id] = (current("card", id) || {}).name));
+  allIds("enemy").forEach((id) => (T.names.enemies[id] = (current("enemy", id) || {}).name));
+}
+
+// encounters per enemy
+const encOf = {};
+for (const [eid, enc] of Object.entries(DATA.encounters)) {
+  (enc.enemies || []).forEach((id) => { (encOf[id] = encOf[id] || []).push(Object.assign({ id: eid }, enc)); });
+}
+function enemyInfo(id) {
+  const e = current("enemy", id) || {};
+  const b = base.enemy[id];
+  const file = b ? b.file : (edits[key("enemy", id)] || {}).file || "";
+  const encs = [...new Map((encOf[id] || []).map((x) => [x.id, x])).values()];
+  // the first enemy listed is the boss or elite itself; others in those fights are escorts and pylons
+  const lead = (k) => encs.some((x) => x.kind === k && x.enemies[0] === id);
+  const kind = lead("boss") ? "boss" : lead("elite") ? "elite" : encs.some((x) => x.kind === "normal") ? "normal" : "helper";
+  const m = file.match(/act(\d)/);
+  let acts = m ? [+m[1]] : [...new Set(encs.map((x) => x.act || 1))];
+  if (!acts.length) acts = [];
+  const crew = e.faction || (encs.find((x) => x.faction) || {}).faction || "";
+  return { e, file, encs, kind, acts, crew };
+}
+
+// ---------- filters ----------
+const S = { view: "cards", q: "", sel: null, limit: 60, sort: { cards: "crew", enemies: "act" },
+  f: { cards: { crew: new Set(), rarity: new Set(), type: new Set(), cost: new Set(), kw: new Set(), state: new Set() },
+       enemies: { crew: new Set(), kind: new Set(), act: new Set(), state: new Set() } } };
+try { const v = localStorage.getItem("sdd-view"); if (v) S.view = v; } catch (e) {}
+
+function cardKeywords(c) {
+  const k = new Set([...(c.keywords || []), ...((c.upgrade || {}).keywords || [])]);
+  if (c.cost === "X") k.add("x_cost");
+  if (c.evolve) k.add("evolve");
+  if (c.on_dump) k.add("on_dump");
+  const walk = (o) => { if (Array.isArray(o)) o.forEach(walk); else if (o && typeof o === "object") { if (o.loop !== undefined) k.add("loop"); Object.values(o).forEach(walk); } };
+  walk(c.effects);
+  return k;
+}
+const costBucket = (c) => (c.cost === "X" ? "X" : +c.cost >= 3 ? "3+" : String(c.cost));
+const FILTERS = {
+  cards: [
+    { k: "crew", label: "Crew", opts: () => CREWS.map((f) => [f, crewName(f), f]) },
+    { k: "rarity", label: "Rarity", opts: () => RAR.map((r) => [r, cap(r)]) },
+    { k: "type", label: "Type", opts: () => TYPES.map((t) => [t, T.types[t]]) },
+    { k: "cost", label: "RAM", opts: () => ["0", "1", "2", "3+", "X"].map((c) => [c, c]) },
+    { k: "kw", label: "Keyword", opts: () => Object.keys(T.keywords).map((k) => [k, T.keywords[k].name]) },
+    { k: "state", label: "Show", opts: () => [["edited", "Edited only"], ["joint", "Joint ops"], ["token", "Tokens"]] },
+  ],
+  enemies: [
+    { k: "crew", label: "Crew", opts: () => [["", "Generic"], ...CREWS.filter((f) => f !== "neutral").map((f) => [f, crewName(f), f])] },
+    { k: "kind", label: "Kind", opts: () => [["normal", "Normal"], ["elite", "Elite"], ["boss", "Boss"], ["helper", "Helper"]] },
+    { k: "act", label: "Act", opts: () => [["1", "Act 1"], ["2", "Act 2"], ["3", "Act 3"]] },
+    { k: "state", label: "Show", opts: () => [["edited", "Edited only"], ["rules", "Has boss rules"]] },
+  ],
+};
+const SORTS = {
+  cards: [["crew", "Crew, rarity"], ["cost", "RAM cost"], ["name", "Name"], ["rarity", "Rarity"]],
+  enemies: [["act", "Act, kind"], ["hp", "HP"], ["name", "Name"]],
+};
+function cap(s) { return String(s).charAt(0).toUpperCase() + String(s).slice(1); }
+
+function matchQ(hay) {
+  const q = S.q.trim().toLowerCase();
+  if (!q) return true;
+  return q.split(/\s+/).every((w) => hay.includes(w));
+}
+function cardRows() {
+  const F = S.f.cards;
+  const out = [];
+  allIds("card").forEach((id) => {
+    const c = current("card", id);
+    if (!c) return;
+    const crews = [c.faction || "neutral", c.faction2].filter(Boolean);
+    if (F.crew.size && !crews.some((f) => F.crew.has(f))) return;
+    if (F.rarity.size && !F.rarity.has(c.rarity || "common")) return;
+    if (F.type.size && !F.type.has(c.type || "skill")) return;
+    if (F.cost.size && !F.cost.has(costBucket(c))) return;
+    if (F.kw.size) { const k = cardKeywords(c); if (![...F.kw].every((x) => k.has(x))) return; }
+    if (F.state.has("edited") && !edits[key("card", id)]) return;
+    if (F.state.has("joint") && !c.faction2) return;
+    if (F.state.has("token") && !c.token) return;
+    const text = Describe.cardText(c, false);
+    if (!matchQ([c.name, id, text, crewName(c.faction || "neutral"), c.faction2 ? crewName(c.faction2) : "", T.types[c.type] || "", c.rarity].join(" ").toLowerCase())) return;
+    out.push({ id, c, text });
+  });
+  const ri = (r) => RAR.indexOf(r || "common");
+  const cv = (c) => (c.cost === "X" ? 99 : +c.cost);
+  const by = {
+    crew: (a, b) => CREWS.indexOf(a.c.faction || "neutral") - CREWS.indexOf(b.c.faction || "neutral") || ri(a.c.rarity) - ri(b.c.rarity) || a.c.name.localeCompare(b.c.name),
+    cost: (a, b) => cv(a.c) - cv(b.c) || a.c.name.localeCompare(b.c.name),
+    name: (a, b) => a.c.name.localeCompare(b.c.name),
+    rarity: (a, b) => ri(b.c.rarity) - ri(a.c.rarity) || a.c.name.localeCompare(b.c.name),
+  }[S.sort.cards];
+  return out.sort(by);
+}
+function enemyRows() {
+  const F = S.f.enemies;
+  const out = [];
+  allIds("enemy").forEach((id) => {
+    const info = enemyInfo(id);
+    const e = info.e;
+    if (!e || !e.name) return;
+    if (F.crew.size && !F.crew.has(info.crew)) return;
+    if (F.kind.size && !F.kind.has(info.kind)) return;
+    if (F.act.size && !info.acts.some((a) => F.act.has(String(a)))) return;
+    if (F.state.has("edited") && !edits[key("enemy", id)]) return;
+    if (F.state.has("rules") && !e.rules) return;
+    const moves = (e.moves || []).map((m) => m.name + " " + Describe.enemyMoveText(m)).join(" ");
+    if (!matchQ([e.name, id, moves, info.crew ? crewName(info.crew) : "", info.kind, info.encs.map((x) => x.id).join(" ")].join(" ").toLowerCase())) return;
+    out.push({ id, info });
+  });
+  const kindI = { normal: 0, elite: 1, boss: 2, helper: 3 };
+  const hp = (r) => +((r.info.e.hp || [0])[0]);
+  const by = {
+    act: (a, b) => (a.info.acts[0] || 9) - (b.info.acts[0] || 9) || kindI[a.info.kind] - kindI[b.info.kind] || (a.info.crew || "").localeCompare(b.info.crew || "") || hp(a) - hp(b),
+    hp: (a, b) => hp(b) - hp(a),
+    name: (a, b) => a.info.e.name.localeCompare(b.info.e.name),
+  }[S.sort.enemies];
+  return out.sort(by);
+}
+
+// ---------- rendering ----------
+function renderFilters() {
+  const box = $("#filters");
+  if (S.view === "changes") { box.hidden = true; return; }
+  const F = S.f[S.view];
+  box.innerHTML = FILTERS[S.view].map((g) => `<div class="frow"><span class="flabel">${g.label}</span>${g.opts().map(([v, l, crew]) =>
+    `<button class="chip${crew ? " fc" : ""}" style="${crew ? "--fc:" + fc(crew) : ""}" data-g="${g.k}" data-v="${esc(v)}" aria-pressed="${F[g.k].has(v)}">${esc(l)}</button>`).join("")}</div>`).join("") +
+    `<div class="frow"><button class="chip" id="fclear">Clear filters</button></div>`;
+  const n = Object.values(F).reduce((a, s) => a + s.size, 0);
+  $("#ftoggle").textContent = n ? `Filters · ${n}` : "Filters";
+  $("#ftoggle").dataset.on = n > 0;
+}
+function renderSort() {
+  const sel = $("#sort");
+  $("#sortwrap").hidden = S.view === "changes";
+  if (S.view === "changes") return;
+  sel.innerHTML = SORTS[S.view].map(([v, l]) => `<option value="${v}"${S.sort[S.view] === v ? " selected" : ""}>${l}</option>`).join("");
+}
+function cardRowHtml({ id, c, text }) {
+  const ed = edits[key("card", id)];
+  return `<button class="row" data-id="${esc(id)}" style="--fc:${fc(c.faction)}" aria-current="${S.sel === id}">
+    <span class="cost">${esc(c.cost)}</span>
+    <span style="min-width:0;display:grid;gap:2px">
+      <span class="rhead"><span class="rname">${esc(c.name)}</span>
+        <span class="pill r-${esc(c.rarity || "common")}">${esc(c.rarity || "common")}</span>
+        ${ed ? `<span class="pill ${ed.isNew ? "new" : "edit"}">${ed.isNew ? "new" : "edited"}</span>` : ""}</span>
+      <span class="meta">${esc(crewName(c.faction || "neutral"))}${c.faction2 ? " + " + esc(crewName(c.faction2)) : ""} · ${esc(T.types[c.type] || c.type)}${c.token ? " · token" : ""}</span>
+      <span class="rtext">${esc(text)}</span>
+    </span></button>`;
+}
+function enemyRowHtml({ id, info }) {
+  const e = info.e;
+  const ed = edits[key("enemy", id)];
+  const hp = Array.isArray(e.hp) ? e.hp.join("–") : e.hp;
+  return `<button class="row" data-id="${esc(id)}" style="--fc:${info.crew ? fc(info.crew) : "var(--line)"}" aria-current="${S.sel === id}">
+    <span class="cost" style="font-size:12px">${esc(hp)}</span>
+    <span style="min-width:0;display:grid;gap:2px">
+      <span class="rhead"><span class="rname">${esc(e.name)}</span>
+        <span class="pill k-${info.kind}">${info.kind}</span>
+        ${e.rules ? `<span class="pill k-boss">rules</span>` : ""}
+        ${ed ? `<span class="pill ${ed.isNew ? "new" : "edit"}">${ed.isNew ? "new" : "edited"}</span>` : ""}</span>
+      <span class="meta">${info.acts.length ? "Act " + info.acts.join("/") : "No act"}${info.crew ? " · " + esc(crewName(info.crew)) : ""} · ${(e.moves || []).length} moves</span>
+      <span class="rtext">${esc((e.moves || []).map((m) => m.name).join(" · "))}</span>
+    </span></button>`;
+}
+function renderList() {
+  const list = $("#list");
+  $("#searchrow").hidden = S.view === "changes";
+  if (S.view === "changes") { renderChanges(); return; }
+  const rows = S.view === "cards" ? cardRows() : enemyRows();
+  const total = allIds(S.view === "cards" ? "card" : "enemy").length;
+  $("#sum").textContent = `${rows.length} of ${total} ${S.view === "cards" ? "programs" : "ICE"}`;
+  const shown = rows.slice(0, S.limit);
+  list.innerHTML = rows.length ? shown.map(S.view === "cards" ? cardRowHtml : enemyRowHtml).join("") +
+    (rows.length > S.limit ? `<button class="more" id="more">Show ${Math.min(60, rows.length - S.limit)} more</button>` : "")
+    : `<div class="empty">Nothing matches. Clear a filter or change the search.</div>`;
+}
+function renderCounts() {
+  $("#n-cards").textContent = allIds("card").length;
+  $("#n-enemies").textContent = allIds("enemy").length;
+  const n = Object.keys(edits).length;
+  $("#n-changes").textContent = n || "";
+  document.querySelectorAll(".tab").forEach((t) => t.setAttribute("aria-selected", t.dataset.view === S.view));
+}
+function render() { refreshNames(); renderCounts(); renderFilters(); renderSort(); renderList(); renderSheet(); }
+
+// ---------- detail sheet ----------
+function glossFor(texts) {
+  const all = texts.join(" ");
+  const out = [];
+  Object.values(T.statuses).forEach((s) => { if (new RegExp("\\b" + s.name + "\\b").test(all)) out.push([s.name, s.desc]); });
+  Object.values(T.keywords).forEach((k) => { if (new RegExp("\\b" + k.name + "\\b").test(all)) out.push([k.name, k.desc]); });
+  return out.length ? `<div class="gloss"><span class="lbl">Terms</span>${out.map(([n, d]) => `<div><b>${esc(n)}:</b> ${esc(d)}</div>`).join("")}</div>` : "";
+}
+function renderSheet() {
+  const sh = $("#sheet");
+  if (!S.sel || S.view === "changes") { sh.hidden = true; sh.innerHTML = ""; return; }
+  const kind = S.view === "cards" ? "card" : "enemy";
+  const obj = current(kind, S.sel);
+  if (!obj) { sh.hidden = true; return; }
+  sh.hidden = false;
+  // keep an open editor's typing intact: only re-render when the selection changed or forced
+  if (sh.dataset.for === kind + ":" + S.sel && sh.dataset.keep === "1") { updatePreview(); return; }
+  sh.dataset.for = kind + ":" + S.sel;
+  sh.innerHTML = `<div class="sheet-in wrap">${kind === "card" ? cardSheet(S.sel, obj) : enemySheet(S.sel, obj)}${editorHtml(kind, S.sel, obj)}</div>`;
+  sh.dataset.keep = "1";
+  if (window.matchMedia("(max-width: 899px)").matches) sh.scrollTop = 0;
+  initEditor(kind, S.sel, obj);
+}
+function cardFaceHtml(c) {
+  const t0 = Describe.cardText(c, false);
+  const up = Describe.isUp(c);
+  const t1 = up ? Describe.cardText(c, true) : "";
+  const upCost = up && c.upgrade.cost !== undefined && c.upgrade.cost !== c.cost ? ` (costs ${esc(c.upgrade.cost)})` : "";
+  return `<div class="cardface" style="--fc:${fc(c.faction)}">
+    <div class="facetop"><span class="cost">${esc(c.cost)}</span>
+      <span class="pill r-${esc(c.rarity || "common")}">${esc(c.rarity || "common")}</span>
+      <span class="meta">${esc(crewName(c.faction || "neutral"))}${c.faction2 ? " + " + esc(crewName(c.faction2)) : ""} · ${esc(T.types[c.type] || c.type)}${c.target && c.target !== "none" ? " · targets " + esc(c.target) : ""}</span></div>
+    <div class="face-text" id="pv-text">${esc(t0)}</div>
+    <div class="updiff"><span class="lbl">Recompiled${upCost}</span><div class="uptext" id="pv-up">${up ? esc(t1) : "Can't be upgraded."}</div></div>
+  </div>`;
+}
+function cardSheet(id, c) {
+  const b = base.card[id];
+  const ed = edits[key("card", id)];
+  const file = b ? b.file : ed && ed.file;
+  const summary = b && !ed ? b.summary : "";
+  const extra = [];
+  if (c.evolve) extra.push(`<div>Evolves into <b>${esc(Describe.cardName(c.evolve.into))}</b> after ${esc(c.evolve.after)} runs</div>`);
+  if (c.hatch) extra.push(`<div>Hatches <b>${esc(Describe.enemyName(c.hatch))}</b> if discarded unplayed</div>`);
+  return `<div class="shead"><h2 id="pv-name">${esc(c.name)}</h2><button class="close" data-close>Close</button></div>
+    <div id="pv-face">${cardFaceHtml(c)}</div>
+    ${summary ? `<div class="hint"><span class="lbl">Upgrade changes</span><br>${esc(summary)}</div>` : ""}
+    ${extra.length ? `<div class="gloss">${extra.join("")}</div>` : ""}
+    <div class="kv"><span>id <b>${esc(id)}</b></span><span>file <b>${esc(file || "new")}</b></span></div>
+    <div id="pv-gloss">${glossFor([Describe.cardText(c, false), Describe.cardText(c, true)])}</div>`;
+}
+function movesHtml(e, id) {
+  const b = base.enemy[id];
+  const rulesChanged = b && JSON.stringify(e.rules || null) !== JSON.stringify(b.raw.rules || null);
+  const rules = !rulesChanged && b ? b.rules : [];
+  const phases = (e.rules && e.rules.phases) || [];
+  return `<div class="moves"><span class="lbl">Moves ${e.random_start ? "(starts on a random move)" : "(in order, then repeats)"}</span>
+    ${(e.moves || []).map((m) => `<div class="move"><div class="mname">${esc(m.name)}</div><div>${esc(Describe.enemyMoveText(m))}</div></div>`).join("")}</div>
+    ${phases.map((p, i) => `<div class="moves"><span class="lbl">Phase ${i + 2} at ${Math.round((p.at || 0.5) * 100)}% HP</span>${(p.moves || []).map((m) => `<div class="move"><div class="mname">${esc(m.name)}</div><div>${esc(Describe.enemyMoveText(m))}</div></div>`).join("")}</div>`).join("")}
+    ${rules.length ? `<div class="moves"><span class="lbl">Boss rules</span>${rules.map(([n, t]) => `<div class="rule"><b>${esc(n)}</b><br>${esc(t)}</div>`).join("")}</div>` : ""}
+    ${rulesChanged ? `<div class="hint">Boss rules edited. Their text updates once the change is merged.</div>` : ""}`;
+}
+function enemySheet(id, e) {
+  const info = enemyInfo(id);
+  const hp = Array.isArray(e.hp) ? e.hp.join("–") : e.hp;
+  return `<div class="shead"><h2 id="pv-name">${esc(e.name)}</h2><button class="close" data-close>Close</button></div>
+    <div class="cardface" style="--fc:${info.crew ? fc(info.crew) : "var(--line)"}">
+      <div class="facetop"><span class="cost" style="font-size:12px">${esc(hp)}</span><span class="pill k-${info.kind}">${info.kind}</span>
+      <span class="meta">${info.acts.length ? "Act " + info.acts.join("/") : ""}${info.crew ? " · " + esc(crewName(info.crew)) : ""}${e.hp_mult ? " · HP x" + esc(e.hp_mult) : ""}</span></div>
+      <div id="pv-moves">${movesHtml(e, id)}</div>
+    </div>
+    ${info.encs.length ? `<div class="gloss"><span class="lbl">Shows up in</span><div class="encs">${info.encs.map((x) =>
+      `<span class="chip" title="${esc((x.enemies || []).map(Describe.enemyName).join(", "))}">${esc(x.id)} · ${x.kind}${x.tier ? " t" + x.tier : ""}${x.act ? " a" + x.act : ""}</span>`).join("")}</div></div>` : ""}
+    <div class="kv"><span>id <b>${esc(id)}</b></span><span>file <b>${esc(info.file || "new")}</b></span></div>
+    <div id="pv-gloss">${glossFor((e.moves || []).map((m) => Describe.enemyMoveText(m)))}</div>`;
+}
+
+// ---------- editor ----------
+let ED = null; // {kind,id,draft,orig}
+function editorHtml(kind, id, obj) {
+  const ed = edits[key(kind, id)];
+  const fields = kind === "card" ? `
+    <div class="fields">
+      <label class="field"><span class="lbl">Name</span><input id="f-name"></label>
+      <label class="field"><span class="lbl">RAM cost</span><input id="f-cost" inputmode="numeric"></label>
+      <label class="field"><span class="lbl">Upgraded cost</span><input id="f-ucost" placeholder="same" inputmode="numeric"></label>
+      <label class="field"><span class="lbl">Rarity</span><select id="f-rarity">${RAR.map((r) => `<option>${r}</option>`).join("")}</select></label>
+      <label class="field"><span class="lbl">Type</span><select id="f-type">${TYPES.map((t) => `<option value="${t}">${T.types[t]}</option>`).join("")}</select></label>
+      <label class="field"><span class="lbl">Crew</span><select id="f-faction">${CREWS.map((f) => `<option value="${f}">${crewName(f)}</option>`).join("")}</select></label>
+    </div>` : `
+    <div class="fields">
+      <label class="field"><span class="lbl">Name</span><input id="f-name"></label>
+      <label class="field"><span class="lbl">HP min</span><input id="f-hp0" inputmode="numeric"></label>
+      <label class="field"><span class="lbl">HP max</span><input id="f-hp1" inputmode="numeric"></label>
+    </div>`;
+  return `<details class="ed" id="editor"${ed ? " open" : ""}><summary>Edit${ed ? " · saved edit" : ""}</summary><div class="edbody">
+    ${fields}
+    <div class="tweak" id="tweaks"></div>
+    <details><summary class="hint">Full JSON (every field)</summary><textarea class="json" id="f-json" spellcheck="false" autocapitalize="off"></textarea></details>
+    <div class="errs" id="f-errs"></div>
+    <input class="note" id="f-note" placeholder="Note for the PR (optional): why this change">
+    <div class="actions">
+      <button class="btn primary" id="f-save">Save edit</button>
+      <button class="btn" id="f-reset">Undo unsaved</button>
+      ${ed ? `<button class="btn danger" id="f-revert">${ed.isNew ? "Delete new entry" : "Revert to repo version"}</button>` : ""}
+      <button class="btn" id="f-dup">Duplicate as new</button>
+    </div>
+    <div class="status" id="f-status"></div>
+  </div></details>`;
+}
+function numericLeaves(obj, prefix, out) {
+  if (Array.isArray(obj)) obj.forEach((v, i) => numericLeaves(v, prefix.concat(i), out));
+  else if (obj && typeof obj === "object") Object.entries(obj).forEach(([k, v]) => numericLeaves(v, prefix.concat(k), out));
+  else if (typeof obj === "number") out.push(prefix);
+  return out;
+}
+const getP = (o, p) => p.reduce((a, k) => (a == null ? a : a[k]), o);
+const setP = (o, p, v) => { const last = p[p.length - 1]; const parent = getP(o, p.slice(0, -1)); parent[last] = v; };
+function tweakGroups(kind, d) {
+  // one group per top-level effect / move, numbers inside it get steppers
+  const groups = [];
+  if (kind === "card") {
+    (d.effects || []).forEach((e, i) => groups.push({ title: "Base", path: ["effects", i], text: () => Describe.describe(getP(ED.draft, ["effects", i]) || {}) }));
+    ((d.upgrade || {}).effects || []).forEach((e, i) => groups.push({ title: "Recompiled", path: ["upgrade", "effects", i], text: () => Describe.describe(getP(ED.draft, ["upgrade", "effects", i]) || {}) }));
+    (d.on_dump || []).forEach((e, i) => groups.push({ title: "When dumped", path: ["on_dump", i], text: () => Describe.describe(getP(ED.draft, ["on_dump", i]) || {}) }));
+  } else {
+    (d.moves || []).forEach((m, i) => groups.push({ title: m.name, path: ["moves", i, "effects"], text: () => Describe.enemyMoveText(getP(ED.draft, ["moves", i]) || {}) }));
+    ((d.rules || {}).phases || []).forEach((p, pi) => (p.moves || []).forEach((m, i) =>
+      groups.push({ title: `Phase ${pi + 2}: ${m.name}`, path: ["rules", "phases", pi, "moves", i, "effects"], text: () => Describe.enemyMoveText(getP(ED.draft, ["rules", "phases", pi, "moves", i]) || {}) })));
+  }
+  return groups;
+}
+function renderTweaks() {
+  const box = $("#tweaks");
+  if (!box) return;
+  const groups = tweakGroups(ED.kind, ED.draft);
+  box.innerHTML = groups.length ? `<span class="lbl">Numbers (tap − / +)</span>` + groups.map((g, gi) => {
+    const leaves = numericLeaves(getP(ED.draft, g.path), [], []);
+    if (!leaves.length) return "";
+    return `<div class="tgroup"><div class="ttext"><span class="meta">${esc(g.title)}</span> · <span data-tt="${gi}">${esc(g.text())}</span></div>${leaves.map((lp) => {
+      const full = g.path.concat(lp);
+      const label = lp.filter((x) => typeof x === "string").slice(-2).join(" ").replace(/_/g, " ");
+      const opName = (getP(ED.draft, g.path.concat(lp.slice(0, -1))) || {}).op;
+      return `<div class="steprow"><span class="sname">${esc((opName ? opName + " · " : "") + label)}</span><span class="stepper">
+        <button data-step="-1" data-p='${esc(JSON.stringify(full))}' aria-label="Decrease">−</button>
+        <input data-p='${esc(JSON.stringify(full))}' value="${esc(getP(ED.draft, full))}" inputmode="decimal" aria-label="${esc(label)}">
+        <button data-step="1" data-p='${esc(JSON.stringify(full))}' aria-label="Increase">+</button></span></div>`;
+    }).join("")}</div>`;
+  }).join("") : "";
+}
+function initEditor(kind, id, obj) {
+  ED = { kind, id, draft: clone(obj), orig: clone(obj) };
+  const ed = edits[key(kind, id)];
+  if (ed && ed.note) $("#f-note").value = ed.note;
+  syncFields();
+  renderTweaks();
+  $("#f-json").value = JSON.stringify(ED.draft, null, 1);
+  validateDraft();
+}
+function syncFields() {
+  const d = ED.draft;
+  $("#f-name").value = d.name || "";
+  if (ED.kind === "card") {
+    $("#f-cost").value = d.cost;
+    $("#f-ucost").value = d.upgrade && d.upgrade.cost !== undefined ? d.upgrade.cost : "";
+    $("#f-rarity").value = d.rarity || "common";
+    $("#f-type").value = d.type || "skill";
+    $("#f-faction").value = d.faction || "neutral";
+  } else {
+    const hp = Array.isArray(d.hp) ? d.hp : [d.hp, d.hp];
+    $("#f-hp0").value = hp[0]; $("#f-hp1").value = hp[1];
+  }
+}
+function parseNum(v) { const s = String(v).trim(); if (s.toUpperCase() === "X") return "X"; const n = Number(s); return s === "" || !Number.isFinite(n) ? null : n; }
+function fieldChanged(el) {
+  const d = ED.draft;
+  const v = el.value;
+  switch (el.id) {
+    case "f-name": d.name = v; break;
+    case "f-cost": { const n = parseNum(v); if (n !== null) d.cost = n; break; }
+    case "f-ucost": { const n = parseNum(v); d.upgrade = d.upgrade || {}; if (n === null) delete d.upgrade.cost; else d.upgrade.cost = n; break; }
+    case "f-rarity": d.rarity = v; break;
+    case "f-type": d.type = v; break;
+    case "f-faction": d.faction = v; break;
+    case "f-hp0": case "f-hp1": { const n = parseNum(v); if (n === null || n === "X") break; d.hp = Array.isArray(d.hp) ? d.hp : [d.hp, d.hp]; d.hp[el.id === "f-hp0" ? 0 : 1] = n; break; }
+    default: return;
+  }
+  draftChanged({ json: true });
+}
+function draftChanged({ json = false, tweaks = false } = {}) {
+  if (json) $("#f-json").value = JSON.stringify(ED.draft, null, 1);
+  if (tweaks) renderTweaks();
+  else document.querySelectorAll("[data-tt]").forEach((el) => { const g = tweakGroups(ED.kind, ED.draft)[+el.dataset.tt]; if (g) el.textContent = g.text(); });
+  updatePreview();
+  validateDraft();
+}
+function updatePreview() {
+  if (!ED) return;
+  const d = ED.draft;
+  const name = $("#pv-name"); if (name) name.textContent = d.name || "(no name)";
+  if (ED.kind === "card") {
+    const f = $("#pv-face"); if (f) f.innerHTML = cardFaceHtml(d);
+    const g = $("#pv-gloss"); if (g) g.innerHTML = glossFor([Describe.cardText(d, false), Describe.cardText(d, true)]);
+  } else {
+    const m = $("#pv-moves"); if (m) m.innerHTML = movesHtml(d, ED.id);
+  }
+}
+const KNOWN_EXTRA = ["op", "per", "per_mult", "per_key", "loop"];
+function validateEffects(list, where, errs) {
+  if (!Array.isArray(list)) { errs.push(where + ": should be a list"); return; }
+  list.forEach((e, i) => {
+    const w = `${where}[${i}]`;
+    if (!e || typeof e !== "object") { errs.push(w + ": not an object"); return; }
+    const params = T.ops[e.op];
+    if (!params) { errs.push(`${w}: unknown op "${e.op}"`); return; }
+    Object.keys(e).forEach((k) => { if (!params.includes(k) && !KNOWN_EXTRA.includes(k)) errs.push(`${w} (${e.op}): unknown param "${k}"`); });
+    if (e.status !== undefined && !T.statuses[e.status]) errs.push(`${w}: unknown status "${e.status}"`);
+    if (e.card !== undefined && T.names.cards[e.card] === undefined) errs.push(`${w}: no card with id "${e.card}"`);
+    if (e.enemy !== undefined && T.names.enemies[e.enemy] === undefined) errs.push(`${w}: no enemy with id "${e.enemy}"`);
+    if (Array.isArray(e.effects)) validateEffects(e.effects, w + ".effects", errs);
+    if (e.rule && e.rule.triggers) e.rule.triggers.forEach((t, ti) => validateEffects(t.effects || [], `${w}.rule.triggers[${ti}]`, errs));
+  });
+}
+function validateDraft() {
+  const d = ED.draft, errs = [];
+  if (!d.id) errs.push("id is missing");
+  if (!d.name) errs.push("name is missing");
+  if (base[ED.kind][ED.id] && d.id !== ED.id) errs.push(`id can't change on an existing entry (keep "${ED.id}"); use Duplicate as new`);
+  if (!base[ED.kind][ED.id] && d.id !== ED.id && current(ED.kind, d.id)) errs.push(`id "${d.id}" is already taken`);
+  if (ED.kind === "card") {
+    if (!(d.cost === "X" || Number.isInteger(d.cost))) errs.push("cost must be a whole number or X");
+    if (!RAR.includes(d.rarity || "common")) errs.push(`unknown rarity "${d.rarity}"`);
+    if (!TYPES.includes(d.type || "skill")) errs.push(`unknown type "${d.type}"`);
+    validateEffects(d.effects || [], "effects", errs);
+    if (d.upgrade && d.upgrade.effects) validateEffects(d.upgrade.effects, "upgrade.effects", errs);
+    if (d.on_dump) validateEffects(d.on_dump, "on_dump", errs);
+  } else {
+    if (!Array.isArray(d.hp) || d.hp.length !== 2) errs.push("hp must be [min, max]");
+    else if (d.hp[0] > d.hp[1]) errs.push("HP min is above HP max");
+    (d.moves || []).forEach((m, i) => validateEffects(m.effects || [], `moves[${i}] ${m.name || ""}`, errs));
+  }
+  const same = JSON.stringify(d) === JSON.stringify(ED.orig);
+  $("#f-errs").innerHTML = errs.map((e) => `<div>${esc(e)}</div>`).join("");
+  $("#f-save").disabled = errs.length > 0 || (same && !!edits[key(ED.kind, ED.id)] && ($("#f-note").value || "") === (edits[key(ED.kind, ED.id)].note || ""));
+  return errs;
+}
+
+// ---------- saving edits ----------
+const docId = (kind, id) => kind + "__" + id;
+function showStatus(msg, bad) { const s = $("#f-status"); if (s) { s.textContent = msg; s.className = "status" + (bad ? " bad" : ""); } }
+function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => (t.hidden = true), 2600); }
+$("#toast").addEventListener("click", () => ($("#toast").hidden = true));
+
+function localSave() { try { localStorage.setItem("sdd-edits", JSON.stringify(edits)); } catch (e) {} }
+async function saveEdit() {
+  if (validateDraft().length) return;
+  const kind = ED.kind;
+  const b = base[kind][ED.id];
+  const id = b ? ED.id : ED.draft.id;
+  if (!b && id !== ED.id) { delete edits[key(kind, ED.id)]; ED.id = id; S.sel = id; }
+  const same = b && JSON.stringify(ED.draft) === JSON.stringify(b.raw);
+  const prev = edits[key(kind, id)];
+  const rec = { kind, id, file: b ? b.file : (prev && prev.file) || guessFile(kind, ED.draft), data: clone(ED.draft),
+    note: $("#f-note").value.trim(), isNew: !b, updated: new Date().toISOString(), built: DATA.commit, status: "" };
+  if (same) return revertEdit();
+  edits[key(kind, id)] = rec;
+  ED.orig = clone(ED.draft);
+  localSave();
+  $("#sheet").dataset.keep = "0";
+  render();
+  if (dbRef) {
+    try { await dbRef.collection("edits").doc(docId(kind, id)).set({ kind, id, file: rec.file, data: JSON.stringify(rec.data), note: rec.note, isNew: rec.isNew, updated: rec.updated, built: rec.built });
+      rec.synced = true; localSave();
+      showStatus("Saved. Claude can read it from here."); toast("Edit saved");
+    } catch (e) { showStatus("Saved on this device only (" + (e.code || "error") + "). Use Edits → Download to send it.", true); }
+  } else showStatus("Saved on this device only. Use Edits → Download to send it.", true);
+}
+async function revertEdit(k) {
+  const kk = k || key(ED.kind, ED.id);
+  const rec = edits[kk];
+  if (!rec) return;
+  delete edits[kk];
+  localSave();
+  if (dbRef) { try { await dbRef.collection("edits").doc(docId(rec.kind, rec.id)).delete(); } catch (e) { toast("Couldn't remove the saved copy: " + (e.code || "error")); } }
+  if (rec.isNew && S.sel === rec.id) S.sel = null;
+  $("#sheet").dataset.keep = "0";
+  render();
+  toast("Reverted " + (rec.data.name || rec.id));
+}
+function guessFile(kind, d) {
+  if (kind === "card") return "data/cards/" + ((d.faction || "neutral") === "neutral" ? "neutral" : d.faction) + ".json";
+  return d.faction ? "data/enemies/factions.json" : "data/enemies/act1.json";
+}
+function duplicate() {
+  const kind = ED.kind;
+  let n = 2, id = ED.draft.id + "_v2";
+  while (current(kind, id)) id = ED.draft.id + "_v" + ++n;
+  const d = clone(ED.draft); d.id = id; d.name = (d.name || "") + " v" + n;
+  edits[key(kind, id)] = { kind, id, file: guessFile(kind, d), data: d, note: "", isNew: true, updated: new Date().toISOString(), draftOnly: true };
+  // not stored until saved: mark as draft
+  S.sel = id;
+  $("#sheet").dataset.keep = "0";
+  render();
+  delete edits[key(kind, id)]; // stays visible through ED until saved
+  ED.orig = {};
+  validateDraft();
+  showStatus("New copy. Change the id in Full JSON if you like, then Save edit.");
+}
+
+// ---------- edits tab ----------
+function shortDiff(a, b, path = "", out = []) {
+  if (out.length > 30) return out;
+  if (JSON.stringify(a) === JSON.stringify(b)) return out;
+  if (a && b && typeof a === "object" && typeof b === "object" && Array.isArray(a) === Array.isArray(b)) {
+    new Set([...Object.keys(a), ...Object.keys(b)]).forEach((k) => shortDiff(a[k], b[k], path ? path + "." + k : k, out));
+    return out;
+  }
+  out.push(`${path}: <del>${esc(JSON.stringify(a) ?? "—")}</del> → <ins>${esc(JSON.stringify(b) ?? "—")}</ins>`);
+  return out;
+}
+function renderChanges() {
+  const list = $("#list");
+  const recs = Object.values(edits).sort((a, b) => (a.updated < b.updated ? 1 : -1));
+  const dbMsg = { connected: "Saved edits sync here, and Claude can read them straight from this page.",
+    local: "This view can't reach shared storage, so edits stay on this device. Download them and drop the file into the project chat.",
+    connecting: "Connecting to shared storage…" }[dbState];
+  $("#sum").textContent = recs.length ? `${recs.length} saved edit${recs.length === 1 ? "" : "s"}` : "No edits yet";
+  list.innerHTML = `<div class="hint">${dbMsg} To get them into the game, tell Claude in the project chat: “apply my data deck edits”.</div>
+    <div class="actions"><button class="btn" id="dl" ${recs.length ? "" : "disabled"}>Download edits (.json)</button><button class="btn" id="cp" ${recs.length ? "" : "disabled"}>Copy edits</button></div>
+    ${recs.map((r) => {
+      const b = base[r.kind][r.id];
+      const lines = b ? shortDiff(b.raw, r.data) : ["new entry in " + esc(r.file)];
+      return `<div class="chg" style="--fc:${fc(r.data.faction)}"><div class="rhead"><span class="rname">${esc(r.data.name || r.id)}</span>
+        <span class="pill ${r.isNew ? "new" : "edit"}">${r.isNew ? "new" : r.kind}</span><span class="meta">${esc(r.file)}</span>
+        ${r.status ? `<span class="pill new">${esc(r.status)}</span>` : ""}</div>
+        ${r.note ? `<div>${esc(r.note)}</div>` : ""}
+        ${lines.map((l) => `<div class="diffline">${l}</div>`).join("")}
+        ${r.kind === "card" ? `<div class="hint">${esc(Describe.cardText(r.data, false))}</div>` : ""}
+        <div class="actions"><button class="btn" data-open="${esc(r.kind)}:${esc(r.id)}">Open</button><button class="btn danger" data-revert="${esc(key(r.kind, r.id))}">Revert</button></div></div>`;
+    }).join("")}`;
+}
+function exportText() {
+  return JSON.stringify({ format: "tcgspire-data-edits", version: 1, built_from: DATA.commit, exported: new Date().toISOString(),
+    edits: Object.values(edits).map((r) => ({ kind: r.kind, id: r.id, file: r.file, isNew: !!r.isNew, note: r.note || "", data: r.data })) }, null, 1);
+}
+async function download() {
+  const dl = await claude.use("downloads").catch(() => null);
+  if (!dl) { copyEdits(); return; }
+  try { await dl.save({ filename: "data-deck-edits.json", data: exportText() }); toast("Saved file"); }
+  catch (e) { if (e && e.code !== "declined") copyEdits(); }
+}
+async function copyEdits() {
+  try { await navigator.clipboard.writeText(exportText()); toast("Copied. Paste it into the project chat."); }
+  catch (e) { toast("Copy blocked. Download instead."); }
+}
+
+// ---------- events ----------
+document.addEventListener("click", (ev) => {
+  const t = ev.target.closest("button, [data-close]");
+  if (!t) return;
+  if (t.classList.contains("tab")) { S.view = t.dataset.view; S.sel = null; S.limit = 60; try { localStorage.setItem("sdd-view", S.view); } catch (e) {} render(); window.scrollTo(0, 0); return; }
+  if (t.id === "ftoggle") { const f = $("#filters"); f.hidden = !f.hidden; t.setAttribute("aria-expanded", !f.hidden); return; }
+  if (t.dataset.g !== undefined) { const set = S.f[S.view][t.dataset.g]; set.has(t.dataset.v) ? set.delete(t.dataset.v) : set.add(t.dataset.v); S.limit = 60; renderFilters(); renderList(); return; }
+  if (t.id === "fclear") { Object.values(S.f[S.view]).forEach((s) => s.clear()); renderFilters(); renderList(); return; }
+  if (t.id === "more") { S.limit += 60; renderList(); return; }
+  if (t.classList.contains("row")) { S.sel = t.dataset.id; $("#sheet").dataset.keep = "0"; renderList(); renderSheet(); return; }
+  if (t.dataset.close !== undefined) { S.sel = null; renderList(); renderSheet(); return; }
+  if (t.dataset.step) { const p = JSON.parse(t.dataset.p); const v = Number(getP(ED.draft, p)) + Number(t.dataset.step); setP(ED.draft, p, v); t.parentElement.querySelector("input").value = v; draftChanged({ json: true }); return; }
+  if (t.id === "f-save") { saveEdit(); return; }
+  if (t.id === "f-reset") { initEditor(ED.kind, ED.id, current(ED.kind, ED.id) || ED.orig); updatePreview(); showStatus(""); return; }
+  if (t.id === "f-revert") { revertEdit(); return; }
+  if (t.id === "f-dup") { duplicate(); return; }
+  if (t.dataset.revert) { revertEdit(t.dataset.revert); return; }
+  if (t.dataset.open) { const [k, id] = t.dataset.open.split(":"); S.view = k === "card" ? "cards" : "enemies"; S.sel = id; $("#sheet").dataset.keep = "0"; render(); return; }
+  if (t.id === "dl") { download(); return; }
+  if (t.id === "cp") { copyEdits(); return; }
+});
+document.addEventListener("input", (ev) => {
+  const el = ev.target;
+  if (el.id === "q") { S.q = el.value; S.limit = 60; renderList(); return; }
+  if (!ED) return;
+  if (el.dataset.p) { const n = Number(el.value); if (el.value.trim() !== "" && Number.isFinite(n)) { setP(ED.draft, JSON.parse(el.dataset.p), n); draftChanged({ json: true }); } return; }
+  if (el.id === "f-json") {
+    try { const d = JSON.parse(el.value); if (!d || typeof d !== "object" || Array.isArray(d)) throw new Error("not an object");
+      ED.draft = d; syncFields(); renderTweaks(); updatePreview(); validateDraft(); }
+    catch (e) { $("#f-errs").textContent = "JSON: " + e.message; $("#f-save").disabled = true; }
+    return;
+  }
+  if (el.id === "f-note") { validateDraft(); return; }
+  fieldChanged(el);
+});
+document.addEventListener("change", (ev) => {
+  if (ev.target.id === "sort") { S.sort[S.view] = ev.target.value; renderList(); return; }
+  if (ED && ev.target.tagName === "SELECT" && ev.target.id.startsWith("f-")) fieldChanged(ev.target);
+});
+document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && S.sel) { S.sel = null; renderList(); renderSheet(); } });
+
+// ---------- boot ----------
+try { const saved = JSON.parse(localStorage.getItem("sdd-edits") || "{}"); Object.assign(edits, saved); } catch (e) {}
+render();
+(async () => {
+  const timer = setTimeout(() => { if (dbState === "connecting") { dbState = "local"; if (S.view === "changes") renderList(); } }, 10000);
+  const db = window.claude ? await claude.use("db").catch(() => null) : null;
+  if (!db) { clearTimeout(timer); dbState = "local"; if (S.view === "changes") renderList(); return; }
+  dbRef = db;
+  db.collection("edits").onSnapshot((snap) => {
+    clearTimeout(timer);
+    const first = dbState !== "connected";
+    dbState = "connected";
+    // shared store is the record: replace local copies with it, but push up local-only edits made offline
+    const remote = {};
+    snap.docs.forEach((d) => { const v = d.data(); if (!v) return; try { remote[key(v.kind, v.id)] = Object.assign({}, v, { data: JSON.parse(v.data) }); } catch (e) {} });
+    // edits made while offline (never synced) go up; synced ones missing remotely were applied or reverted elsewhere
+    Object.entries(edits).forEach(([k, r]) => {
+      if (remote[k]) { delete edits[k]; return; }
+      if (first && !r.synced) { r.synced = true; remote[k] = r; db.collection("edits").doc(docId(r.kind, r.id)).set({ kind: r.kind, id: r.id, file: r.file, data: JSON.stringify(r.data), note: r.note || "", isNew: !!r.isNew, updated: r.updated, built: r.built || DATA.commit, status: "" }).catch(() => {}); return; }
+      delete edits[k];
+    });
+    Object.values(remote).forEach((r) => (r.synced = true));
+    Object.assign(edits, remote);
+    localSave();
+    const sh = $("#sheet");
+    const editing = sh.contains(document.activeElement);
+    if (!editing) sh.dataset.keep = "0";
+    render();
+  }, () => { clearTimeout(timer); dbState = "local"; if (S.view === "changes") renderList(); });
+})();
+</script>
