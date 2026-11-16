@@ -69,7 +69,7 @@
 "bloom_a2b": {"faction": "bloom", "act": 2, "kind": "boss", "enemies": ["gene_saint"]},
 "void_a1b": {"faction": "void", "kind": "boss", "enemies": ["zero_prime"]},
 "void_a2b": {"faction": "void", "act": 2, "kind": "boss", "enemies": ["the_absence"]},
-"chrome_a1b": {"faction": "chrome", "kind": "boss", "enemies": ["hive_overseer"]},
+"chrome_a1b": {"faction": "chrome", "kind": "boss", "enemies": ["hive_overseer", "sentry_drone"]},
 "chrome_a2b": {"faction": "chrome", "act": 2, "kind": "boss", "enemies": ["chrome_queen", "sentry_drone", "sentry_drone"]},
 "noise_a1b": {"faction": "noise", "kind": "boss", "enemies": ["dj_feedback"]},
 "noise_a2b": {"faction": "noise", "act": 2, "kind": "boss", "enemies": ["the_broadcast", "co_anchor"]},
