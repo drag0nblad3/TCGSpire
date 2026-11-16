@@ -258,3 +258,22 @@ func test_bot_finishes_every_boss_and_elite() -> void:
 		var r := Bot.run_combat(c, 120)
 		check(not r["timeout"], "bot stuck on %s: %s" % [id, c.summary()])
 		check(r["won"], "bot lost a 5000 HP fight on %s" % id)
+
+
+func test_daemons_aim_past_a_shielded_boss() -> void:
+	var c := _fight("chrome_a3b")
+	var boss := _enemy(c, "hive_throne")
+	var rule := {"triggers": [{"on": "turn_end", "effects": [{"op": "damage", "amount": 5, "to": "front"}]}]}
+	c.summon("Drone", 3, rule)
+	var pylon_hp := 0
+	for e in c.enemies:
+		if e.def_id == "aegis_drone":
+			pylon_hp += e.hp + e.ward
+	var boss_hp := boss.hp
+	Talismans.fire(c, "turn_end")
+	var after := 0
+	for e in c.enemies:
+		if e.def_id == "aegis_drone":
+			after += e.hp + e.ward
+	eq(boss.hp, boss_hp, "shielded boss untouched")
+	eq(pylon_hp - after, 5, "the drone hit a pylon instead")

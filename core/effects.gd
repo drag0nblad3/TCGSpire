@@ -339,7 +339,13 @@ static func targets(c: Combat, e: Dictionary, src: Fighter, target: Fighter, def
 static func _front(c: Combat, foes: Array, friendly: bool) -> Array:
 	if foes.is_empty():
 		return []
-	return [BossRules.guard_target(c, foes[0])] if friendly else [foes[0]]
+	if not friendly:
+		return [foes[0]]
+	# Daemons aim past a shielded boss at the first enemy they can hurt (its pylons).
+	for f in foes:
+		if not BossRules.shielded(c, f):
+			return [BossRules.guard_target(c, f)]
+	return [BossRules.guard_target(c, foes[0])]
 
 
 static func describe(e: Dictionary) -> String:
