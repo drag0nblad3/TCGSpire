@@ -115,7 +115,17 @@ func test_twin_is_restored_unless_both_fall() -> void:
 	c.end_turn()
 	var back := _enemy(c, "surgeon_clone")
 	check(back != null, "twin restored")
-	eq(back.hp, maxi(roundi(back.max_hp * 0.4), 1), "at the listed share of HP")
+	var full := clone.max_hp
+	eq(back.hp, maxi(roundi(full * 0.4), 1), "at the listed share of HP")
+	eq(back.max_hp, back.hp, "that share is its new max HP")
+	# A second crash restores a share of the shrunken max.
+	c.deal_damage(back, 9999, "player", "lose_hp")
+	c.end_turn()
+	c.end_turn()
+	var again := _enemy(c, "surgeon_clone")
+	check(again != null and again != back, "restored again")
+	eq(again.max_hp, maxi(roundi(back.max_hp * 0.4), 1), "each Restore is smaller")
+	back = again
 	# Both down before the Restore lands: the fight ends.
 	c.deal_damage(back, 9999, "player", "lose_hp")
 	c.deal_damage(chief, 9999, "player", "lose_hp")

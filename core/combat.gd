@@ -664,12 +664,16 @@ func rule_sum(flag: String) -> int:
 
 ## Enemy-side summon (op "spawn"). Max 5 enemies alive.
 ## hp_pct < 1 brings it in hurt (a restored twin); those are not "spawned" helpers.
-func spawn(enemy_id: String, hp_pct: float = 1.0) -> bool:
+## `base_max` > 0 (twin Restore): the share is of that max HP, and the result becomes the new max.
+func spawn(enemy_id: String, hp_pct: float = 1.0, base_max: int = 0) -> bool:
 	if living(enemies).size() >= 5 or not db.enemies.has(enemy_id):
 		return false
 	var f := _make_enemy(enemy_id)
 	f.spawned = hp_pct >= 1.0
-	if hp_pct < 1.0:
+	if base_max > 0:
+		f.max_hp = maxi(roundi(base_max * hp_pct), 1)
+		f.hp = f.max_hp
+	elif hp_pct < 1.0:
 		f.hp = maxi(roundi(f.max_hp * hp_pct), 1)
 	var pool := str(f.rules.get("pool", ""))
 	if pool != "" and pools.has(pool):

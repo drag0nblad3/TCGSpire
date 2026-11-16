@@ -25,7 +25,7 @@ const DESC := {
 	"tide": ["Tide", "The boss swaps between high tide (takes less damage, attacks) and low tide (takes extra damage, only defends). The chip says when it turns."],
 	"gauge": ["Heat gauge", "Each of your attack hits adds 1 heat. When the gauge is full the boss vents on its next move, on top of that move, and the gauge resets. Few big hits fill it slower than many small ones."],
 	"jam": ["Signal jam", "On some turns the intent is hidden. Exposed on the enemy, or running an Interrupt on it, clears the jam for that turn."],
-	"twin": ["Twin Cores", "When one twin crashes, the survivor spends its move after next restoring it. Crash both before then, or Interrupt the Restore (it counts as Repair) to stop it for good."],
+	"twin": ["Twin Cores", "When one twin crashes, the survivor spends its move after next restoring it with a share of its max HP, which becomes its new max HP, so each Restore is smaller. Crash both before then, or Interrupt the Restore (it counts as Repair) to stop it for good."],
 	"pool": ["Shared HP", "These bodies share one HP total. Hit whichever is weakest to your programs; hit-all programs count once per body. Some bodies shut down as the total drops."],
 	"taken": ["Resistances", "Takes more or less damage from one kind of damage, such as attacks or Virus."],
 	"shielded_by": ["Shield pylons", "The boss takes no damage while a pylon is up. Crash the pylons to open a window; they come back after a few moves."],
@@ -220,6 +220,7 @@ static func on_death(c: Combat, t: Fighter) -> void:
 		for p in alive:
 			if p.rules.has("twin") and not p.state.has("restore"):
 				p.state["restore"] = t.def_id
+				p.state["restore_max"] = t.max_hp
 				c.emit("twin_down", {"target": t.id, "by": p.id})
 				break
 	if t.rules.has("bond"):
@@ -258,8 +259,9 @@ static func on_player_turn(c: Combat) -> void:
 			c.emit("tide", {"target": en.id, "state": "low" if low else "high"})
 		if en.state.has("restore"):
 			var pct := float(en.rules.get("twin", {}).get("pct", 0.5))
-			en.override = {"name": "Restore", "effects": [{"op": "revive", "enemy": str(en.state["restore"]), "pct": pct}]}
+			en.override = {"name": "Restore", "effects": [{"op": "revive", "enemy": str(en.state["restore"]), "pct": pct, "max": int(en.state.get("restore_max", 0))}]}
 			en.state.erase("restore")
+			en.state.erase("restore_max")
 
 
 ## Just before enemy `en` takes its move (also when it is Lagged).
@@ -377,7 +379,7 @@ static func describe(r: Dictionary, c: Combat = null, f: Fighter = null) -> Arra
 	if r.has("jam"):
 		out.append(["Signal jam", "Every %s turn its intent is hidden. Exposed on it, or running an Interrupt on it, clears the jam for that turn." % _ordinal(int(r["jam"].get("every", 2)))])
 	if r.has("twin"):
-		out.append(["Twin Cores", "When one twin crashes, the survivor uses its move after next to restore it at %d%% HP. Crash both before then, or Interrupt the Restore (as Repair) to stop it for good." % roundi(float(r["twin"].get("pct", 0.5)) * 100)])
+		out.append(["Twin Cores", "When one twin crashes, the survivor uses its move after next to restore it at %d%% of its max HP, which becomes its new max (each Restore is smaller). Crash both before then, or Interrupt the Restore (as Repair) to stop it for good." % roundi(float(r["twin"].get("pct", 0.5)) * 100)])
 	if r.has("pool"):
 		var leave := (" This body shuts down when the total falls to %d%%." % roundi(float(r["leaves_at"]) * 100)) if r.has("leaves_at") else ""
 		out.append(["Shared HP", "Shares one HP total with the other bodies. Damage to any of them counts.%s" % leave])

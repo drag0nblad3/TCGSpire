@@ -11,6 +11,9 @@ var boss_decks := {}
 var enc_stats := {}
 var boss_src := {}
 var boss_n := 0
+## focus=<encounter>: the damage-by-enemy table covers that fight instead of the act-3 Core.
+var focus := ""
+var restores := 0
 
 
 func _initialize() -> void:
@@ -20,6 +23,7 @@ func _initialize() -> void:
 		if kv.size() == 2:
 			opts[kv[0]] = kv[1]
 	var db := CardDB.load_from(CardDB.DATA_ROOT)
+	focus = str(opts.get("focus", ""))
 	# boss3=<encounter>: every act-3 Core is swapped for this one (a probe of one boss vs each crew's deck).
 	if opts.has("boss3"):
 		for id in db.encounters.keys():
@@ -68,6 +72,8 @@ func _initialize() -> void:
 		print("  faction %-8s offered %5d picked %4d (%4.1f%%) plays/run %5.1f" % [f, fac[f]["offered"], fac[f]["picked"], 100.0 * fac[f]["picked"] / maxf(fac[f]["offered"], 1.0), fac[f]["plays"] / float(n)])
 	if not boss_src.is_empty():
 		print("-- act-3 boss fights: damage to you by enemy, damage you dealt by enemy (per fight) --")
+		if focus != "":
+			print("  %s: twin crashes per fight %.2f" % [focus, restores / maxf(boss_n, 1)])
 		for k in boss_src:
 			print("  %-14s took %6.1f  dealt %6.1f" % [k, boss_src[k].get("took", 0.0) / maxf(boss_n, 1), boss_src[k].get("dealt", 0.0) / maxf(boss_n, 1)])
 	print("-- per encounter (act>=2 bosses/elites) --")
@@ -153,19 +159,25 @@ func _record(db: CardDB, run: RunState, node: Dictionary, c: Combat) -> void:
 		s["turns"] += turns
 		s["hp_in"] += hp_before
 		s["hp_lost"] += lost
-	if node["type"] == "boss" and run.act == 3:
+	if (focus == "" and node["type"] == "boss" and run.act == 3) or str(node.get("encounter", "")) == focus:
 		boss_n += 1
 		var ids := {}
 		for en in c.enemies:
 			ids[en.id] = en.def_id
+		var last_move := {}
 		for e in c.events:
+			if e["t"] == "twin_down":
+				restores += 1
+			if e["t"] == "enemy_move":
+				last_move[str(e["source"])] = str(e.get("move", ""))
 			if e["t"] != "damage":
 				continue
 			var tgt := str(e["target"])
 			var src := str(e.get("source", ""))
 			if tgt == "player" and ids.has(src):
-				var d: Dictionary = boss_src.get(ids[src], {})
-				boss_src[ids[src]] = d
+				var bkey: String = ids[src] + (":" + str(last_move.get(src, "")) if focus != "" else "")
+				var d: Dictionary = boss_src.get(bkey, {})
+				boss_src[bkey] = d
 				d["took"] = d.get("took", 0.0) + float(e["amount"])
 			elif ids.has(tgt):
 				var d2: Dictionary = boss_src.get(ids[tgt], {})
