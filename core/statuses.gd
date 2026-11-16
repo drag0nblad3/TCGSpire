@@ -15,6 +15,7 @@ const DEFS := {
 	"fortify": {"debuff": false, "desc": "Your Firewall stays up at the start of your turn."},
 	"frail": {"debuff": true, "desc": "Gain 25% less Firewall. Lose 1 stack at end of turn."},
 	"charge": {"debuff": false, "desc": "Stored power that some programs spend for big effects."},
+	"uplink": {"debuff": false, "desc": "Your daemons deal +1 damage per stack. Daemons ignore your Boost; this is their own."},
 	"stall": {"debuff": true, "desc": "Skips its next move, and that intent waits a turn. On or off: Lagging an enemy that is already Lagged does nothing."},
 }
 

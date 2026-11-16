@@ -28,6 +28,7 @@ const STATUS := {
 	"frail": "Fragmented",
 	"charge": "Buffer",
 	"stall": "Lagged",
+	"uplink": "Uplink",
 }
 
 const KEYWORD := {

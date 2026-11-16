@@ -488,8 +488,10 @@ func emit(t: String, data: Dictionary = {}) -> void:
 	events.append(data)
 
 
-func attack(src: Fighter, t: Fighter, base: int) -> int:
-	var amount := Statuses.modify_attack(base, src, t)
+## own_mods = false: a daemon rule's hit. It comes from you, but your Boost/Throttled don't
+## touch it; daemons have their own buffs (Uplink). The target's Exposed still counts.
+func attack(src: Fighter, t: Fighter, base: int, own_mods: bool = true) -> int:
+	var amount := Statuses.modify_attack(base, src if own_mods else null, t)
 	if t == player and src != null and enemies.has(src):
 		amount = maxi(amount - rule_sum("guard"), 0)
 	var dealt := deal_damage(t, amount, src.id if src != null else "")
