@@ -14,7 +14,7 @@ const FLAGS := {
 	"regen_slow_decay": "Your Patch loses only 1 stack per turn instead of half.",
 	"keep_ward": "Your Firewall isn't cleared at the start of your turn.",
 	"guard": "Enemy attacks deal %d less damage to you per hit.",
-	"attack_bonus": "You have Boost %d.",
+	"attack_bonus": "Your programs get Boost %d.",
 	"ward_bonus": "Whenever you gain Firewall, gain %d more.",
 	"thorns": "Enemies that attack you take %d damage.",
 	"burn_bonus": "Whenever you apply Virus to an enemy, apply %d more.",
