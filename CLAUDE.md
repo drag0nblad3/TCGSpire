@@ -96,7 +96,7 @@ Original design only: don't copy cards, names, characters or look from existing 
 - Boss rules (`core/boss_rules.gd`, enemy def `"rules": {...}`; hooks called by Combat, chips/inspector/rules page/ICE text generated from it): `phases` (new moves at HP marks, a hit can't
   carry past a mark, debuffs wiped), `timer` (Trace: Boost every move after N moves), `tide` (high/low damage-taken cycle by round, `low_move`), `gauge` (your attack hits add heat; full = effects
   stapled to its next move via `Fighter.bonus`), `jam` (intent hidden every Nth turn; Exposed or any Interrupt clears it), `twin` (survivor's move after next is Restore = op `revive`, counts as Repair
-  for Interrupt), `pool` + `leaves_at` (bodies share one HP total, `Combat.pools`), `taken` (multiplier per damage kind), `shielded_by` + `respawn` (pylons), `guarded` (single-target hits land on
+  for Interrupt), `pool` + `leaves_at` (bodies share one HP total, `Combat.pools`), `taken` (multiplier per damage kind), `shielded_by` + `respawn` (pylons; `grounded`: boss loses half a status, rounded up, when the last pylon falls: Storm Regent Might), `guarded` (single-target hits land on
   escorts: `BossRules.guard_target`), `bond` (survivor heals + status). Ops added: `devour` (eats `Fighter.spawned` helpers), `revive`, `add_card` `"pile": "draw"`; card field `"hatch"` (Spore Pod
   spawns that enemy if discarded unplayed). One-off moves use `Fighter.override`. Extra boss bodies/pylons use transparent art via `BossSupportArt`, with animation in `VirtualBossArt`. The hatchable Spore Pod has dedicated Field Service card art. Balance of these is untested by sims.
   `scripts/shot.sh screen=boss enc=<encounter id>` renders any boss fight.
