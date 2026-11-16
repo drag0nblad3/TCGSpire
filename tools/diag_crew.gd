@@ -9,6 +9,8 @@ const DEFAULT_HEAT := {"new": 0, "experienced": 1, "veteran": 3, "max": 6}
 var agg := {}
 var boss_decks := {}
 var enc_stats := {}
+var boss_src := {}
+var boss_n := 0
 
 
 func _initialize() -> void:
@@ -18,6 +20,12 @@ func _initialize() -> void:
 		if kv.size() == 2:
 			opts[kv[0]] = kv[1]
 	var db := CardDB.load_from(CardDB.DATA_ROOT)
+	# boss3=<encounter>: every act-3 Core is swapped for this one (a probe of one boss vs each crew's deck).
+	if opts.has("boss3"):
+		for id in db.encounters.keys():
+			var en: Dictionary = db.encounters[id]
+			if int(en.get("act", 0)) == 3 and str(en.get("kind", "")) == "boss":
+				db.encounters[id] = db.encounters[opts["boss3"]]
 	var which: String = opts["profile"]
 	var profile := Profile.new_player(db)
 	if OS.has_environment("SAVE_IN"):
@@ -58,6 +66,10 @@ func _initialize() -> void:
 			f[k2] += stats[id][k2]
 	for f in fac:
 		print("  faction %-8s offered %5d picked %4d (%4.1f%%) plays/run %5.1f" % [f, fac[f]["offered"], fac[f]["picked"], 100.0 * fac[f]["picked"] / maxf(fac[f]["offered"], 1.0), fac[f]["plays"] / float(n)])
+	if not boss_src.is_empty():
+		print("-- act-3 boss fights: damage to you by enemy, damage you dealt by enemy (per fight) --")
+		for k in boss_src:
+			print("  %-14s took %6.1f  dealt %6.1f" % [k, boss_src[k].get("took", 0.0) / maxf(boss_n, 1), boss_src[k].get("dealt", 0.0) / maxf(boss_n, 1)])
 	print("-- per encounter (act>=2 bosses/elites) --")
 	var es := enc_stats.keys()
 	es.sort_custom(func(x: String, y: String) -> bool: return enc_stats[x]["n"] > enc_stats[y]["n"])
@@ -141,6 +153,24 @@ func _record(db: CardDB, run: RunState, node: Dictionary, c: Combat) -> void:
 		s["turns"] += turns
 		s["hp_in"] += hp_before
 		s["hp_lost"] += lost
+	if node["type"] == "boss" and run.act == 3:
+		boss_n += 1
+		var ids := {}
+		for en in c.enemies:
+			ids[en.id] = en.def_id
+		for e in c.events:
+			if e["t"] != "damage":
+				continue
+			var tgt := str(e["target"])
+			var src := str(e.get("source", ""))
+			if tgt == "player" and ids.has(src):
+				var d: Dictionary = boss_src.get(ids[src], {})
+				boss_src[ids[src]] = d
+				d["took"] = d.get("took", 0.0) + float(e["amount"])
+			elif ids.has(tgt):
+				var d2: Dictionary = boss_src.get(ids[tgt], {})
+				boss_src[ids[tgt]] = d2
+				d2["dealt"] = d2.get("dealt", 0.0) + float(e["amount"]) + float(e["blocked"])
 	if node["type"] == "boss":
 		var b: Dictionary = boss_decks.get(run.act, {"n": 0, "size": 0, "types": {}, "cards": {}, "up": 0, "imp": 0})
 		boss_decks[run.act] = b
