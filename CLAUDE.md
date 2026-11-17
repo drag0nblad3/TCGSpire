@@ -14,7 +14,7 @@ Original design only: don't copy cards, names, characters or look from existing 
   bot picks/offers and plays/damage/Firewall per play; writes `report.tsv` in `out`. ~10 min for every card at n=80 on 4 cores. Low plays/run = bot blind spot.
 - `tools/diag_crew.gd` (`godot --headless --path . -s res://tools/diag_crew.gd -- job=chrome n=200 profile=veteran`, `SAVE_IN` works): per act/kind fight stats (HP in/lost, turns, damage per turn), card picks per crew, the deck at each act boss. `boss3=<encounter>` swaps every act-3 Core for that one (probe one boss against each crew's deck); `focus=<encounter>` splits damage to you by enemy move for that fight (and counts twin crashes).
 - `scripts/sim_matrix.sh` — the standard balance check Tyler wants: 150 runs per cell, new heat 0-1, experienced 1-3, veteran 2-5, max 4-6.
-- `scripts/shot.sh screen=<name|all> out=/tmp/x.png [plays=2] [end_turn=1] [inspect_enemy=1] [theme=archive] [hand=id,id] [pick=1]` — real render to PNG (xvfb). `hand=` sets the combat hand; `pick=1` opens the Dump/recover pick overlay.
+- `scripts/shot.sh screen=<name|all> out=/tmp/x.png [plays=2] [end_turn=1] [inspect_enemy=1] [log=1] [theme=archive] [hand=id,id] [pick=1]` — real render to PNG (xvfb). `hand=` sets the combat hand; `pick=1` opens the Dump/recover pick overlay, `log=1` the combat log.
   Screens: hub hub_heat map combat reward rest shop event collection picker pack pack_open pack_shelf pack_premium pack_crew weekly weekly_map login signal_result ice deep end boss inspect rules jobs rig perk tinker crew firmware recompile menu settings resume tutorial coach foil lethal. Uses a throwaway profile.
 - Godot binary: `godot` on PATH, or set `GODOT=/path/to/godot`. Cloud sessions: download
   `Godot_v4.4.1-stable_linux.x86_64.zip` from the godotengine GitHub releases.
@@ -101,6 +101,7 @@ Original design only: don't copy cards, names, characters or look from existing 
   spawns that enemy if discarded unplayed). One-off moves use `Fighter.override`. Extra boss bodies/pylons use transparent art via `BossSupportArt`, with animation in `VirtualBossArt`. The hatchable Spore Pod has dedicated Field Service card art. Balance of these is untested by sims.
   `scripts/shot.sh screen=boss enc=<encounter id>` renders any boss fight.
 - Offer nudge (`meta/offer_nudge.gd`, `balance.nudge`): hidden weights inside a rolled rarity for run offers (rewards, rerolls, shop cards/implants, implant drops; never packs): missing Handshake partner, answers to this act's boss rules, deck strategy themes, implants that fit the deck. Capped per card; at most half an offer (rounded up) comes from weighted picks.
+- Combat log: `core/combat_log.gd` turns `combat.events` into plain lines (new event types: add a case in `CombatLog._text`); the Log button under the hand opens `ui/combat_log_overlay.gd` (tap closes).
 - Combat animation: `CombatScreen._play_events` replays `combat.events` step by step (input blocked);
   damage/ward/heal events carry `hp`/`ward` after the change for the bars. `step_scale = 0` in tests.
 - `data/` all content as JSON: `cards/<faction>.json` (one card per line), `enemies/`,

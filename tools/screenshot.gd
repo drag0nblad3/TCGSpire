@@ -80,6 +80,11 @@ func _initialize() -> void:
 			if opts["end_turn"] == "1":
 				main.get("_screen")._on_end_turn()
 				await _idle(main.get("_screen"))
+			if opts.get("log", "0") == "1":
+				# log=1: open the combat log over the fight.
+				main.get("_screen")._show_log()
+				for f in 10:
+					await process_frame
 			if opts.get("inspect_enemy", "0") == "1":
 				# Hold on the first enemy with a few statuses on it: the inspect pop-up.
 				var ics = main.get("_screen")
