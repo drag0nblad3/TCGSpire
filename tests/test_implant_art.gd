@@ -1,10 +1,16 @@
 extends TestCase
 
+## New implants whose hardware art isn't drawn yet (they show the procedural sigil).
+const AWAITING_ART := ["scar_tissue"]
+
 func test_every_implant_has_unique_art_and_motion() -> void:
 	var manifest := ImplantArt.regions()
-	eq(manifest.size(), db.talismans.size())
+	eq(manifest.size(), db.talismans.size() - AWAITING_ART.size())
 	var used := {}
 	for id in db.talismans:
+		if id in AWAITING_ART:
+			check(not manifest.has(id), "art arrived for %s: drop it from AWAITING_ART" % id)
+			continue
 		check(manifest.has(id), "missing " + id)
 		var entry: Dictionary = manifest.get(id, {})
 		var key := str(entry.get("atlas")) + str(entry.get("region"))

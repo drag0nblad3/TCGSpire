@@ -26,6 +26,7 @@
 {"id":"gilded_scale","name":"Gilded Chip","rarity":"boss","run":[{"on":"rest","outcomes":[{"op":"gold","pct":0.1}]}]},
 {"id":"ceramic_casing","name":"Ceramic Casing","rarity":"common","daemon":{"hp":2}},
 {"id":"watchdog_chip","name":"Watchdog Chip","rarity":"uncommon","triggers":[{"on":"card_played","card_type":"unit","effects":[{"op":"ward","amount":4}]}]},
+{"id":"scar_tissue","name":"Scar Tissue","rarity":"uncommon","triggers":[{"on":"hp_lost","every":3,"effects":[{"op":"apply","status":"regen","stacks":2,"to":"self"}]}]},
 {"id":"swap_file","name":"Swap File","rarity":"uncommon","faction":"neutral","triggers":[{"on":"reshuffle","effects":[{"op":"energy","amount":1},{"op":"draw","amount":1}]}]},
 {"id":"fence_ledger","name":"Fence Ledger","rarity":"common","faction":"neutral","mods":{"gold_pct":0.25,"shop_discount_pct":0.1}},
 {"id":"heartbeat_monitor","name":"Heartbeat Monitor","rarity":"uncommon","faction":"bloom","triggers":[{"on":"daemon_closed","effects":[{"op":"heal","amount":4}]}]},

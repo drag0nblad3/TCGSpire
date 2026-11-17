@@ -28,6 +28,8 @@ var last_dumped := 0
 var picks: Array = []
 var max_energy := 3
 var hand_size := 5
+## True while "hp_lost" rules resolve (they never retrigger themselves).
+var _hp_lost_firing := false
 var board_slots := 3
 var turn := 0
 var phase: Phase = Phase.PLAYER
@@ -532,6 +534,12 @@ func deal_damage(t: Fighter, amount: int, source_id: String = "", kind: String =
 		emit("ward", {"target": t.id, "amount": second_wind, "ward": t.ward})
 	if not t.rules.is_empty() and dealt > 0:
 		BossRules.after_damage(self, t)
+	# "When you lose HP" rules (Backlash, Scar Tissue). Not from inside one: a rule that
+	# costs HP can't chain itself.
+	if t == player and dealt > 0 and not t.is_dead() and not _hp_lost_firing:
+		_hp_lost_firing = true
+		Talismans.fire(self, "hp_lost", {"amount": dealt, "kind": kind})
+		_hp_lost_firing = false
 	if t.is_dead():
 		emit("death", {"target": t.id})
 		if units.has(t):

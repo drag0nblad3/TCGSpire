@@ -634,6 +634,23 @@ func test_capstone_needs_crew_maxed_and_changes_combat() -> void:
 
 
 
+func test_dead_air_draws_one_more_each_turn() -> void:
+	profile.rig = {"dead_air_protocol": 1}
+	var r := _run()
+	r.perks.clear()
+	for i in 6:
+		r.deck.append(db.instance("jab"))
+	var c := r.start_combat(db.encounters.keys()[0])
+	for enemy in c.enemies:
+		enemy.moves = []
+	c.start()
+	var base := int(db.balance["player"]["hand_size"])
+	eq(c.hand.size(), base + 1, "turn 1")
+	c.end_turn()
+	eq(c.hand.size(), base + 1, "turn 2")
+	check(Perks.describe(db.perks["dead_air_protocol"]) != "", "Dead Air text")
+
+
 func test_liquidity_engine_preserves_thirty_percent_firewall_and_extra_draw() -> void:
 	profile.rig = {"liquidity_engine": 1}
 	var r := _run()

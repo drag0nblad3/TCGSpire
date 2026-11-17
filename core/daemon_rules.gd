@@ -81,6 +81,8 @@ static func value(e: Dictionary, hp_bonus: int = 0) -> float:
 				times = up * (1.3 if trig.has("card_type") else 3.0)
 			"kill":
 				times = 1.0
+			"hp_lost":
+				times = up * 0.9  # about once per enemy turn while it runs
 			"closed":
 				times = 0.8  # once, and only if the fight lasts that long
 		v += per * times / float(trig.get("every", 1))
