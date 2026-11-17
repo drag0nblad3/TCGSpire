@@ -280,3 +280,18 @@ func test_hub_heat_total_stacks_levels() -> void:
 	var t3 := HubScreen.heat_total(db, 3)
 	check(t3.contains("+73% HP") and t3.contains("repair 30% less") and t3.contains("1 more crew"), "heat 3 total compounds: " + t3)
 	check(HubScreen.heat_total(db, 6).contains("double-cross"), "heat 6 names the double cross")
+
+
+func test_inspector_shows_evolved_form() -> void:
+	var base := db.instance("script_kiddie")
+	base.uses = 7
+	var pair := CardInspector.evolve_pair(base)
+	check(pair.size() == 2 and pair[0] == base, "base card comes first")
+	check((pair[1] as CardInstance).def.id == "black_hat", "evolved form is shown next to it")
+	var up := db.instance("script_kiddie", true)
+	check((CardInspector.evolve_pair(up)[1] as CardInstance).upgraded, "evolved preview keeps the upgrade")
+	var token := db.instance("black_hat")
+	var back := CardInspector.evolve_pair(token)
+	check(back.size() == 2 and (back[0] as CardInstance).def.id == "script_kiddie" and back[1] == token, "a token shows where it came from")
+	check(CardInspector.glossary(token).any(func(l: String) -> bool: return l.begins_with("Evolved form:")), "token glossary names its base")
+	check(CardInspector.evolve_pair(db.instance("kindle")).is_empty(), "plain cards show one card")
