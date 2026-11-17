@@ -11,7 +11,7 @@ extends Control
 ## intent icon legend ("@intents").
 
 const WARD := "Firewall absorbs damage before HP and normally clears at the start of your turn. Hardened keeps all remaining Firewall, and so does any daemon or implant whose rule keeps Firewall (Gatekeeper, for one). The Liquidity Engine rig upgrade keeps 30%, rounded up."
-const UNITS := "Daemons: programs that stay on your board for a few turns and change the rules while they run. They are not attackers: each one is a rule, like keeping your Firewall or striking at the end of your turn. Enemies can still hit them. A daemon's HP is its countdown: it loses 1 at the start of each of your turns and 1 for each hit it takes. Purge moves (enemy attacks aimed at daemons) take their full damage. At 0 it closes and its rule ends. A daemon you run during your turn boots up first: its triggered rules (end of turn, when you play a program) start on your next turn, and those daemons start their countdown a turn later so they still get every turn. Always-on rules work at once. Running a daemon that is already up tops its HP back up. Up to 3 can run at once."
+const UNITS := "Daemons: programs that stay on your board for a few turns and change the rules while they run. They are not attackers: each one is a rule, like keeping your Firewall or striking at the end of your turn. Enemies can still hit them. A daemon's HP is its countdown: it loses 1 at the start of each of your turns and 1 for each hit it takes. Purge moves (enemy attacks aimed at daemons) take their full damage. At 0 it closes and its rule ends. Running a daemon that is already up tops its HP back up. Up to 3 can run at once."
 const LEGEND := "@intents"
 const GROUPS := ["In a fight", "The run", "Between runs"]
 

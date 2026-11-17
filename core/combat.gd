@@ -29,8 +29,8 @@ var picks: Array = []
 var max_energy := 3
 var hand_size := 5
 var board_slots := 3
-## True while your turn opens (countdown, combat-start/turn-start triggers): daemons run then are ready at once.
-var _turn_opening := false
+## True from End turn until the enemy phase starts: enemies that join then (Spore hatch) wait a turn.
+var _ending_turn := false
 var turn := 0
 var phase: Phase = Phase.PLAYER
 var events: Array = []
@@ -179,14 +179,8 @@ func _start_player_turn() -> void:
 	# Daemons run down: HP is the countdown, so a daemon with N HP lasts N rounds if left alone.
 	# Every daemon ticks first, then the ones at 0 close, so a payoff from one closing (Server Farm)
 	# can't decide which of two daemons at the same HP survives.
-	_turn_opening = true
 	var closing: Array = []
 	for u: Fighter in units:
-		var was_booting := u.booting
-		u.booting = false
-		# A daemon that sat out its first turn starts counting now, so it still gets its N turns.
-		if was_booting and _waits_to_act(u):
-			continue
 		u.hp -= 1
 		if u.hp <= 0:
 			closing.append(u)
@@ -207,11 +201,9 @@ func _start_player_turn() -> void:
 	Statuses.on_turn_start(self, player)
 	_check_end()
 	if is_over():
-		_turn_opening = false
 		return
 	draw(hand_size)
 	Talismans.fire(self, "turn_start")
-	_turn_opening = false
 
 
 func can_play(hand_idx: int) -> bool:
@@ -414,12 +406,16 @@ func sync_origins() -> void:
 func end_turn() -> void:
 	if phase != Phase.PLAYER:
 		return
+	_ending_turn = true
 	Talismans.fire(self, "turn_end")
 	if is_over():
 		return
 	Statuses.on_turn_end(self, player)
 	for u in units:
 		Statuses.on_turn_end(self, u)
+	# Enemies that joined during your turn had a turn to be answered: they act this enemy turn.
+	for en: Fighter in enemies:
+		en.arrived = false
 	var kept: Array = []
 	for card in hand:
 		if card.has_keyword("retain"):
@@ -435,10 +431,12 @@ func end_turn() -> void:
 			CardPrograms.on_discard(card)
 			discard_pile.append(card)
 	hand = kept
+	_ending_turn = false
 	phase = Phase.ENEMY
 	emit("enemy_phase")
-	for en in enemies:
-		if en.is_dead():
+	for en: Fighter in enemies:
+		# Summoned this enemy turn (or hatched as yours ended): it waits for the next one.
+		if en.is_dead() or en.arrived:
 			continue
 		if en.status("fortify") <= 0:
 			en.ward = 0
@@ -658,20 +656,10 @@ func summon(unit_name: String, hp: int, rule: Dictionary = {}) -> bool:
 	_unit_counter += 1
 	u.rule = rule
 	u.ward = daemon_ward
-	# Run from a program during your turn: it boots up and acts from your next turn. Daemons that
-	# implants or other daemons run as your turn opens are ready at once.
-	# Only daemons with triggered rules have anything to wait for; flags work at once.
-	u.booting = phase == Phase.PLAYER and not _turn_opening and rule.get("triggers", []).any(func(t: Dictionary) -> bool: return str(t.get("on", "")) != "closed")
 	units.append(u)
-	emit("summon", {"target": u.id, "name": unit_name, "hp": hp, "ward": u.ward, "booting": u.booting})
+	emit("summon", {"target": u.id, "name": unit_name, "hp": hp, "ward": u.ward})
 	_daemon_repair()
 	return true
-
-
-## A booting daemon with an end-of-turn or on-play rule loses those firings on the turn it is run,
-## so its countdown starts a turn later. Start-of-turn rules and flags lose nothing and tick as usual.
-func _waits_to_act(u: Fighter) -> bool:
-	return u.rule.get("triggers", []).any(func(t: Dictionary) -> bool: return str(t.get("on", "")) in ["turn_end", "card_played", "loop", "kill"])
 
 
 ## Repair Drones: running a daemon (new or refreshed) repairs you.
@@ -696,6 +684,7 @@ func spawn(enemy_id: String, hp_pct: float = 1.0, base_max: int = 0) -> bool:
 		return false
 	var f := _make_enemy(enemy_id)
 	f.spawned = hp_pct >= 1.0
+	f.arrived = phase != Phase.PLAYER or _ending_turn
 	if base_max > 0:
 		f.max_hp = maxi(roundi(base_max * hp_pct), 1)
 		f.hp = f.max_hp

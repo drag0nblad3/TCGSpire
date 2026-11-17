@@ -789,8 +789,6 @@ func _play_events(played: CardView) -> Array:
 				nv.shown_hp = int(e["hp"])
 				nv.shown_ward = int(e.get("ward", 0))
 				_pop_in(nv)
-				if e.get("booting", false):
-					_float_text(nv, "Booting", Palette.TEXT_DIM, -20)
 				await _wait(0.2)
 			"spawn":
 				var en: Fighter = _find(combat.enemies, str(e["target"]))

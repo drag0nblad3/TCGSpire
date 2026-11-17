@@ -289,7 +289,6 @@ func test_daemons_aim_past_a_shielded_boss() -> void:
 	var boss := _enemy(c, "hive_throne")
 	var rule := {"triggers": [{"on": "turn_end", "effects": [{"op": "damage", "amount": 5, "to": "front"}]}]}
 	c.summon("Drone", 3, rule)
-	c.units[0].booting = false
 	var pylon_hp := 0
 	for e in c.enemies:
 		if e.def_id == "aegis_drone":

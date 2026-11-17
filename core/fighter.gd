@@ -11,8 +11,6 @@ var statuses: Dictionary = {}
 ## Daemons only: the rule change it enforces while it runs (see DaemonRules). A daemon's
 ## HP is its countdown: it loses 1 at the start of each of your turns.
 var rule: Dictionary = {}
-## Daemons only: run during your turn, so its triggered rules wait until your next turn.
-var booting := false
 ## Enemies only: looping move list [{name, effects}] from data/enemies.
 var moves: Array = []
 var move_idx := 0
@@ -31,6 +29,9 @@ var bonus: Array = []
 var bonus_name := ""
 ## True for enemies called in mid-fight by "spawn" (a Devour move eats these).
 var spawned := false
+## Enemies only: joined the fight as your turn ended or during the enemy turn (spawned, hatched,
+## restored). It sits out that enemy turn and acts from the next one.
+var arrived := false
 
 
 static func make(id_in: String, name_in: String, hp_in: int) -> Fighter:

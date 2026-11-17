@@ -20,8 +20,6 @@ var targetable := false:
 		targetable = v
 		queue_redraw()
 ## -1 = show the live value.
-## Inspector line for a daemon run this turn.
-const BOOTING_TEXT := "Run this turn, so its triggered rules start on your next turn. Its always-on rules already apply."
 var shown_hp := -1
 var shown_ward := -1
 ## Set while an action plays out so the intent doesn't change mid-animation.
@@ -248,8 +246,6 @@ func _draw() -> void:
 			# The rule this daemon enforces while it runs (its HP bar above is the countdown).
 			draw_multiline_string(font, Vector2(4, y + 10), DaemonRules.describe(fighter.rule), HORIZONTAL_ALIGNMENT_CENTER, w - 8, 11, 4, Palette.TEXT)
 			y += 48
-			if fighter.booting:
-				chips.append(["Booting: acts next turn", Palette.TEXT_DIM])
 	if kind == "enemy" and combat != null:
 		# Boss rules first: live state such as the trace countdown, the tide or a shield.
 		for text in BossRules.chips(combat, fighter):
@@ -377,8 +373,6 @@ func describe() -> String:
 			lines.append("%s: %s" % [r[0], r[1]])
 	if kind == "unit":
 		lines.append("Daemon: %s" % DaemonRules.describe(fighter.rule))
-		if fighter.booting:
-			lines.append("Booting: " + BOOTING_TEXT)
 		lines.append("Its HP is its countdown: it loses 1 at the start of each of your turns and 1 per hit taken. Purge moves take more. At 0 it closes and the rule ends.")
 	if fighter.ward > 0:
 		lines.append("Firewall %d: absorbs damage first." % fighter.ward)
