@@ -80,3 +80,25 @@ func test_bot_finishes_starter_fight() -> void:
 	var c := make_combat(DECK, "mites", 5)
 	var r := Bot.run_combat(c)
 	check(not r["timeout"], "bot timed out: " + c.summary())
+
+
+func test_combat_log_reads_plays_and_enemy_moves() -> void:
+	var c := make_combat(DECK)
+	c.start()
+	var idx := -1
+	for i in c.hand.size():
+		if c.hand[i].def.id == "jab":
+			idx = i
+	if idx < 0:
+		idx = give(c, "jab")
+	check(c.play_card(idx, 0), "jab played")
+	c.end_turn()
+	var text := CombatLog.as_text(c)
+	check(text.contains("Turn 1"), "turn header: " + text)
+	check(text.contains("You ran %s" % Lexicon.card_name("jab")), "play line: " + text)
+	check(text.contains("    %s A took" % c.enemies[0].name), "indented damage, twins lettered: " + text)
+	check(text.contains("Enemy turn"), "enemy header: " + text)
+	check(text.contains(" used "), "enemy move: " + text)
+	check(text.contains("Turn 2"), "next turn: " + text)
+	for l: Dictionary in CombatLog.lines(c):
+		check(str(l["text"]) != "", "empty line")
