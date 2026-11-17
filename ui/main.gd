@@ -918,7 +918,11 @@ func _show_reward(lines: Array, tals: Array, choices: Array, perks: Array = [], 
 				UiKit.toast(self, "No alternate program set available.")
 			else:
 				_show_reward(lines, tals, replacement, perks, kind)))
-	v.add_child(UiKit.button("Skip", next))
+	var skip_gold := run.reward_skip_gold(kind) if not choices.is_empty() else 0
+	v.add_child(UiKit.button("Skip (+%d creds)" % skip_gold if skip_gold > 0 else "Skip", func() -> void:
+		if skip_gold > 0:
+			run.skip_reward(kind)
+		next.call()))
 	_show(parts[0])
 
 

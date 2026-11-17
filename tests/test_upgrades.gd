@@ -734,3 +734,13 @@ func test_absolute_zero_boosts_you_and_softens_enemy_hits() -> void:
 	c.start()
 	eq(c.player.status("might"), 1, "Boost 1 every fight")
 	check(Perks.describe(db.perks["absolute_zero"]).contains("10% less damage"), "text")
+
+
+func test_skipping_a_program_reward_pays_creds_by_fight_kind() -> void:
+	var r := _run(5)
+	var start := r.gold
+	eq(r.skip_reward("normal"), int(db.balance["reward_skip_gold"]["normal"]))
+	eq(r.skip_reward("boss"), int(db.balance["reward_skip_gold"]["boss"]))
+	eq(r.gold, start + r.reward_skip_gold("normal") + r.reward_skip_gold("boss"))
+	check(r.reward_skip_gold("elite") > r.reward_skip_gold("normal") and r.reward_skip_gold("boss") > r.reward_skip_gold("elite"), "bigger fights pay more")
+	eq(r.skip_reward("shop"), 0, "only fight rewards pay")

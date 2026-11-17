@@ -312,7 +312,7 @@ func _go(main: Control, scr: String, seed_in: int, inspect_card: String = "flare
 			main.get("_screen").collection_pressed.emit()
 			main.get("_screen")._show_detail("drone_swarm")
 		"reward":
-			main._show_reward(["+15 creds", "Recovered implant: Loaded Dice"], ["bone_dice"], main.run.reward_choices("elite"))
+			main._show_reward(["+15 creds", "Recovered implant: Loaded Dice"], ["bone_dice"], main.run.reward_choices("elite"), [], "elite")
 		"signal_result":
 			# A Signal that paid a random mod, an upgrade, an implant and a subroutine, with the header info open.
 			main.run.clauses = db.contracts.keys().slice(0, 2)
