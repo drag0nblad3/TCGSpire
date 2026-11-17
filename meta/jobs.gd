@@ -125,7 +125,7 @@ static func rep_reward(db: CardDB, run: RunState) -> int:
 	var n := run.floor_num * int(cfg.get("rep_per_floor", 2)) + run.elites_won * int(cfg.get("rep_per_elite", 6)) \
 		+ run.acts_cleared * int(cfg.get("rep_per_act", 15)) + (int(cfg.get("rep_boss", 30)) if run.boss_won else 0)
 	var extra := maxi(run.banned.size() - banned(db, run.job).size(), 0)
-	return int(n * (1.0 + 0.1 * run.heat) * (1.0 + float(cfg.get("rep_per_extra_target", 0.25)) * extra) * (1.0 + run.perk_mod("rep_pct")) * float(cfg.get("rep_mult", 1.0)))
+	return int(n * Profile.heat_pay_mult(db, run.heat) * (1.0 + float(cfg.get("rep_per_extra_target", 0.25)) * extra) * (1.0 + run.perk_mod("rep_pct")) * float(cfg.get("rep_mult", 1.0)))
 
 
 ## What a job pays, worked out with the same formulas as the end of a run.
@@ -133,6 +133,8 @@ static func rep_reward(db: CardDB, run: RunState) -> int:
 ## "elite_rep"/"elite_xp": about what each black sentry crashed adds; "per_core": packs per Core.
 ## "pack_list": the pack kinds of a full clear (crew packs are the client's).
 ## "full_run": premium packs for finishing the job.
+## "heat_scrap": scrap a full clear pays for the heat ("heat_scrap_per_core" per Core breached);
+## "first_clear": Zero-day caches for the first full clear at this heat (0 once it has been cleared).
 ## `extra` = target crews beyond the client's rival (Jobs.extra_targets at this heat).
 static func payout_preview(db: CardDB, profile: Profile, job: String, heat: int, extra: int = -1) -> Dictionary:
 	var r := RunState.new()
@@ -151,7 +153,9 @@ static func payout_preview(db: CardDB, profile: Profile, job: String, heat: int,
 		"full_run": int(db.balance.get("run_rewards", {}).get("packs_full_run", 0)), "xp": Profile.run_xp(db, r), "rep": rep_reward(db, r),
 		"per_core": int(db.balance.get("run_rewards", {}).get("packs_per_boss", 1)),
 		"shards_per_elite": int(db.balance.get("run_rewards", {}).get("shards_per_elite", 0)),
-		"shards_per_pack": Profile.shards_per_pack(db)}
+		"shards_per_pack": Profile.shards_per_pack(db),
+		"heat_scrap": Profile.run_heat_scrap(db, r), "heat_scrap_per_core": Profile.heat_scrap_per_core(db, heat),
+		"first_clear": Profile.first_clear_premium(db, heat) if heat >= profile.max_heat else 0}
 	r.elites_won = 3
 	out["elite_rep"] = roundi((rep_reward(db, r) - int(out["rep"])) / 3.0)
 	out["elite_xp"] = roundi((Profile.run_xp(db, r) - int(out["xp"])) / 3.0)

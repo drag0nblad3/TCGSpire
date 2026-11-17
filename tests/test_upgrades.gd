@@ -181,6 +181,48 @@ func test_job_pays_rep() -> void:
 	eq(profile.rep_of("ember"), 0, "only the client pays")
 
 
+func test_heat_pays_more() -> void:
+	var hr: Dictionary = db.balance["heat_rewards"]
+	var r := _run(1, "void")
+	r.floor_num = 10
+	r.elites_won = 1
+	r.acts_cleared = 2
+	var base_rep := Jobs.rep_reward(db, r)
+	var base_xp := Profile.run_xp(db, r)
+	eq(Profile.run_heat_scrap(db, r), 0, "no heat scrap at heat 0")
+	r.heat = 3
+	check(Jobs.rep_reward(db, r) > base_rep, "more rep at heat 3")
+	check(Profile.run_xp(db, r) > base_xp, "more xp at heat 3")
+	check(Records.clause_rep(db, db.contracts.keys()[0], 3) > Records.clause_rep(db, db.contracts.keys()[0], 0), "clauses pay more")
+	eq(Profile.run_heat_scrap(db, r), int(hr["scrap_per_core"]) * 3 * 2, "scrap per Core x heat")
+	var lines := profile.finish_run(db, r)
+	var want := "+%d scrap for Heat 3" % (int(hr["scrap_per_core"]) * 6)
+	check(lines.any(func(l: String) -> bool: return l == want), "scrap paid: " + want)
+
+
+func test_first_clear_at_heat_pays_premium_once() -> void:
+	var table: Array = db.balance["heat_rewards"]["first_clear_premium"]
+	var expect := int(table[2])
+	check(expect > 0, "heat 2 pays a first clear bonus")
+	profile.max_heat = 2
+	eq(int(Jobs.payout_preview(db, profile, "void", 2)["first_clear"]), expect, "preview shows it")
+	var won := func() -> RunState:
+		var r := _run(1, "void")
+		r.heat = 2
+		r.acts_cleared = int(db.balance["acts"])
+		r.boss_won = true
+		return r
+	var before := profile.pack_count(Packs.PREMIUM)
+	var lines := profile.finish_run(db, won.call())
+	var full := int(db.balance["run_rewards"]["packs_full_run"])
+	eq(profile.pack_count(Packs.PREMIUM) - before, full + expect, "first clear bonus")
+	check(lines.any(func(l: String) -> bool: return l.begins_with("First clear at Heat 2")), "first clear line")
+	eq(int(Jobs.payout_preview(db, profile, "void", 2)["first_clear"]), 0, "cleared heat shows none")
+	before = profile.pack_count(Packs.PREMIUM)
+	profile.finish_run(db, won.call())
+	eq(profile.pack_count(Packs.PREMIUM) - before, full, "only once")
+
+
 # --- rig upgrades -------------------------------------------------------------------
 
 func test_rig_costs_rep_and_refunds() -> void:

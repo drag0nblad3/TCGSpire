@@ -98,7 +98,7 @@ static func clause_met(db: CardDB, run: RunState, id: String) -> bool:
 ## Rep a met clause pays at this heat.
 static func clause_rep(db: CardDB, id: String, heat: int) -> int:
 	var base := int(db.contracts.get(id, {}).get("rep", 0))
-	return int(base * (1.0 + 0.1 * heat) * float(db.balance.get("contracts", {}).get("rep_mult", 1.0)))
+	return int(base * Profile.heat_pay_mult(db, heat) * float(db.balance.get("contracts", {}).get("rep_mult", 1.0)))
 
 
 ## "Ghost protocol (+25 Kiln marks): Win 3 fights without losing any HP."
