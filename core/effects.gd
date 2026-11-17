@@ -464,7 +464,7 @@ static func _describe(e: Dictionary) -> String:
 				return "Put %d %s on top of your draw pile." % [maxi(n, 1), nm]
 			return "Add %s to your hand." % nm if maxi(n, 1) == 1 else "Add %d %s to your hand." % [n, nm]
 		"spawn":
-			return "Call in a %s." % Lexicon.enemy_name(str(e.get("enemy", "?")))
+			return "Call in a %s. It acts from the next enemy turn." % Lexicon.enemy_name(str(e.get("enemy", "?")))
 		"devour":
 			var boost := int(e.get("stacks", 0))
 			return "Devour every helper it called in: repair %d HP%s for each one eaten." % [n, (" and gain %d %s" % [boost, Lexicon.status("might")]) if boost > 0 else ""]

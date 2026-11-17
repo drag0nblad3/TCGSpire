@@ -12,7 +12,7 @@ const DESC := {
 	"buff": "Upgrades itself (for example Boost or Feedback).",
 	"debuff": "Infects you with a harmful status.",
 	"heal": "Repairs its HP.",
-	"summon": "Calls more sentries into the fight.",
+	"summon": "Calls more sentries into the fight. They act from the next enemy turn.",
 	"curse": "Uploads malware into your deck or hand.",
 	"interrupted": "Interrupted: one of your programs cancelled that part of its move. The rest of the move still happens.",
 	"restore": "Restore: brings its crashed twin back. Crash it first, or Interrupt Repair to stop it for good.",

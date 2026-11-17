@@ -29,6 +29,9 @@ var bonus: Array = []
 var bonus_name := ""
 ## True for enemies called in mid-fight by "spawn" (a Devour move eats these).
 var spawned := false
+## Enemies only: joined the fight as your turn ended or during the enemy turn (spawned, hatched,
+## restored). It sits out that enemy turn and acts from the next one.
+var arrived := false
 
 
 static func make(id_in: String, name_in: String, hp_in: int) -> Fighter:
