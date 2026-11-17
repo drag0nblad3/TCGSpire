@@ -199,3 +199,29 @@ func test_deep_stack_cores_still_pay_a_pack() -> void:
 	r.deep_cores = 2
 	eq(Profile.run_packs(db, r), base + 2 * int(db.balance.get("run_rewards", {}).get("packs_per_boss", 1)))
 	eq(RunState.from_dict(db, r.to_dict()).deep_cores, 2, "saved")
+
+
+## Run-start picker: nothing is pre-picked, "Begin run" waits for full slots, "Last run" refills.
+func test_picker_starts_empty() -> void:
+	var p := Profile.new_player(db)
+	p.last_picks = ["ember_whelp", "kindle"]
+	var cs := CollectionScreen.new().setup(db, p, true, "ember")
+	eq(cs.picks.size(), 0, "no default picks")
+	check(cs.pick_problem().begins_with("Pick %d more" % p.starter_picks(db)), cs.pick_problem())
+	eq(cs.last_run_picks(), ["ember_whelp", "kindle"])
+	cs.picks = RunState.default_picks(db, p, "ember")
+	eq(cs.pick_problem(), "", "full legal picks can begin")
+	cs.free()
+
+
+func test_picker_max_picks_counts_owned_copies() -> void:
+	var p := Profile.new_player(db)
+	p.collection.counts.clear()
+	p.collection.add("kindle", 1)
+	p.collection.add("drone_swarm", 2)
+	var cs := CollectionScreen.new().setup(db, p, true, "ember")
+	# One Burner copy carries at most 2 picks at the half share.
+	eq(cs.max_picks(), 2)
+	cs.picks = ["kindle", "drone_swarm"]
+	eq(cs.pick_problem(), "")
+	cs.free()

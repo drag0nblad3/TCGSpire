@@ -48,6 +48,12 @@ func _initialize() -> void:
 					gc.energy += inst.cost()
 					gs._on_card_pressed(null, gc.hand.size() - 1)
 					await _idle(gs)
+		if scr == "picker" and opts["hand"] != "":
+			# hand=id,id on the picker: tap those programs in, to show the picks tray.
+			var ps = main.get("_screen")
+			for id in str(opts["hand"]).split(","):
+				ps._on_card(id)
+			await process_frame
 		if scr == "combat" and opts["hand"] != "":
 			# hand=id,id: replace the opening hand with those programs (not run). pick=1 then taps the
 			# first one that asks for a Dump / recover pick, to show the pick overlay.
