@@ -464,8 +464,8 @@ func _show_jobs(heat: int) -> void:
 
 ## "3 crew caches + Zero-day" style summary of a full clear's caches, for the job cards.
 static func cache_line(pay: Dictionary) -> String:
-	var kinds: Array = pay.get("pack_list", [])
-	return "%d cache%s on a full clear" % [kinds.size(), "" if kinds.size() == 1 else "s"]
+	var n: int = pay.get("pack_list", []).size() + int(pay.get("first_clear", 0))
+	return "%d cache%s on a full clear%s" % [n, "" if n == 1 else "s", HubScreen.scrap_text(pay)]
 
 
 func _left_label(text: String, font_size: int, col: Color) -> Label:

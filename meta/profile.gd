@@ -129,6 +129,13 @@ func finish_run(db: CardDB, run: RunState) -> Array:
 		if run.heat >= max_heat and run.weekly == "":
 			max_heat = run.heat + 1
 			lines.append("Heat %d unlocked" % max_heat)
+			var prem := first_clear_premium(db, run.heat)
+			if prem > 0:
+				add_packs(Packs.PREMIUM, prem)
+				var kinds: Array = []
+				kinds.resize(prem)
+				kinds.fill(Packs.PREMIUM)
+				lines.append("First clear at Heat %d: %s" % [run.heat, pack_list_text(db, kinds)])
 	var cfg: Dictionary = db.balance.get("run_rewards", {})
 	var gained_xp := run_xp(db, run)
 	var won_packs := run_pack_list(db, run)
@@ -140,6 +147,10 @@ func finish_run(db: CardDB, run: RunState) -> Array:
 	if scrap > 0:
 		collection.dust += scrap
 		lines.append("+%d scrap from implants" % scrap)
+	var heat_scrap := run_heat_scrap(db, run)
+	if heat_scrap > 0:
+		collection.dust += heat_scrap
+		lines.append("+%d scrap for Heat %d" % [heat_scrap, run.heat])
 	var rep_gain := Jobs.rep_reward(db, run)
 	if rep_gain > 0:
 		rep[run.job] = rep_of(run.job) + rep_gain
@@ -159,7 +170,31 @@ static func run_xp(db: CardDB, run: RunState) -> int:
 		+ run.acts_cleared * int(cfg.get("xp_per_act", 40))
 	if run.boss_won:
 		n += int(cfg.get("xp_boss", 60))
-	return int(n * (1.0 + 0.1 * run.heat) * float(cfg.get("xp_mult", 1.0)))
+	return int(n * heat_pay_mult(db, run.heat) * float(cfg.get("xp_mult", 1.0)))
+
+
+# --- heat rewards (balance.heat_rewards) ----------------------------------------
+
+## XP and rep (job pay and bonus clauses) multiplier at this heat: +pay_pct per level.
+static func heat_pay_mult(db: CardDB, heat: int) -> float:
+	return 1.0 + float(db.balance.get("heat_rewards", {}).get("pay_pct", 0.1)) * heat
+
+
+## Scrap a run pays for its heat: scrap_per_core x heat for every Core breached (Deep Stack too).
+static func run_heat_scrap(db: CardDB, run: RunState) -> int:
+	return heat_scrap_per_core(db, run.heat) * (run.acts_cleared + run.deep_cores)
+
+
+static func heat_scrap_per_core(db: CardDB, heat: int) -> int:
+	return int(db.balance.get("heat_rewards", {}).get("scrap_per_core", 0)) * heat
+
+
+## Zero-day caches paid once, for the first full clear at this heat (the clear that unlocks the next).
+static func first_clear_premium(db: CardDB, heat: int) -> int:
+	var table: Array = db.balance.get("heat_rewards", {}).get("first_clear_premium", [])
+	if table.is_empty():
+		return 0
+	return int(table[clampi(heat, 0, table.size() - 1)])
 
 
 ## How many packs a run pays when it ends (see run_pack_list).

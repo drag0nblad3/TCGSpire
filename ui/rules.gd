@@ -203,6 +203,18 @@ static func sections(db: CardDB) -> Array:
 	]])
 	var heat: Array = ["Heat is the difficulty level, picked on the hub before you take a job. Breach the final Core to unlock the next Heat. Each level adds to the ones below it, and the enemy HP and damage boosts compound."]
 	var levels: Array = db.balance.get("heat", [])
+	var hr: Dictionary = db.balance.get("heat_rewards", {})
+	var pays: Array[String] = []
+	if float(hr.get("pay_pct", 0.0)) > 0.0:
+		pays.append("+%d%% rep and XP" % roundi(float(hr["pay_pct"]) * 100.0))
+	if int(hr.get("scrap_per_core", 0)) > 0:
+		pays.append("+%d %s for each Core you breach" % [int(hr["scrap_per_core"]), Palette.w("dust").to_lower()])
+	if not pays.is_empty():
+		heat.append(["Rewards", "Every Heat level pays more: %s." % ", ".join(pays)])
+	var firsts: Array = hr.get("first_clear_premium", [])
+	if firsts.any(func(x: Variant) -> bool: return int(x) > 0):
+		heat.append(["First clear", "The first time you finish a job at a new Heat, it pays extra %ss (%s for Heat 0 to %d)." % [PackArt.title(db, Packs.PREMIUM),
+			", ".join(firsts.map(func(x: Variant) -> String: return str(int(x)))), firsts.size() - 1]])
 	for i in levels.size():
 		heat.append(["Heat %d" % (i + 1), str(levels[i].get("desc", ""))])
 	out.append(["Heat", "Between runs", heat])

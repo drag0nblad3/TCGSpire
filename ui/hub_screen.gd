@@ -328,7 +328,9 @@ static func cache_text(db_in: CardDB, pay: Dictionary, name_crew: bool = true) -
 static func payout_lines(db: CardDB, p: Profile, job: String, heat: int, extra: int) -> Array[String]:
 	var pay := Jobs.payout_preview(db, p, job, heat, extra)
 	var rep := Jobs.rep_name(db, job)
-	var lines: Array[String] = ["Full clear: %s · +%d %s · +%d XP" % [cache_text(db, pay), pay["rep"], rep, pay["xp"]]]
+	var lines: Array[String] = ["Full clear: %s · +%d %s · +%d XP%s" % [cache_text(db, pay), pay["rep"], rep, pay["xp"], scrap_text(pay)]]
+	if int(pay.get("first_clear", 0)) > 0:
+		lines.append(first_clear_text(db, pay, heat))
 	if int(pay["shards_per_elite"]) > 0:
 		lines.append("Each black sentry (elite): +%d %s shard (%d make one) · +%d %s · +%d XP" % [pay["shards_per_elite"], Palette.w("pack").to_lower(),
 			pay["shards_per_pack"], pay["elite_rep"], rep, pay["elite_xp"]])
@@ -339,10 +341,14 @@ static func payout_lines(db: CardDB, p: Profile, job: String, heat: int, extra: 
 func _rewards_text() -> String:
 	var pay := Jobs.payout_preview(db, profile, Jobs.board(db)[0], heat)
 	var lines: Array[String] = [
-		"Clear all %d layers at Heat %d: %s, +%d rep for your client crew, +%d XP." % [int(db.balance.get("acts", 3)), heat, cache_text(db, pay, false), pay["rep"], pay["xp"]],
+		"Clear all %d layers at Heat %d: %s, +%d rep for your client crew, +%d XP%s." % [int(db.balance.get("acts", 3)), heat, cache_text(db, pay, false), pay["rep"], pay["xp"], scrap_text(pay, ", ")],
 		"Each Core (boss) you breach: +%d crew cache of your client crew, kept even if you lose later. Rep and XP pay for every floor you clear." % int(pay["per_core"])]
 	if int(pay.get("full_run", 0)) > 0:
 		lines.append("Finish the whole job: +%d %s, the premium cache (rare or better every time)." % [int(pay["full_run"]), PackArt.title(db, Packs.PREMIUM)])
+	if int(pay.get("first_clear", 0)) > 0:
+		lines.append(first_clear_text(db, pay, heat) + ".")
+	if heat > 0:
+		lines.append("Heat %d bonus: %s." % [heat, heat_bonus_text(db, heat)])
 	if int(pay["shards_per_elite"]) > 0:
 		lines.append("Each black sentry (elite fight): +%d %s shard (%d make one), +%d rep, +%d XP." % [pay["shards_per_elite"], Palette.w("pack").to_lower(), pay["shards_per_pack"], pay["elite_rep"], pay["elite_xp"]])
 	var bonus: Array = db.contracts.keys().map(func(id: String) -> int: return Records.clause_rep(db, id, heat))
@@ -354,6 +360,30 @@ func _rewards_text() -> String:
 	return "\n".join(lines)
 
 
+## " · +60 scrap" (or with another separator) when a full clear pays heat scrap.
+static func scrap_text(pay: Dictionary, sep: String = " · ") -> String:
+	var n := int(pay.get("heat_scrap", 0))
+	return "" if n <= 0 else "%s+%d %s" % [sep, n, Palette.w("dust").to_lower()]
+
+
+## "First clear at Heat 3: +2 Zero-day caches, once".
+static func first_clear_text(db_in: CardDB, pay: Dictionary, h: int) -> String:
+	var n := int(pay.get("first_clear", 0))
+	return "First clear at Heat %d: +%d %s%s, once" % [h, n, PackArt.title(db_in, Packs.PREMIUM), "" if n == 1 else "s"]
+
+
+## What heat adds to the pay: "+45% rep and XP, +30 scrap per Core breached" (balance.heat_rewards).
+static func heat_bonus_text(db_in: CardDB, h: int) -> String:
+	var bits: Array[String] = []
+	var pct := roundi((Profile.heat_pay_mult(db_in, h) - 1.0) * 100.0)
+	if pct > 0:
+		bits.append("+%d%% rep and XP" % pct)
+	var scrap := Profile.heat_scrap_per_core(db_in, h)
+	if scrap > 0:
+		bits.append("+%d %s per Core breached" % [scrap, Palette.w("dust").to_lower()])
+	return ", ".join(bits)
+
+
 func _set_heat(h: int) -> void:
 	var levels: Array = db.balance.get("heat", [])
 	heat = clampi(h, 0, mini(profile.max_heat, levels.size()))
@@ -363,8 +393,13 @@ func _set_heat(h: int) -> void:
 	else:
 		var total := heat_total(db, heat)
 		_heat_desc.text = "Heat %d in total: %s." % [heat, total[0].to_upper() + total.substr(1)]
+		var bonus := heat_bonus_text(db, heat)
+		if bonus != "":
+			_heat_desc.text += "\nPays more: %s." % bonus
 	if heat == profile.max_heat and heat < levels.size():
-		_heat_desc.text += "\nBreach the final Core to unlock Heat %d." % (heat + 1)
+		var prem := Profile.first_clear_premium(db, heat)
+		_heat_desc.text += "\nBreach the final Core to unlock Heat %d%s." % [heat + 1,
+			"" if prem <= 0 else " and win +%d %s%s" % [prem, PackArt.title(db, Packs.PREMIUM), "" if prem == 1 else "s"]]
 	if _rewards_label != null:
 		_rewards_label.text = _rewards_text()
 
