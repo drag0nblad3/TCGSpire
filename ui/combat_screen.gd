@@ -31,6 +31,7 @@ var _busy := false
 var _floor_label: Label
 var _pile_btns := {}
 var _enemies_row: HBoxContainer
+var _enemy_slot: Control
 var _units_row: HBoxContainer
 var _player_view: FighterView
 var _energy: Control
@@ -97,11 +98,19 @@ func _ready() -> void:
 	board.add_child(field)
 	_action_label = UiKit.label("", 16, Palette.ENERGY)
 	field.add_child(_action_label)
-	field.add_child(_spacer())
+	# Enemy tiles grow into the free board height (see _fit_enemies). The daemon row keeps its
+	# height when empty, so summoning a daemon never shrinks the enemies mid-fight.
+	_enemy_slot = Control.new()
+	_enemy_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_enemy_slot.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_enemy_slot.custom_minimum_size.y = 290
+	field.add_child(_enemy_slot)
 	_enemies_row = _row(8)
-	field.add_child(_enemies_row)
-	field.add_child(_spacer())
+	_enemies_row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_enemy_slot.add_child(_enemies_row)
+	_enemy_slot.resized.connect(_fit_enemies)
 	_units_row = _row(8)
+	_units_row.custom_minimum_size.y = 172
 	field.add_child(_units_row)
 	_player_view = FighterView.new().setup(combat.player, combat, "player")
 	_player_view.inspected.connect(_inspect_fighter)
@@ -162,6 +171,49 @@ func _ready() -> void:
 	_event_cursor = combat.events.size()
 	_rebuild()
 	_deal_in(_all_drawn(combat.hand.size()))
+
+
+## Finger down on the hand: the card under it rises and glows. Sliding along the hand moves the
+## highlight card to card (each eases in and out). Watching _input leaves taps and long-presses
+## to the cards themselves; release clears the highlight. A slide never plays a card.
+var _touch_down := false
+var _touched: CardView
+
+
+func _input(event: InputEvent) -> void:
+	# The press itself arrives through a card's touch_started (so overlays above the hand block it).
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
+		_touch_down = false
+		_touch_card(null)
+	elif event is InputEventMouseMotion and _touch_down:
+		_touch_card(_hand_card_at(event.position))
+
+
+func _on_card_touched(cv: CardView) -> void:
+	_touch_down = true
+	_touch_card(cv)
+
+
+func _touch_card(cv: CardView) -> void:
+	if cv == _touched:
+		return
+	if is_instance_valid(_touched):
+		_touched.set_touched(false, 0.16 * step_scale)
+	_touched = cv
+	if cv != null:
+		cv.set_touched(true, 0.12 * step_scale)
+
+
+## The hand card under a screen point. Overlapping cards: the later (drawn on top) one wins.
+func _hand_card_at(point: Vector2) -> CardView:
+	if _hand_row == null or not is_visible_in_tree():
+		return null
+	var kids := _hand_row.get_children()
+	for i in range(kids.size() - 1, -1, -1):
+		var cv := kids[i] as CardView
+		if cv != null and cv.visible and cv.modulate.a > 0.5 and cv.get_global_rect().has_point(point):
+			return cv
+	return null
 
 
 func _process(_dt: float) -> void:
@@ -229,6 +281,7 @@ func _rebuild() -> void:
 		cv.playable = combat.can_play(i)
 		cv.selected = i == _selected
 		cv.pressed.connect(_on_card_pressed.bind(i))
+		cv.touch_started.connect(_on_card_touched)
 		_hand_row.add_child(cv)
 	# Overlap cards just enough that the whole hand fits on screen (every card stays tappable).
 	var n := combat.hand.size()
@@ -290,6 +343,9 @@ func _rebuild() -> void:
 		_action_label.text = "Choose a daemon"
 
 
+const ENEMY_TILE_MAX := 340.0
+
+
 func _layout_width() -> float:
 	return get_viewport_rect().size.x if is_inside_tree() else float(ProjectSettings.get("display/window/size/viewport_width"))
 
@@ -308,13 +364,28 @@ func _add_enemy_view(e: Fighter, i: int) -> FighterView:
 	v.inspected.connect(_inspect_fighter)
 	_enemies_row.add_child(v)
 	_views[e.id] = v
-	# Reinforcements can take the row up to five enemies. Keep every tile on-screen.
-	var enemy_count := _enemies_row.get_child_count()
-	var width := minf(250.0, (_layout_width() - 38 - 8 * (enemy_count - 1)) / enemy_count)
-	for tile in _enemies_row.get_children():
-		var solo_boss: bool = not tile.boss_profile.is_empty() and enemy_count == 1
-		tile.set_enemy_width(minf(432.0, _layout_width() - 38.0) if solo_boss else width)
+	_fit_enemies()
 	return v
+
+
+## Size enemy tiles to the board: the width splits the row (reinforcements can take it to five,
+## every tile stays on-screen) and the height grows into the free space so the art fills it.
+func _fit_enemies() -> void:
+	if _enemies_row == null:
+		return
+	var tiles := _enemies_row.get_children()
+	var enemy_count := tiles.size()
+	if enemy_count == 0:
+		return
+	var width := minf(ENEMY_TILE_MAX, (_layout_width() - 38 - 8 * (enemy_count - 1)) / enemy_count)
+	var room := _enemy_slot.size.y
+	var tallest := 0.0
+	for tile: FighterView in tiles:
+		var solo_boss: bool = not tile.boss_profile.is_empty() and enemy_count == 1
+		tile.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		tile.set_enemy_width(minf(432.0, _layout_width() - 38.0) if solo_boss else width, room)
+		tallest = maxf(tallest, tile.base_height())
+	_enemy_slot.custom_minimum_size.y = tallest
 
 
 ## Reveal the opening boss portrait and report its accent to the shared backdrop.

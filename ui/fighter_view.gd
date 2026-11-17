@@ -73,9 +73,28 @@ func setup(f: Fighter, c: Combat, kind_in: String) -> FighterView:
 	return self
 
 
-func set_enemy_width(width: float) -> void:
+## Tile height at the art's base size; bigger tiles give every extra pixel to the art.
+func base_height() -> float:
+	return 432.0 if boss_large else 290.0
+
+
+func _base_art_height() -> float:
+	return 252.0 if boss_large else 104.0
+
+
+## Width first, then as tall as `room` allows, but never taller than the art can use at that width.
+func set_enemy_width(width: float, room := 0.0) -> void:
 	boss_large = not boss_profile.is_empty() and width >= 300.0
-	custom_minimum_size = Vector2(width, 432.0 if boss_large else 290.0)
+	var art_width := width - 18.0
+	var art_need := art_width * 0.8
+	if not enemy_portrait.is_empty() and boss_profile.is_empty():
+		# EnemyPortraits fits the 220 x 170 cell into (width - 18, art height x 0.94), both x 0.93.
+		art_need = art_width * EnemyPortraits.CELL.y / (EnemyPortraits.CELL.x * 0.94)
+	elif not boss_profile.is_empty() and not BossSupportArt.PROFILES.has(fighter.def_id):
+		var portrait: Texture2D = boss_profile["portrait"]
+		art_need = (width - 20.0) * portrait.get_size().y / portrait.get_size().x
+	var need := base_height() - _base_art_height() + art_need
+	custom_minimum_size = Vector2(width, clampf(need, base_height(), maxf(base_height(), room)))
 
 
 func hp() -> int:
@@ -158,7 +177,7 @@ func _draw() -> void:
 	if kind == "enemy":
 		y = _draw_intents(font, w, y, intent_items, charging)
 	if kind != "player":
-		var art_height := 252.0 if boss_large else (104.0 if kind == "enemy" else 47.0)
+		var art_height := _art_height()
 		var r := minf(art_height * 0.45, w * 0.34)
 		var bob := sin(t * 1.7 + fighter.id.hash() % 7) * 3.0
 		var c := Vector2(w / 2, y + art_height * 0.5 + bob)
@@ -276,6 +295,12 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO)
 
 
+func _art_height() -> float:
+	if kind != "enemy":
+		return 47.0
+	return _base_art_height() + maxf(0.0, size.y - base_height())
+
+
 func _draw_target() -> void:
 	var ink := Palette.ENERGY
 	for corner in [Vector2(7, 7), Vector2(size.x - 7, 7), Vector2(7, size.y - 7), size - Vector2(7, 7)]:
@@ -286,7 +311,7 @@ func _draw_target() -> void:
 
 func _draw_impact() -> void:
 	# Effects occupy the portrait, keeping names, intent and HP readable.
-	var area := Rect2(8, 65, size.x - 16, 94) if kind == "enemy" else Rect2(8, 6, size.x - 16, 42)
+	var area := Rect2(8, 65, size.x - 16, _art_height() - 10.0) if kind == "enemy" else Rect2(8, 6, size.x - 16, 42)
 	var center := area.get_center()
 	if firewall_flash > 0.0:
 		var progress := 1.0 - firewall_flash
