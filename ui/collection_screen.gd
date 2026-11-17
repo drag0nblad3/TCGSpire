@@ -20,6 +20,10 @@ var targets: Array = []
 var base_only := false
 var _problem: Label
 var _begin: Button
+var _tray: HFlowContainer
+var _crew: Label
+var _last_b: Button
+var _clear_b: Button
 var _filter := "all"
 ## Library order: crew (default), cost, rarity or newest (most recently added first).
 var _sort := "crew"
@@ -37,14 +41,50 @@ func setup(db_in: CardDB, p: Profile, pick: bool = false, job_in: String = "", t
 	pick_mode = pick
 	job = job_in
 	targets = targets_in if not targets_in.is_empty() else Jobs.banned(db, job)
-	if pick:
-		var ban := targets
-		for id in p.last_picks:
-			if picks.count(id) < p.deck_copies(db_in, id) and picks.size() < p.starter_picks(db) and db.card(id) != null and not db.card(id).banned_by(ban):
-				picks.append(id)
-		if Jobs.check(db, job, picks, targets) != "":
-			picks = RunState.default_picks(db, p, job, targets)
+	# Pick mode starts empty: nothing is chosen for you ("Last run" and loadouts refill in one tap).
 	return self
+
+
+## The last run's picks that still fit this job (owned copies, bans, the crew share).
+func last_run_picks() -> Array:
+	var out: Array = []
+	for id in profile.last_picks:
+		var c := db.card(str(id))
+		if c != null and out.count(id) < profile.deck_copies(db, id) and out.size() < profile.starter_picks(db) and not c.banned_by(targets):
+			out.append(id)
+	return Jobs.fit(db, job, out, targets)
+
+
+## Most picks a legal deck can hold: every slot, unless the library runs out of
+## copies (or of client-crew copies for the job's share).
+func max_picks() -> int:
+	var slots := profile.starter_picks(db)
+	var theirs := 0
+	var others := 0
+	for id in db.ids_where(func(c: CardDef) -> bool: return c.rarity not in ["starter", "curse"] and not c.banned_by(targets)):
+		var n := profile.deck_copies(db, id)
+		if job != "" and db.card(id).is_of(job):
+			theirs += n
+		else:
+			others += n
+	if job == "":
+		return mini(slots, theirs + others)
+	for t in range(slots, -1, -1):
+		var mine := mini(theirs, t)
+		if mine >= Jobs.required(db, job, t) and t - mine <= others:
+			return t
+	return 0
+
+
+## What stops "Begin run": a job rule, or empty slots. "" = ready.
+func pick_problem() -> String:
+	var rule := Jobs.check(db, job, picks, targets)
+	if rule != "":
+		return rule
+	var left := max_picks() - picks.size()
+	if left > 0:
+		return "Pick %d more program%s." % [left, "" if left == 1 else "s"]
+	return ""
 
 
 func _ready() -> void:
@@ -60,6 +100,7 @@ func _ready() -> void:
 			var ban: Array = targets.map(func(x: String) -> String: return Lexicon.faction(x))
 			v.add_child(UiKit.label("Job for %s: at least half your picks must be %s programs (joint ops count, %s ones don't). %s programs are banned." % [
 				Jobs.info(db, job).get("client", job), Lexicon.faction(job), Lexicon.faction("neutral"), " and ".join(ban)], 15, Palette.faction(job), true))
+		v.add_child(_tray_box())
 		_problem = UiKit.label("", 14, Palette.HP, true)
 		v.add_child(_problem)
 		v.add_child(_loadout_row())
@@ -121,9 +162,10 @@ func _ready() -> void:
 		closed.emit(), Vector2(160, 60)))
 	if pick_mode:
 		_begin = UiKit.button("Begin run", func() -> void:
-			if Jobs.check(db, job, picks, targets) == "":
+			if pick_problem() == "":
 				picks_confirmed.emit(picks.duplicate()), Vector2(220, 60), 22)
 		UiKit.primary(_begin)
+		_begin.add_theme_color_override("font_disabled_color", Palette.TEXT)
 		bottom.add_child(_begin)
 	v.add_child(bottom)
 	_refresh()
@@ -150,6 +192,85 @@ func _loadout_row() -> Control:
 			UiKit.toast(self, "Saved to slot %d." % (slot + 1))
 			_rebuild(), Vector2(64, 52), 13))
 	return row
+
+
+## Your picks, one slot each, above the library: crew share, "Last run" and "Clear".
+func _tray_box() -> Control:
+	var box := UiKit.vbox(6)
+	var row := UiKit.hbox(8)
+	_crew = UiKit.label("", 15, Palette.TEXT)
+	_crew.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_crew.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_crew.clip_text = true
+	_crew.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(_crew)
+	_last_b = UiKit.button("Last run", func() -> void:
+		picks = last_run_picks()
+		_refresh(), Vector2(110, 44), 14)
+	_last_b.disabled = last_run_picks().is_empty()
+	row.add_child(_last_b)
+	_clear_b = UiKit.button("Clear", func() -> void:
+		picks.clear()
+		_refresh(), Vector2(90, 44), 14)
+	row.add_child(_clear_b)
+	box.add_child(row)
+	_tray = UiKit.flow(8)
+	box.add_child(_tray)
+	return UiKit.panel(box)
+
+
+## One chip per slot: picked programs in pick order (tap to drop that copy), then empty slots.
+func _fill_tray() -> void:
+	for n in _tray.get_children():
+		n.queue_free()
+	var slots := profile.starter_picks(db)
+	var w := 150.0
+	for i in slots:
+		var chip: Button
+		if i < picks.size():
+			var c := db.card(str(picks[i]))
+			var idx := i
+			chip = UiKit.button("%s  %s" % [str(c.cost) if c.cost != CardDef.X_COST else "X", c.name], func() -> void:
+				picks.remove_at(idx)
+				_refresh(), Vector2(w, 44), 14)
+			chip.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			chip.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+			chip.clip_text = true
+			chip.icon = Symbols.texture(c.faction)
+			chip.add_theme_constant_override("icon_max_width", 16)
+			chip.tooltip_text = "Tap to remove."
+			var col := Palette.faction(c.faction)
+			for state in ["normal", "hover", "pressed", "focus"]:
+				var sb := StyleBoxFlat.new()
+				sb.bg_color = Palette.CARD_BG
+				sb.border_color = col
+				sb.set_border_width_all(2)
+				sb.border_width_left = 6
+				sb.set_corner_radius_all(maxi(Palette.RADIUS, 4))
+				sb.set_content_margin_all(8)
+				chip.add_theme_stylebox_override(state, sb)
+				chip.add_theme_color_override("font_" + state + "_color", Palette.CARD_TEXT)
+				chip.add_theme_color_override("icon_" + state + "_color", col)
+		else:
+			chip = UiKit.button("+  empty slot", func() -> void: pass, Vector2(w, 44), 14)
+			chip.disabled = true
+			var sb := StyleBoxFlat.new()
+			sb.bg_color = Color(0, 0, 0, 0)
+			sb.border_color = Palette.TEXT_DIM
+			sb.set_border_width_all(1)
+			sb.set_corner_radius_all(maxi(Palette.RADIUS, 4))
+			chip.add_theme_stylebox_override("disabled", sb)
+			chip.add_theme_color_override("font_disabled_color", Palette.TEXT_DIM)
+		_tray.add_child(chip)
+	var need := Jobs.required(db, job, maxi(picks.size(), max_picks()))
+	if job == "":
+		_crew.text = "Your picks"
+		_crew.add_theme_color_override("font_color", Palette.TEXT)
+	else:
+		var have := picks.filter(func(id: Variant) -> bool: return db.card(str(id)).is_of(job)).size()
+		_crew.text = "%s programs: %d / %d needed%s" % [Lexicon.faction(job), have, need, "  ✓" if have >= need else ""]
+		_crew.add_theme_color_override("font_color", Palette.UPGRADED if have >= need else Palette.faction(job))
+	_clear_b.disabled = picks.is_empty()
 
 
 ## Rebuilds the whole screen (loadout labels change after a save).
@@ -201,14 +322,16 @@ func _sort_key(id: String, order: Array, arrival: Dictionary) -> Array:
 	var c := db.card(id)
 	# Cards new to the collection lead the list until you've seen them.
 	var fresh := 0 if profile.unseen.has(id) else 1
+	# Picking for a job: the client crew's programs come first.
+	var crew := 0 if (pick_mode and job != "" and c.is_of(job)) else 1
 	match _sort:
 		"cost":
-			return [fresh, c.cost, c.faction, order.find(c.rarity), id]
+			return [crew, fresh, c.cost, c.faction, order.find(c.rarity), id]
 		"rarity":
-			return [fresh, -order.find(c.rarity), c.faction, c.cost, id]
+			return [crew, fresh, -order.find(c.rarity), c.faction, c.cost, id]
 		"newest":
-			return [fresh, -int(arrival.get(id, -1)), c.faction, id]
-	return [fresh, c.faction, order.find(c.rarity), c.cost, id]
+			return [crew, fresh, -int(arrival.get(id, -1)), c.faction, id]
+	return [crew, fresh, c.faction, order.find(c.rarity), c.cost, id]
 
 
 ## Owns enough copies for the next firmware level (rep/dust may still be short).
@@ -230,10 +353,15 @@ func _refresh() -> void:
 	var total: int = lib[1]
 	if pick_mode:
 		_header.text = "Pick your starting cards: %d / %d" % [picks.size(), profile.starter_picks(db)]
-		var problem := Jobs.check(db, job, picks, targets)
-		_problem.text = problem
+		var problem := pick_problem()
+		var rule := Jobs.check(db, job, picks, targets)
+		# Empty slots show on the button and the tray; the red line is for broken job rules.
+		_problem.text = rule
+		_problem.visible = rule != ""
+		_fill_tray()
 		if _begin != null:
 			_begin.disabled = problem != ""
+			_begin.text = problem.trim_suffix(".") if problem != "" and rule == "" else "Begin run"
 	else:
 		var ready := profile.ready_to_flash(db).size()
 		var fresh := profile.unseen.size()
@@ -251,8 +379,10 @@ func _refresh() -> void:
 		var stars := "*".repeat(profile.mastery_tier(db, id))
 		if pick_mode:
 			var chosen := picks.count(id)
-			cv.badge = "%d/%d" % [chosen, profile.deck_copies(db, id)]
+			cv.badge = ("✓ %d/%d" if chosen > 0 else "%d/%d") % [chosen, profile.deck_copies(db, id)]
 			cv.selected = chosen > 0
+			# Slots full: cards you can't add any more fade (tap still swaps nothing in).
+			cv.playable = chosen > 0 or picks.size() < profile.starter_picks(db)
 		else:
 			cv.badge = (profile.copy_badge(db, id) + " " + stars).strip_edges()
 			cv.pips = profile.copy_pips(db, id)
