@@ -142,6 +142,7 @@ func _ready() -> void:
 		b.pivot_offset = Vector2(118, 46) / 2
 		_pile_btns[p] = b
 		piles.add_child(b)
+	piles.add_child(UiKit.button("Log", _show_log, Vector2(64, 46), 15))
 	piles.add_child(UiKit.button("?", func() -> void: Rules.open(self, "Turn flow"), Vector2(52, 46), 20))
 	col.add_child(piles)
 
@@ -817,6 +818,10 @@ func _play_events(played: CardView) -> Array:
 			"combat_end":
 				await _banner("Victory" if e["won"] else "Defeated", Palette.ENERGY if e["won"] else Palette.HP)
 	return draws
+
+
+func _show_log() -> void:
+	get_tree().root.add_child(CombatLogOverlay.new().setup(combat))
 
 
 ## "black_hat+#1" -> "Black Hat"
