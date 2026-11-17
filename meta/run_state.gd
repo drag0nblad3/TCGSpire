@@ -350,6 +350,7 @@ func finish_combat(c: Combat) -> Dictionary:
 		hp = mini(max_hp, hp + mend)
 		rewards["healed"] = hp - before_hp
 	rewards["cards"] = reward_choices(kind)
+	rewards["up"] = rewards["cards"].filter(func(id: String) -> bool: return offer_upgraded(id, kind))
 	rewards["kind"] = kind
 	if kind == "elite" or (kind == "boss" and (act < total_acts() or deep_ok)):
 		rewards["perks"] = perk_choices(int(db.balance.get("perk_choices", 3)) + int(perk_mod("perk_choices")), rng.fork("perks:%d" % floor_num))
@@ -429,8 +430,38 @@ func make_card(id: String, upgraded: bool = false) -> CardInstance:
 	return c
 
 
-func add_card(id: String) -> void:
-	deck.append(make_card(id))
+## up: the copy arrives one upgrade step ahead (see offer_upgraded).
+func add_card(id: String, up: bool = false) -> void:
+	deck.append(offer_card(id, up))
+
+
+## The copy an offer hands over: make_card plus one level_up when up.
+func offer_card(id: String, up: bool = false) -> CardInstance:
+	var c := make_card(id)
+	if up and c != null and c.can_level_up(deck_maxed(deck)):
+		c.level_up()
+	return c
+
+
+## Chance (0-1) that a program offered by `kind` ("normal", "elite", "boss",
+## "shop") arrives upgraded: balance.offer_upgrade, rising with act, deep layer and heat.
+func offer_upgrade_chance(kind: String) -> float:
+	var cfg: Dictionary = db.balance.get("offer_upgrade", {})
+	var p := float(cfg.get("base", 0.0)) + float(cfg.get("per_act", 0.0)) * (act - 1 + deep) + float(cfg.get("per_heat", 0.0)) * heat
+	p *= float(cfg.get("kind_mult", {}).get(kind, 1.0))
+	return clampf(p, 0.0, float(cfg.get("max", 1.0)))
+
+
+## True when this floor's `kind` offer of card id comes upgraded. Seeded per
+## floor/kind/card, so a resumed reward or shop shows the same upgrades and the
+## other offer streams stay untouched.
+func offer_upgraded(id: String, kind: String) -> bool:
+	if kind == "":
+		kind = "normal"
+	var c := make_card(id)
+	if c == null or not c.can_level_up(deck_maxed(deck)):
+		return false
+	return rng.fork("offer_up:%s:%d:%s" % [kind, floor_num, id]).chance(offer_upgrade_chance(kind))
 
 
 # --- perks (subroutines) ------------------------------------------------------
@@ -604,7 +635,7 @@ func make_shop() -> Dictionary:
 	var cards: Array = []
 	for id in Packs.reward_choices(db, r, "shop", 0, banned, [], OfferNudge.card_weigher(self)):
 		var c := db.card(id)
-		cards.append({"id": id, "price": int((int(prices.get(c.rarity, 50)) + r.range_i(-5, 5)) * off)})
+		cards.append({"id": id, "price": int((int(prices.get(c.rarity, 50)) + r.range_i(-5, 5)) * off), "up": offer_upgraded(id, "shop")})
 	var tal: Array = []
 	var room := OfferNudge.limit(db, 2)
 	var have := OfferNudge.deck_tags(self)
@@ -648,7 +679,7 @@ func buy(item: Dictionary, is_talisman: bool) -> bool:
 	if is_talisman:
 		add_talisman(item["id"])
 	else:
-		add_card(item["id"])
+		add_card(item["id"], bool(item.get("up", false)))
 	return true
 
 

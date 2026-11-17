@@ -130,6 +130,18 @@
    }
   }
  },
+ "offer_upgrade": {
+  "base": 0.03,
+  "per_act": 0.04,
+  "per_heat": 0.015,
+  "max": 0.3,
+  "kind_mult": {
+   "normal": 1.0,
+   "elite": 1.5,
+   "boss": 1.0,
+   "shop": 1.0
+  }
+ },
  "gold": {
   "normal": [
    12,

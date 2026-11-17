@@ -904,11 +904,18 @@ func _show_reward(lines: Array, tals: Array, choices: Array, perks: Array = [], 
 	v.add_child(UiKit.label("Rip one program into your deck", 20, Palette.TEXT_DIM))
 	var row := UiKit.flow(12)
 	for id in choices:
-		var cv := CardView.new().setup(db.instance(id))
+		var up := run.offer_upgraded(id, kind)
+		var cv := CardView.new().setup(run.offer_card(id, up))
 		cv.pressed.connect(func(_v: CardView) -> void:
-			run.add_card(id)
+			run.add_card(id, up)
 			next.call())
-		row.add_child(cv)
+		if up:
+			var cell := UiKit.vbox(4)
+			cell.add_child(cv)
+			cell.add_child(UiKit.label("Upgraded", 16, Palette.UPGRADED))
+			row.add_child(cell)
+		else:
+			row.add_child(cv)
 		cv.reveal_reward.call_deferred(float(row.get_child_count() - 1) * 0.1)
 	v.add_child(row)
 	if kind != "" and not choices.is_empty() and run.reward_rerolls_left > 0:
@@ -1013,7 +1020,7 @@ func _show_shop(shop: Dictionary) -> void:
 	var cards := UiKit.flow(10)
 	for item in shop["cards"]:
 		var sold_card: bool = item.get("sold", false)
-		var cv := CardView.new().setup(db.instance(item["id"]))
+		var cv := CardView.new().setup(run.offer_card(item["id"], bool(item.get("up", false))))
 		cv.playable = not sold_card and run.gold >= int(item["price"])
 		cv.pressed.connect(func(_v: CardView) -> void:
 			if run.buy(item, false):
@@ -1021,6 +1028,8 @@ func _show_shop(shop: Dictionary) -> void:
 				_show_shop(shop))
 		var cell := UiKit.vbox(4)
 		cell.add_child(cv)
+		if item.get("up", false):
+			cell.add_child(UiKit.label("Upgraded", 16, Palette.UPGRADED))
 		cell.add_child(UiKit.label("sold" if sold_card else "%d creds" % item["price"], 18, Palette.TEXT_DIM if sold_card else (Palette.ENERGY if cv.playable else Palette.HP)))
 		cards.add_child(cell)
 	v.add_child(cards)
