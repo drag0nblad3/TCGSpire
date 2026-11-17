@@ -101,6 +101,9 @@ Original design only: don't copy cards, names, characters or look from existing 
   spawns that enemy if discarded unplayed). One-off moves use `Fighter.override`. Extra boss bodies/pylons use transparent art via `BossSupportArt`, with animation in `VirtualBossArt`. The hatchable Spore Pod has dedicated Field Service card art. Balance of these is untested by sims.
   `scripts/shot.sh screen=boss enc=<encounter id>` renders any boss fight.
 - Offer nudge (`meta/offer_nudge.gd`, `balance.nudge`): hidden weights inside a rolled rarity for run offers (rewards, rerolls, shop cards/implants, implant drops; never packs): missing Handshake partner, answers to this act's boss rules, deck strategy themes, implants that fit the deck. Capped per card; at most half an offer (rounded up) comes from weighted picks.
+- Upgraded offers (`balance.offer_upgrade`): each program in a fight reward or the shop may arrive one upgrade step ahead (same step as a safehouse upgrade);
+  chance = base + per_act x (act - 1 + deep) + per_heat x heat, times `kind_mult`, capped at `max`. `RunState.offer_upgraded(id, kind)` is seeded per floor/kind/card
+  (resume-safe, other offer streams untouched); shop items carry `"up"`, rewards carry `"up"` ids; `add_card(id, up)`.
 - Combat animation: `CombatScreen._play_events` replays `combat.events` step by step (input blocked);
   damage/ward/heal events carry `hp`/`ward` after the change for the bars. `step_scale = 0` in tests.
 - `data/` all content as JSON: `cards/<faction>.json` (one card per line), `enemies/`,
