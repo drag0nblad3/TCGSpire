@@ -559,14 +559,14 @@ func test_nudge_limited_to_half_the_offer_rounded_up() -> void:
 	check(full < 10, "the third slot rolls at plain odds (%d/200 all boosted)" % full)
 
 
-func test_scar_tissue_patches_each_hp_loss_without_chaining() -> void:
+func test_scar_tissue_patches_every_third_hp_loss_without_chaining() -> void:
 	var c := _fight(["scar_tissue"])
 	c.start()
 	var hp := c.player.hp
 	Effects.resolve(c, {"op": "lose_hp", "amount": 2, "to": "self"}, c.player, null)
-	eq(c.player.status("regen"), 1, "Patch on HP loss")
+	eq(c.player.status("regen"), 0, "1 of 3")
 	Effects.resolve(c, {"op": "damage", "amount": 2, "hits": 2}, c.enemies[0], c.player)
-	eq(c.player.status("regen"), 3, "once per hit")
+	eq(c.player.status("regen"), 2, "third HP loss: 2 Patch")
 	# A "When you lose HP" rule that costs HP can't retrigger itself.
 	c.talismans.append({"id": "probe", "triggers": [{"on": "hp_lost", "effects": [{"op": "lose_hp", "amount": 1, "to": "self"}, {"op": "ward", "amount": 3}]}]})
 	hp = c.player.hp
@@ -574,4 +574,4 @@ func test_scar_tissue_patches_each_hp_loss_without_chaining() -> void:
 	Effects.resolve(c, {"op": "lose_hp", "amount": 2, "to": "self"}, c.player, null)
 	eq(c.player.hp, hp - 3, "no chain")
 	eq(c.player.ward, 8, "HP loss keeps the Firewall it skipped plus what the rule gave")
-	eq(Talismans.describe(db.talismans["scar_tissue"]), "When you lose HP: Gain 1 Patch.", "text")
+	eq(Talismans.describe(db.talismans["scar_tissue"]), "Every 3 times you lose HP: Gain 2 Patch.", "text")

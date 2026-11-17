@@ -490,9 +490,9 @@ func test_backlash_hits_back_whenever_you_lose_hp() -> void:
 	eq(c.units.size(), 1, "Backlash runs")
 	var hp: int = c.enemies[0].hp
 	Effects.resolve(c, {"op": "lose_hp", "amount": 2, "to": "self"}, c.player, null)
-	eq(c.enemies[0].hp, hp - 4, "HP cost triggers it")
+	eq(c.enemies[0].hp, hp - 3, "HP cost triggers it")
 	Effects.resolve(c, {"op": "damage", "amount": 3, "hits": 2}, c.enemies[1], c.player)
-	eq(c.enemies[0].hp, hp - 12, "each hit that gets through triggers it")
+	eq(c.enemies[0].hp, hp - 9, "each hit that gets through triggers it")
 	c.player.ward = 20
 	Effects.resolve(c, {"op": "damage", "amount": 5}, c.enemies[1], c.player)
-	eq(c.enemies[0].hp, hp - 12, "a hit Firewall fully blocks costs no HP")
+	eq(c.enemies[0].hp, hp - 9, "a hit Firewall fully blocks costs no HP")
