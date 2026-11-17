@@ -432,7 +432,7 @@ func test_fuel_can_burn_your_own_debuff() -> void:
 	eq(en.hp, hp - 5, "bonus still hits the card's target")
 	Effects.resolve(c, fx, c.player, en)
 	eq(en.hp, hp - 5, "not enough Virus left: no bonus")
-	check(Effects.describe(fx).begins_with("Fuel 3 of your Virus: Deal 5"), Effects.describe(fx))
+	check(Effects.describe(fx).begins_with("Fuel 3 Virus on you: Deal 5"), Effects.describe(fx))
 
 
 func test_interrupt_cancels_only_the_named_part() -> void:
