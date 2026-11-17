@@ -31,6 +31,8 @@ var hand_size := 5
 ## True while "hp_lost" rules resolve (they never retrigger themselves).
 var _hp_lost_firing := false
 var board_slots := 3
+## True from End turn until the enemy phase starts: enemies that join then (Spore hatch) wait a turn.
+var _ending_turn := false
 var turn := 0
 var phase: Phase = Phase.PLAYER
 var events: Array = []
@@ -177,14 +179,20 @@ func _start_player_turn() -> void:
 	BossRules.on_player_turn(self)
 	emit("turn_start", {"turn": turn, "ward": player.ward})
 	# Daemons run down: HP is the countdown, so a daemon with N HP lasts N rounds if left alone.
-	for u in units.duplicate():
+	# Every daemon ticks first, then the ones at 0 close, so a payoff from one closing (Server Farm)
+	# can't decide which of two daemons at the same HP survives.
+	var closing: Array = []
+	for u: Fighter in units:
 		u.hp -= 1
 		if u.hp <= 0:
-			units.erase(u)
-			emit("expire", {"target": u.id})
-			_daemon_closed(u)
+			closing.append(u)
 		else:
 			emit("uptime", {"target": u.id, "hp": u.hp})
+	for u: Fighter in closing:
+		units.erase(u)
+		emit("expire", {"target": u.id})
+	for u: Fighter in closing:
+		_daemon_closed(u)
 	if turn == 1:
 		# After the Ward reset, so start-of-combat Ward sticks for turn 1.
 		if start_ward > 0:
@@ -400,12 +408,16 @@ func sync_origins() -> void:
 func end_turn() -> void:
 	if phase != Phase.PLAYER:
 		return
+	_ending_turn = true
 	Talismans.fire(self, "turn_end")
 	if is_over():
 		return
 	Statuses.on_turn_end(self, player)
 	for u in units:
 		Statuses.on_turn_end(self, u)
+	# Enemies that joined during your turn had a turn to be answered: they act this enemy turn.
+	for en: Fighter in enemies:
+		en.arrived = false
 	var kept: Array = []
 	for card in hand:
 		if card.has_keyword("retain"):
@@ -421,10 +433,12 @@ func end_turn() -> void:
 			CardPrograms.on_discard(card)
 			discard_pile.append(card)
 	hand = kept
+	_ending_turn = false
 	phase = Phase.ENEMY
 	emit("enemy_phase")
-	for en in enemies:
-		if en.is_dead():
+	for en: Fighter in enemies:
+		# Summoned this enemy turn (or hatched as yours ended): it waits for the next one.
+		if en.is_dead() or en.arrived:
 			continue
 		if en.status("fortify") <= 0:
 			en.ward = 0
@@ -678,6 +692,7 @@ func spawn(enemy_id: String, hp_pct: float = 1.0, base_max: int = 0) -> bool:
 		return false
 	var f := _make_enemy(enemy_id)
 	f.spawned = hp_pct >= 1.0
+	f.arrived = phase != Phase.PLAYER or _ending_turn
 	if base_max > 0:
 		f.max_hp = maxi(roundi(base_max * hp_pct), 1)
 		f.hp = f.max_hp

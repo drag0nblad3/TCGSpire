@@ -102,3 +102,45 @@ func test_combat_log_reads_plays_and_enemy_moves() -> void:
 	check(text.contains("Turn 2"), "next turn: " + text)
 	for l: Dictionary in CombatLog.lines(c):
 		check(str(l["text"]) != "", "empty line")
+
+
+func test_daemons_closing_together_ignore_list_order() -> void:
+	var c := Combat.create(db, [], "mites", GameRng.new(1), -1, {"talismans": ["server_farm"], "extra_slots": 1})
+	c.start()
+	for e in c.enemies:
+		e.hp = 99
+	c.summon("A", 1)
+	c.summon("B", 1)
+	c.summon("C", 3)
+	c.end_turn()
+	eq(c.units.map(func(u: Fighter) -> String: return u.name), ["C"], "both 1 HP daemons close, not just the first")
+	eq(c.units[0].hp, 4, "3 - 1, then +1 per daemon that closed")
+
+
+func test_summoned_enemies_wait_a_turn_before_acting() -> void:
+	var c := make_combat([])
+	c.start()
+	for e in c.enemies:
+		e.hp = 99
+	give(c, "spore_pod")
+	c.end_turn()
+	var grub: Fighter = c.enemies.back()
+	eq(grub.def_id, "vat_grub", "the unplayed pod hatched")
+	var moved := func() -> int: return c.events.filter(func(e: Dictionary) -> bool: return e["t"] == "enemy_move" and e["source"] == grub.id).size()
+	eq(moved.call(), 0, "hatched as your turn ended: sits out that enemy turn")
+	c.spawn("vat_grub")
+	var late: Fighter = c.enemies.back()
+	c.end_turn()
+	eq(moved.call(), 1, "acts from the next enemy turn")
+	eq(c.events.filter(func(e: Dictionary) -> bool: return e["t"] == "enemy_move" and e["source"] == late.id).size(), 1, "spawned during your turn: you saw it, so it acts")
+
+
+func test_enemy_spawned_mid_enemy_turn_waits() -> void:
+	var c := make_combat([])
+	c.start()
+	c.phase = Combat.Phase.ENEMY
+	c.spawn("vat_grub")
+	eq(c.enemies.back().arrived, true)
+	c.phase = Combat.Phase.PLAYER
+	c.end_turn()
+	eq(c.enemies.back().arrived, false, "cleared once your next turn ends")
