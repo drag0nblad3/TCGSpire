@@ -211,6 +211,45 @@ func test_shop_buy_and_remove() -> void:
 	check(r.remove_cost > cost, "remove cost rises")
 
 
+func test_offer_upgrade_chance_scales_with_act_and_heat() -> void:
+	var cfg: Dictionary = db.balance["offer_upgrade"]
+	var r := _run()
+	var base := r.offer_upgrade_chance("normal")
+	check(absf(base - float(cfg["base"])) < 0.0001, "act 1 heat 0 uses the base chance")
+	check(r.offer_upgrade_chance("elite") > base, "elites offer upgrades more often")
+	r.act = 3
+	check(r.offer_upgrade_chance("normal") > base, "later acts raise the chance")
+	var act3 := r.offer_upgrade_chance("shop")
+	r.heat = 6
+	check(r.offer_upgrade_chance("shop") > act3, "heat raises the chance")
+	r.heat = 999
+	eq(r.offer_upgrade_chance("elite"), float(cfg["max"]), "capped")
+
+
+func test_upgraded_offers_reach_the_deck() -> void:
+	var saved: Dictionary = db.balance["offer_upgrade"].duplicate(true)
+	db.balance["offer_upgrade"]["base"] = 1.0
+	db.balance["offer_upgrade"]["max"] = 1.0
+	var r := _run()
+	r.gold = 1000
+	var shop := r.make_shop()
+	check(shop["cards"].all(func(it: Dictionary) -> bool: return it["up"]), "every shop card upgraded at 100%")
+	check(r.buy(shop["cards"][0], false), "buy")
+	check(r.deck.back().fw > 0 or r.deck.back().upgraded, "bought copy arrives upgraded")
+	var id: String = r.reward_choices("normal")[0]
+	check(r.offer_upgraded(id, "normal"), "reward offer upgraded at 100%")
+	eq(r.offer_upgraded(id, "normal"), true, "same answer when asked again (resume)")
+	r.add_card(id, true)
+	check(r.deck.back().fw > 0 or r.deck.back().upgraded, "picked reward arrives upgraded")
+	db.balance["offer_upgrade"]["base"] = 0.0
+	db.balance["offer_upgrade"]["per_act"] = 0.0
+	db.balance["offer_upgrade"]["per_heat"] = 0.0
+	check(not r.offer_upgraded(id, "normal"), "0% never upgrades")
+	r.add_card(id)
+	eq(r.deck.back().fw, int(r.firmware.get(id, 0)), "plain copy")
+	db.balance["offer_upgrade"] = saved
+
+
 func test_event_requirements() -> void:
 	var r := _run()
 	var ev: Dictionary = db.events["wandering_merchant"]

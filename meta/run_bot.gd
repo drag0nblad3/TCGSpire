@@ -66,7 +66,7 @@ static func play(db: CardDB, profile: Profile, seed_in: int, heat: int = 0, job:
 					if pick != "":
 						_stat(stats, pick)["picked"] += 1
 				if pick != "":
-					run.add_card(pick)
+					run.add_card(pick, run.offer_upgraded(pick, rewards["kind"]))
 				elif not rewards["cards"].is_empty():
 					run.skip_reward(rewards["kind"])
 				run.add_talisman(rewards["talisman"])
