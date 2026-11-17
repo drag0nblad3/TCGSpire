@@ -305,7 +305,7 @@ static func _lose_hp(c: Combat, t: Fighter, n: int, src: Fighter) -> void:
 	var w := t.ward
 	t.ward = 0
 	c.deal_damage(t, n, src.id, "lose_hp")
-	t.ward = w
+	t.ward += w  # keep any Firewall a "When you lose HP" rule just gave
 
 
 static func targets(c: Combat, e: Dictionary, src: Fighter, target: Fighter, default_to: String) -> Array:

@@ -483,3 +483,16 @@ func test_amplify_base_when_none() -> void:
 	eq(c.player.status("charge"), 3, "no Charge: gain 2, then the loop's +1")
 	c.play_card(give(c, "recursion"))
 	eq(c.player.status("charge"), 7, "3 doubled to 6, then +1")
+
+
+func test_backlash_hits_back_whenever_you_lose_hp() -> void:
+	c.play_card(give(c, "backlash"))
+	eq(c.units.size(), 1, "Backlash runs")
+	var hp: int = c.enemies[0].hp
+	Effects.resolve(c, {"op": "lose_hp", "amount": 2, "to": "self"}, c.player, null)
+	eq(c.enemies[0].hp, hp - 4, "HP cost triggers it")
+	Effects.resolve(c, {"op": "damage", "amount": 3, "hits": 2}, c.enemies[1], c.player)
+	eq(c.enemies[0].hp, hp - 12, "each hit that gets through triggers it")
+	c.player.ward = 20
+	Effects.resolve(c, {"op": "damage", "amount": 5}, c.enemies[1], c.player)
+	eq(c.enemies[0].hp, hp - 12, "a hit Firewall fully blocks costs no HP")
