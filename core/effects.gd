@@ -517,7 +517,7 @@ static func _describe(e: Dictionary) -> String:
 			return txt2
 		"fuel":
 			var bonus2: Array = e.get("effects", [])
-			return "Fuel %d %s%s%s: %s" % [maxi(int(e.get("stacks", 1)), 1), "of your " if to == "self" else "", Lexicon.status(str(e.get("status", "might"))),
+			return "Fuel %d %s%s%s: %s" % [maxi(int(e.get("stacks", 1)), 1), Lexicon.status(str(e.get("status", "might"))), " on you" if to == "self" else "",
 				" (each enemy)" if to == "all_enemies" else "", " ".join(bonus2.map(func(fx: Dictionary) -> String: return describe(fx)))]
 		"sacrifice":
 			var m3 := float(e.get("mult", 1.0))

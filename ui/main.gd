@@ -772,10 +772,10 @@ func _play_pack_opening(host: Control, kind: String = Packs.NORMAL) -> void:
 	tween.tween_callback(overlay.queue_free)
 
 
-## Collector pill on a revealed pack card: an unlocked firmware level or its level (NEW is a ribbon, copies are pips).
+## Collector pill on a revealed pack card: an available firmware level or its level (NEW is a ribbon, copies are pips).
 func _pack_badge(p: Dictionary) -> String:
 	if p.get("unlocked", false):
-		return "v%d unlocked!" % (profile.firmware_level(p["id"]) + 1)
+		return "v%d available!" % (profile.firmware_level(p["id"]) + 1)
 	return profile.copy_badge(db, p["id"])
 
 
@@ -795,7 +795,7 @@ func _pack_summary(pulled: Array) -> String:
 	if fresh > 0:
 		bits.append("%d new program%s" % [fresh, "" if fresh == 1 else "s"])
 	if unlocked > 0:
-		bits.append("%d firmware upgrade%s unlocked" % [unlocked, "" if unlocked == 1 else "s"])
+		bits.append("%d firmware upgrade%s available" % [unlocked, "" if unlocked == 1 else "s"])
 	var foils := pulled.filter(func(p: Dictionary) -> bool: return p["foil"]).size()
 	if foils > 0:
 		bits.append("%d glitch foil%s" % [foils, "" if foils == 1 else "s"])
