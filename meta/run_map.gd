@@ -14,6 +14,14 @@ extends RefCounted
 
 const TYPES := ["fight", "elite", "rest", "shop", "event", "treasure", "vault", "boss"]
 const JUMP_REACH := 0.36  # how far sideways (relative width) a jump reaches
+## The map screen draws one unit of x about this many floors wide (canvas ~680px, floor 104px).
+const VIEW_ASPECT := 6.5
+## Walls keep at least this far (in floor heights, ~26px) from any link they don't cut.
+const WALL_CLEAR := 0.25
+## ...and this far (~14px) from the name drawn under each node (about 0.7 floors wide).
+const LABEL_CLEAR := 0.14
+const LABEL_DROP := 0.34
+const LABEL_HALF := 0.36
 
 var nodes: Array = []
 var rows: Array = []  # row -> [node ids]
@@ -46,6 +54,7 @@ static func generate(db: CardDB, rng: GameRng, act: int = 1, targets: Array = []
 	m.rows.append([boss["id"]])
 	m._link(rng)
 	m._build_walls(cfg.get("walls", {}), rng.fork("walls"))
+	m._ensure_shop(rng.fork("shop"))
 	m.act = act
 	m._assign_encounters(db, rng, targets, boss_faction)
 	return m
@@ -97,7 +106,7 @@ func _build_walls(cfg: Dictionary, rng: GameRng) -> void:
 	var n_v := rng.range_i(int(cfg.get("v_min", 1)), int(cfg.get("v_max", 2)))
 	_max_vaults = int(cfg.get("max_vaults", 2))
 	var tries := 0
-	while (n_h > 0 or n_v > 0) and tries < 60:
+	while (n_h > 0 or n_v > 0) and tries < 120:
 		tries += 1
 		var gap := rng.range_i(1, last_gap - 1)
 		var w := _h_wall(gap, rng) if n_h > 0 else _v_wall(gap, last_gap, rng)
@@ -113,7 +122,8 @@ func _build_walls(cfg: Dictionary, rng: GameRng) -> void:
 
 ## Horizontal wall low in a floor gap, centred on the 1-2 links it cuts.
 func _h_wall(gap: int, rng: GameRng) -> Dictionary:
-	var y := gap + 0.33  # clear of the node labels drawn under the floor above
+	# Anywhere low-to-mid in the gap; _try_wall keeps it off the node labels above.
+	var y: float = gap + [0.3, 0.37, 0.44, 0.51][rng.range_i(0, 3)]
 	var xs: Array = []
 	for id in rows[gap]:
 		for to in nodes[id]["next"]:
@@ -127,10 +137,10 @@ func _h_wall(gap: int, rng: GameRng) -> Dictionary:
 	if i + 1 < xs.size() and xs[i + 1] - xs[i] < 0.3 and xs[i + 1] - xs[i] > 0.04 and rng.chance(0.45):
 		cover.append(xs[i + 1])
 	var mid: float = (cover[0] + cover[-1]) / 2.0
-	var half: float = (cover[-1] - cover[0]) / 2.0 + 0.08
-	# Must not clip a link it isn't centred on.
+	var half: float = (cover[-1] - cover[0]) / 2.0 + 0.07
+	# Must not clip a link it isn't centred on (_try_wall also checks real clearance).
 	for x in xs:
-		if x not in cover and absf(x - mid) <= half + 0.02:
+		if x not in cover and absf(x - mid) <= half + 0.05:
 			return {}
 	return {"kind": "h", "a": [mid - half, y], "b": [mid + half, y], "cuts": cover.size()}
 
@@ -193,6 +203,12 @@ func _try_wall(w: Dictionary) -> bool:
 				ok = false
 				break
 	if ok:
+		# Every wall stays clear of the links it doesn't cut (reroutes included).
+		for wall in walls:
+			if _wall_clearance(wall) < WALL_CLEAR or _label_clearance(wall) < LABEL_CLEAR:
+				ok = false
+				break
+	if ok:
 		# Few vaults, and each one a single jump from a node you can walk to.
 		var seen := _reachable()
 		var sealed := 0
@@ -223,6 +239,49 @@ func _reroute(id: int) -> bool:
 			_add_link(node, to)
 			return true
 	return false
+
+
+## Closest any remaining link comes to the wall, in floor heights as drawn.
+func _wall_clearance(w: Dictionary) -> float:
+	var wa := Vector2(float(w["a"][0]) * VIEW_ASPECT, float(w["a"][1]))
+	var wb := Vector2(float(w["b"][0]) * VIEW_ASPECT, float(w["b"][1]))
+	var best := INF
+	for n in nodes:
+		var p1 := Vector2(_rel(n) * VIEW_ASPECT, float(n["row"]))
+		for to in n["next"]:
+			var p2 := Vector2(_rel(nodes[to]) * VIEW_ASPECT, float(nodes[to]["row"]))
+			var cp := Geometry2D.get_closest_points_between_segments(p1, p2, wa, wb)
+			best = minf(best, cp[0].distance_to(cp[1]))
+	return best
+
+
+## Closest the wall comes to a node's name label, in floor heights as drawn.
+func _label_clearance(w: Dictionary) -> float:
+	var wa := Vector2(float(w["a"][0]) * VIEW_ASPECT, float(w["a"][1]))
+	var wb := Vector2(float(w["b"][0]) * VIEW_ASPECT, float(w["b"][1]))
+	var best := INF
+	for n in nodes:
+		var c := Vector2(_rel(n) * VIEW_ASPECT, float(n["row"]) - LABEL_DROP)
+		var cp := Geometry2D.get_closest_points_between_segments(c - Vector2(LABEL_HALF, 0), c + Vector2(LABEL_HALF, 0), wa, wb)
+		best = minf(best, cp[0].distance_to(cp[1]))
+	return best
+
+
+## Every act has at least one shop you can walk to: if none survived the walls,
+## a fight or event mid-act becomes one.
+func _ensure_shop(rng: GameRng) -> void:
+	var seen := _reachable()
+	var picks: Array = []
+	for n in nodes:
+		if not seen.has(n["id"]):
+			continue
+		if n["type"] == "shop":
+			return
+		var r := int(n["row"])
+		if n["type"] in ["fight", "event"] and r >= 3 and r <= rows.size() - 4:
+			picks.append(n["id"])
+	if not picks.is_empty():
+		nodes[picks[rng.range_i(0, picks.size() - 1)]]["type"] = "shop"
 
 
 func _link_walled(a: int, b: int) -> bool:

@@ -80,6 +80,22 @@ func test_jumps_need_the_upgrade() -> void:
 	eq(r.jumps_left(), 4, "rig ranks add jumps")
 
 
+func test_map_walls_keep_clear_of_links_they_dont_cut() -> void:
+	for s in 40:
+		var m := RunMap.generate(db, GameRng.new(s))
+		for w in m.walls:
+			check(m._wall_clearance(w) >= RunMap.WALL_CLEAR, "seed %d wall %s too close to a link" % [s, str(w["a"])])
+			check(m._label_clearance(w) >= RunMap.LABEL_CLEAR, "seed %d wall %s on a node label" % [s, str(w["a"])])
+
+
+func test_map_has_a_walkable_shop_every_act() -> void:
+	for s in 60:
+		for act in [1, 2, 3]:
+			var m := RunMap.generate(db, GameRng.new(s), act)
+			var seen: Dictionary = m._reachable()
+			check(m.nodes.any(func(n: Dictionary) -> bool: return n["type"] == "shop" and seen.has(n["id"])), "seed %d act %d has no shop" % [s, act])
+
+
 func test_jump_goes_up_through_walls_and_plays_the_node() -> void:
 	for s in 30:
 		var r := _run(s)
