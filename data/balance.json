@@ -252,6 +252,11 @@
    }
   }
  ],
+ "heat_rewards": {
+  "pay_pct": 0.15,
+  "scrap_per_core": 3,
+  "first_clear_premium": [0, 1, 1, 2, 2, 3, 3]
+ },
  "run_rewards": {
   "xp_per_floor": 5,
   "xp_per_elite": 15,
