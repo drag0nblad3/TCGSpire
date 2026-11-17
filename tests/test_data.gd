@@ -54,7 +54,9 @@ func test_packable_rarities_exist() -> void:
 
 func test_every_crew_has_the_same_rarity_spread() -> void:
 	var want := {"common": 10, "uncommon": 10, "rare": 6, "mythic": 2}
+	# Street carries one extra uncommon: Backlash, the "When you lose HP" daemon.
+	var extra := {"neutral": {"uncommon": 1}}
 	for f in Lexicon.FACTION:
 		for r in want:
 			var n := db.ids_where(func(c: CardDef) -> bool: return c.faction == f and c.faction2 == "" and c.rarity == r).size()
-			eq(n, want[r], "%s %s cards" % [f, r])
+			eq(n, want[r] + int(extra.get(f, {}).get(r, 0)), "%s %s cards" % [f, r])

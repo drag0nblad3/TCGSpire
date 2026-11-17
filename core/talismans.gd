@@ -14,7 +14,7 @@ extends RefCounted
 ## Filters: "every": N (fires on every Nth event), "turn": N (only that turn),
 ## "card_type": "attack" and "keyword": "loop" (card_played and loop only).
 
-const TRIGGERS := ["combat_start", "turn_start", "turn_end", "card_played", "kill", "daemon_closed", "loop", "reshuffle"]
+const TRIGGERS := ["combat_start", "turn_start", "turn_end", "card_played", "kill", "daemon_closed", "loop", "reshuffle", "hp_lost"]
 ## Map-level triggers: "jump" (you jump to a node), "vault" (you crack a vault), "rest" (you enter a safehouse).
 const RUN_TRIGGERS := ["jump", "vault", "rest"]
 const RUN_LABEL := {"jump": "When you jump", "vault": "When you crack a vault", "rest": "When you reach a safehouse"}
@@ -33,6 +33,7 @@ const LABEL := {
 	"closed": "When this daemon is destroyed or refreshed",
 	"loop": "When a Loop program grows",
 	"reshuffle": "When your discard shuffles back into your draw pile",
+	"hp_lost": "When you lose HP",
 }
 
 
@@ -69,10 +70,11 @@ static func fire(c: Combat, on: String, ctx: Dictionary = {}) -> void:
 				if c.talisman_counters[key] % int(trig["every"]) != 0:
 					continue
 			c.emit("rule" if t.has("unit") else "talisman", {"id": tid, "trigger": on})
+			var outer: Fighter = c.rule_daemon  # an "hp_lost" rule can fire inside another rule
 			c.rule_daemon = t.get("unit")
 			for e in trig.get("effects", []):
 				Effects.resolve(c, e, c.player, ctx.get("target"))
-			c.rule_daemon = null
+			c.rule_daemon = outer
 
 
 ## Always-on rule flag from implants (Combat.rule_sum adds it to the daemons' flags).
@@ -135,7 +137,7 @@ static func describe(t: Dictionary) -> String:
 			when = "When you play %s %s" % ["an" if tn[0].to_lower() in "aeiou" else "a", tn]
 		if trig.has("every"):
 			var noun: String = {"card_played": "cards you play", "turn_start": "turns", "turn_end": "turns", "kill": "crashed enemies",
-				"daemon_closed": "daemons destroyed or refreshed", "reshuffle": "reshuffles"}.get(on, "times")
+				"daemon_closed": "daemons destroyed or refreshed", "reshuffle": "reshuffles", "hp_lost": "times you lose HP"}.get(on, "times")
 			if trig.has("card_type"):
 				noun = "%ss you play" % Lexicon.type_name(str(trig["card_type"]))
 			when = "Every %d %s" % [int(trig["every"]), noun]
