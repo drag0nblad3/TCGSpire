@@ -28,6 +28,8 @@ static func rows(view: FighterView) -> Array:
 			out.append([r[0], r[1], Palette.ENERGY])
 	if view.kind == "unit":
 		out.append(["Daemon rule", DaemonRules.describe(f.rule), Palette.ENERGY])
+		if f.booting:
+			out.append(["Booting", FighterView.BOOTING_TEXT, Palette.TEXT_DIM])
 		out.append(["Countdown", "Its HP is its countdown: it loses 1 at the start of each of your turns and 1 per hit taken. Purge moves take more. At 0 it closes and the rule ends.", Palette.TEXT_DIM])
 	if f.ward > 0:
 		out.append(["%s %d" % [Lexicon.term("ward"), f.ward], "Absorbs damage first.", Palette.ENERGY])

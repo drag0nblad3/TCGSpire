@@ -45,7 +45,7 @@ static func fire(c: Combat, on: String, ctx: Dictionary = {}) -> void:
 			sources.append({"id": u.id, "triggers": u.rule["triggers"], "unit": u})
 	for t in sources:
 		var tid: String = t.get("id", "")
-		if t.has("unit") and not c.units.has(t["unit"]):
+		if t.has("unit") and (not c.units.has(t["unit"]) or t["unit"].booting):
 			continue
 		for i in t.get("triggers", []).size():
 			var trig: Dictionary = t["triggers"][i]

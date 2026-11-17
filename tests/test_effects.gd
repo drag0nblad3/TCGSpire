@@ -151,6 +151,8 @@ func test_hits_cost_a_daemon_one_hp() -> void:
 func test_turret_rule_fires_at_turn_end() -> void:
 	c.play_card(give(c, "drone_swarm"))
 	c.end_turn()
+	eq(c.enemies[0].hp, 30, "boots up on the turn it is run")
+	c.end_turn()
 	eq(c.enemies[0].hp, 28)
 
 
@@ -393,6 +395,7 @@ func test_closed_rule_fires_when_the_daemon_runs_out_or_is_crashed() -> void:
 	c.crash_daemon(c.units[0])
 	c.play_card(give(c, "botnet_lease"))
 	c.units[0].hp = 1
+	c.units[0].booting = false  # as if run last turn
 	c.enemies[0].hp = 30
 	hp = c.enemies[0].hp
 	c.end_turn()

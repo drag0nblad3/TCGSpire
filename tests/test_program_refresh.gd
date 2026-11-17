@@ -49,6 +49,7 @@ func test_hive_sync_boost_for_you_uplink_for_daemons() -> void:
 	var c := arena()
 	var rule := {"triggers": [{"on": "turn_end", "effects": [{"op": "damage", "amount": 2, "to": "front"}]}]}
 	c.summon("Drone", 4, rule)
+	c.units[0].booting = false
 	c.play_card(give(c, "swarm_link"))
 	eq(c.player.status("might"), 1)
 	eq(c.player.status("uplink"), 1)

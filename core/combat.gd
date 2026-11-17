@@ -29,6 +29,8 @@ var picks: Array = []
 var max_energy := 3
 var hand_size := 5
 var board_slots := 3
+## True while your turn opens (countdown, combat-start/turn-start triggers): daemons run then are ready at once.
+var _turn_opening := false
 var turn := 0
 var phase: Phase = Phase.PLAYER
 var events: Array = []
@@ -175,14 +177,26 @@ func _start_player_turn() -> void:
 	BossRules.on_player_turn(self)
 	emit("turn_start", {"turn": turn, "ward": player.ward})
 	# Daemons run down: HP is the countdown, so a daemon with N HP lasts N rounds if left alone.
-	for u in units.duplicate():
+	# Every daemon ticks first, then the ones at 0 close, so a payoff from one closing (Server Farm)
+	# can't decide which of two daemons at the same HP survives.
+	_turn_opening = true
+	var closing: Array = []
+	for u: Fighter in units:
+		var was_booting := u.booting
+		u.booting = false
+		# A daemon that sat out its first turn starts counting now, so it still gets its N turns.
+		if was_booting and _waits_to_act(u):
+			continue
 		u.hp -= 1
 		if u.hp <= 0:
-			units.erase(u)
-			emit("expire", {"target": u.id})
-			_daemon_closed(u)
+			closing.append(u)
 		else:
 			emit("uptime", {"target": u.id, "hp": u.hp})
+	for u: Fighter in closing:
+		units.erase(u)
+		emit("expire", {"target": u.id})
+	for u: Fighter in closing:
+		_daemon_closed(u)
 	if turn == 1:
 		# After the Ward reset, so start-of-combat Ward sticks for turn 1.
 		if start_ward > 0:
@@ -193,9 +207,11 @@ func _start_player_turn() -> void:
 	Statuses.on_turn_start(self, player)
 	_check_end()
 	if is_over():
+		_turn_opening = false
 		return
 	draw(hand_size)
 	Talismans.fire(self, "turn_start")
+	_turn_opening = false
 
 
 func can_play(hand_idx: int) -> bool:
@@ -642,10 +658,20 @@ func summon(unit_name: String, hp: int, rule: Dictionary = {}) -> bool:
 	_unit_counter += 1
 	u.rule = rule
 	u.ward = daemon_ward
+	# Run from a program during your turn: it boots up and acts from your next turn. Daemons that
+	# implants or other daemons run as your turn opens are ready at once.
+	# Only daemons with triggered rules have anything to wait for; flags work at once.
+	u.booting = phase == Phase.PLAYER and not _turn_opening and rule.get("triggers", []).any(func(t: Dictionary) -> bool: return str(t.get("on", "")) != "closed")
 	units.append(u)
-	emit("summon", {"target": u.id, "name": unit_name, "hp": hp, "ward": u.ward})
+	emit("summon", {"target": u.id, "name": unit_name, "hp": hp, "ward": u.ward, "booting": u.booting})
 	_daemon_repair()
 	return true
+
+
+## A booting daemon with an end-of-turn or on-play rule loses those firings on the turn it is run,
+## so its countdown starts a turn later. Start-of-turn rules and flags lose nothing and tick as usual.
+func _waits_to_act(u: Fighter) -> bool:
+	return u.rule.get("triggers", []).any(func(t: Dictionary) -> bool: return str(t.get("on", "")) in ["turn_end", "card_played", "loop", "kill"])
 
 
 ## Repair Drones: running a daemon (new or refreshed) repairs you.

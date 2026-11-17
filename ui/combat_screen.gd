@@ -15,6 +15,8 @@ var step_scale := 1.0
 ## as big as possible (up to HAND_ZOOM) while the hand still fits with little overlap.
 const HAND_ZOOM := 1.35
 const HAND_OVERLAP := 8.0
+## A daemon tile at full size (FighterView unit default).
+const UNIT_WIDTH := 176.0
 var combat: Combat
 var run: RunState
 var _selected := -1
@@ -335,7 +337,19 @@ func _add_unit_view(u: Fighter) -> FighterView:
 	v.inspected.connect(_inspect_fighter)
 	_units_row.add_child(v)
 	_views[u.id] = v
+	_fit_units()
 	return v
+
+
+## Daemon tiles shrink to share the row once there are more than fit (Server Farm's 4th slot).
+func _fit_units() -> void:
+	var tiles := _units_row.get_children()
+	var n := tiles.size()
+	if n == 0:
+		return
+	var width := minf(UNIT_WIDTH, (_layout_width() - 38.0 - 8.0 * (n - 1)) / n)
+	for tile: FighterView in tiles:
+		tile.custom_minimum_size.x = width
 
 
 func _draw_energy() -> void:
@@ -775,6 +789,8 @@ func _play_events(played: CardView) -> Array:
 				nv.shown_hp = int(e["hp"])
 				nv.shown_ward = int(e.get("ward", 0))
 				_pop_in(nv)
+				if e.get("booting", false):
+					_float_text(nv, "Booting", Palette.TEXT_DIM, -20)
 				await _wait(0.2)
 			"spawn":
 				var en: Fighter = _find(combat.enemies, str(e["target"]))
