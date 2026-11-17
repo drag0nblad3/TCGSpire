@@ -6,6 +6,8 @@ extends Control
 signal pressed(view: CardView)
 ## Press-and-hold: show the card large with keyword explanations.
 signal inspected(view: CardView)
+## Finger (or mouse) went down on this card; the combat hand uses it to start the touch highlight.
+signal touch_started(view: CardView)
 
 const SIZE := Vector2(128, 184)
 const DRONE := preload("res://assets/combat/drone.svg")
@@ -27,8 +29,18 @@ var lift_selected := true
 var selected := false:
 	set(v):
 		selected = v
-		z_index = 5 if v else 0
+		_update_z()
 		queue_redraw()
+## Finger on this card in the combat hand: 0..1, eased by set_touched. The card grows from its
+## bottom edge, rises and glows; sliding across the hand hands this over card to card.
+const TOUCH_ZOOM := 0.12
+const TOUCH_LIFT := 16.0
+var touch := 0.0:
+	set(v):
+		touch = v
+		_update_z()
+		queue_redraw()
+var _touch_tween: Tween
 
 ## Shows the card back (pack opening). Setting false reveals with a flip.
 var face_down := false:
@@ -87,7 +99,24 @@ func setup(c: CardInstance, zoom_in: float = 1.0) -> CardView:
 	return self
 
 
+func _update_z() -> void:
+	z_index = 6 if touch > 0.01 else (5 if selected else 0)
+
+
+func set_touched(on: bool, seconds := 0.12) -> void:
+	var goal := 1.0 if on else 0.0
+	if _touch_tween != null:
+		_touch_tween.kill()
+	if seconds <= 0.0 or not is_inside_tree():
+		touch = goal
+		return
+	_touch_tween = create_tween()
+	_touch_tween.tween_property(self, "touch", goal, seconds * absf(goal - touch)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+
 func _gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		touch_started.emit(self)
 	if _tap.feed(event) == "tap":
 		pressed.emit(self)
 		accept_event()
@@ -149,7 +178,11 @@ static func title_size(name_text: String, width: float, height: float) -> int:
 func _draw() -> void:
 	if card == null:
 		return
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2(zoom, zoom))
+	var grow := 1.0 + TOUCH_ZOOM * touch
+	var draw_scale := zoom * grow
+	# Grow about the bottom centre so a touched card rises out of the hand instead of sideways.
+	var origin := SIZE * zoom * Vector2(0.5, 1.0) * (1.0 - grow) - Vector2(0, TOUCH_LIFT * touch * zoom)
+	draw_set_transform(origin, 0.0, Vector2(draw_scale, draw_scale))
 	if face_down:
 		_draw_back()
 		return
@@ -162,6 +195,16 @@ func _draw() -> void:
 	var dim := 1.0 if playable else 0.45
 	var ink := Color(Palette.CARD_TEXT, dim)
 
+	if touch > 0.01:
+		var halo := StyleBoxFlat.new()
+		halo.bg_color = Color(0, 0, 0, 0)
+		halo.border_color = Color(Palette.ENERGY, 0.85 * touch)
+		halo.set_border_width_all(2)
+		halo.set_corner_radius_all(maxi(Palette.RADIUS, 6))
+		halo.shadow_color = Color(Palette.ENERGY, 0.35 * touch)
+		halo.shadow_size = int(14 * touch)
+		halo.set_expand_margin_all(3)
+		draw_style_box(halo, rect)
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Palette.CARD_BG
 	sb.border_color = Palette.ENERGY if selected else Palette.rarity(d.rarity)
@@ -284,7 +327,8 @@ func _draw() -> void:
 		draw_string(font, pr.position + Vector2(6, 13), badge, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Palette.CARD_BG)
 
 	if _holo != null:
-		_holo.position = (Vector2(6, 6) + lift) * zoom
+		_holo.position = origin + (Vector2(6, 6) + lift) * draw_scale
+		_holo.scale = Vector2(grow, grow)
 
 
 ## Corner brackets, edge traces and a glass sheen (Glassnet skin).

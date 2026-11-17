@@ -9,7 +9,7 @@ const SCREENS := ["hub", "hub_heat", "map", "combat", "reward", "rest", "shop", 
 
 
 func _initialize() -> void:
-	var opts := {"out": "user://shot.png", "frames": "30", "plays": "0", "screen": "combat", "seed": "1", "theme": "", "end_turn": "0", "give": "", "hand": "", "pick": "0"}
+	var opts := {"out": "user://shot.png", "frames": "30", "plays": "0", "screen": "combat", "seed": "1", "theme": "", "end_turn": "0", "give": "", "hand": "", "pick": "0", "touch": "", "slide": ""}
 	for a in OS.get_cmdline_user_args():
 		var kv := a.split("=", true, 1)
 		if kv.size() == 2:
@@ -94,6 +94,30 @@ func _initialize() -> void:
 				ics._inspect_fighter(ics._views[foe.id])
 				for f in 20:
 					await process_frame
+		if scr == "combat" and opts["touch"] != "":
+			# touch=i: finger down on hand card i (real input events); slide=j then drags it onto card j.
+			# The card under the finger rises and glows; frames= sets how far the hand-over has eased.
+			var ts = main.get("_screen")
+			var row: Control = ts._hand_row
+			var down := InputEventMouseButton.new()
+			down.button_index = MOUSE_BUTTON_LEFT
+			down.pressed = true
+			down.position = _window_point(row.get_child(int(opts["touch"])))
+			down.global_position = down.position
+			Input.parse_input_event(down)
+			await process_frame
+			# Rendering here is slow: keep the held finger from turning into a long-press (inspector).
+			for cv in row.get_children():
+				cv._tap._long_fired = true
+			for f in 8:
+				await process_frame
+			if opts["slide"] != "":
+				var move := InputEventMouseMotion.new()
+				move.button_mask = MOUSE_BUTTON_MASK_LEFT
+				move.position = _window_point(row.get_child(int(opts["slide"])))
+				move.global_position = move.position
+				move.relative = move.position - down.position
+				Input.parse_input_event(move)
 		for i in int(opts["frames"]):
 			await process_frame
 		if DisplayServer.get_name() != "headless":
@@ -113,6 +137,11 @@ func _vault_map(db: CardDB, seed_in: int) -> RunMap:
 			if n["type"] == "vault" and int(n["row"]) <= 7:
 				return m
 	return RunMap.generate(db, GameRng.new(seed_in))
+
+
+## A control's centre in window pixels (input events are in window space; the UI is stretched).
+func _window_point(c: Control) -> Vector2:
+	return root.get_final_transform() * (c.get_global_rect().get_center() + Vector2(0, c.size.y * 0.2))
 
 
 ## Waits for combat animations to finish (capped at ~10s).
