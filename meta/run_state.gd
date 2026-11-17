@@ -419,6 +419,18 @@ func reroll_reward(kind: String, current: Array) -> Array:
 	return choices
 
 
+## Creds paid for passing on a fight's program reward (balance.reward_skip_gold by fight kind).
+func reward_skip_gold(kind: String) -> int:
+	return int(db.balance.get("reward_skip_gold", {}).get(kind, 0))
+
+
+## Skip a fight's program reward: pays its creds. Returns the amount.
+func skip_reward(kind: String) -> int:
+	var amount := 0 if over else reward_skip_gold(kind)
+	gold += amount
+	return amount
+
+
 ## New card for this run's deck (firmware cards arrive with their firmware level).
 func make_card(id: String, upgraded: bool = false) -> CardInstance:
 	var c := db.instance(id, upgraded, int(firmware.get(id, 0)))

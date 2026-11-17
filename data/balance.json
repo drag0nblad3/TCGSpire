@@ -130,6 +130,7 @@
    }
   }
  },
+ "reward_skip_gold": {"normal": 10, "elite": 15, "boss": 25},
  "gold": {
   "normal": [
    12,
