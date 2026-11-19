@@ -144,3 +144,17 @@ func test_enemy_spawned_mid_enemy_turn_waits() -> void:
 	c.phase = Combat.Phase.PLAYER
 	c.end_turn()
 	eq(c.enemies.back().arrived, false, "cleared once your next turn ends")
+
+
+func test_heat_exchanger_virus_is_on_enemies_during_your_turn() -> void:
+	# It used to fire at end of turn: the Virus ticked and decayed away before you ever saw it.
+	var c := Combat.create(db, [], "mites", GameRng.new(1), -1, {"talismans": ["ember_brazier"]})
+	c.start()
+	for e in c.enemies:
+		e.hp = 99
+		eq(e.status("burn"), 2, "Virus is up on turn 1")
+	c.end_turn()
+	for e in c.enemies:
+		eq(e.hp, 97, "the Virus ticked at the enemy turn start")
+		eq(e.status("burn"), 3, "1 left after decay, +2 on your new turn")
+	eq(Talismans.describe(db.talismans["ember_brazier"]), "Start of each turn: Apply 2 Virus to ALL enemies.", "text")

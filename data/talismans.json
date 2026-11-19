@@ -18,7 +18,7 @@
 {"id":"seed_pouch","name":"Cell Pouch","rarity":"uncommon","triggers":[{"on":"turn_start","every":3,"effects":[{"op":"add_card","card":"sprout"}]}]},
 {"id":"iron_will","name":"Hardened Kernel","rarity":"uncommon","triggers":[{"on":"kill","effects":[{"op":"ward","amount":6}]}]},
 {"id":"echo_shell","name":"Echo Shell","rarity":"common","triggers":[{"on":"turn_start","turn":1,"effects":[{"op":"draw","amount":2}]}]},
-{"id":"ember_brazier","name":"Heat Exchanger","rarity":"common","triggers":[{"on":"turn_end","effects":[{"op":"apply","status":"burn","stacks":1,"to":"all_enemies"}]}]},
+{"id":"ember_brazier","name":"Heat Exchanger","rarity":"common","triggers":[{"on":"turn_start","effects":[{"op":"apply","status":"burn","stacks":2,"to":"all_enemies"}]}]},
 {"id":"hunters_mark","name":"Tracer","rarity":"common","triggers":[{"on":"combat_start","effects":[{"op":"apply","status":"brittle","stacks":1,"to":"all_enemies"}]}]},
 {"id":"quill_of_fate","name":"Fate Compiler","rarity":"uncommon","triggers":[{"on":"card_played","every":8,"effects":[{"op":"energy","amount":2},{"op":"draw","amount":2}]}]},
 {"id":"living_armor","name":"Living Chrome","rarity":"uncommon","unlock_level":5,"flags":{"guard":1}},
