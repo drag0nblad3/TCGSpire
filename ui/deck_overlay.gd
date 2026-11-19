@@ -3,6 +3,8 @@ extends Control
 ## Full-screen card grid on top of everything. on_pick(index) gets the tapped
 ## card's index (or -1 for the button). Used for deck view, upgrade, removal and
 ## installing a mod (only cards that fit it can be picked; they preview with it).
+## `low = true` (combat picks: Dump, recover) sits the cards just above the button,
+## in the lower part of the screen where the thumb reaches; it scrolls past ~55%.
 
 var _title := ""
 var _cards: Array = []
@@ -11,6 +13,7 @@ var _on_pick: Callable
 var _preview_upgrade := false
 var _pickable := false
 var _mod: Dictionary = {}
+var low := false
 
 
 func setup(title: String, cards: Array, button_text: String, on_pick: Callable, pickable: bool = false, preview_upgrade: bool = false, mod: Dictionary = {}) -> DeckOverlay:
@@ -30,11 +33,13 @@ func _ready() -> void:
 	bg.color = Color(Palette.PANEL_BG, 0.97)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
-	var parts := UiKit.screen(14, BoxContainer.ALIGNMENT_BEGIN)
+	var parts := UiKit.screen(14, BoxContainer.ALIGNMENT_END if low else BoxContainer.ALIGNMENT_BEGIN)
 	add_child(parts[0])
 	var v: VBoxContainer = parts[1]
 	v.add_child(UiKit.label(_title, 24))
 	var inner := UiKit.scroll(v)
+	if low:
+		_fit_low(inner.get_parent())
 	var grid := UiKit.flow(10)
 	inner.add_child(grid)
 	if _cards.is_empty():
@@ -80,6 +85,18 @@ func _ready() -> void:
 		# Just a look at a pile: any tap (not a scroll) closes it.
 		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		UiKit.tap_to_close(self, func() -> void: _close(-1))
+
+
+## Low layout: the scroll is as tall as its rows of cards (capped at ~55% of the
+## screen) instead of filling it, so the block stays bottom-aligned above the button.
+func _fit_low(sc: ScrollContainer) -> void:
+	var view := get_viewport_rect().size
+	var gap := 10.0
+	var per_row := maxi(1, floori((view.x - 32.0 + gap) / (CardView.SIZE.x + gap)))
+	var rows := maxi(1, ceili(_cards.size() / float(per_row)))
+	var need := rows * CardView.SIZE.y + (rows - 1) * gap
+	sc.size_flags_vertical = Control.SIZE_SHRINK_END
+	sc.custom_minimum_size.y = minf(need, view.y * 0.55)
 
 
 ## Short line under an upgrade preview. The card already shows changed numbers as 6→8,
