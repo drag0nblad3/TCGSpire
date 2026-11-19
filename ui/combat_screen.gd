@@ -42,6 +42,8 @@ var _end_btn: Button
 ## Hive Link: "Shut down" arms a tap on one of your daemons to crash it on purpose.
 var _crash_btn: Button
 var _crash_mode := false
+## Takes back the last program while it revealed nothing (Combat.undo): for misclicks.
+var _undo_btn: Button
 var _fx: Control
 var _views := {}  # fighter id -> FighterView
 ## Multi-hit playback: "source>target" of the last damage event and how many hits in a row it has taken.
@@ -51,6 +53,7 @@ var _combo_n := 0
 
 func setup(c: Combat, r: RunState) -> CombatScreen:
 	combat = c
+	c.undo_on = true
 	run = r
 	return self
 
@@ -133,6 +136,9 @@ func _ready() -> void:
 	_crash_btn.tooltip_text = "Shut down one of your daemons"
 	_crash_btn.visible = combat.manual_crash
 	bar.add_child(_crash_btn)
+	_undo_btn = UiKit.button("Undo", _on_undo, Vector2(96, 56), 16)
+	_undo_btn.tooltip_text = "Take back your last program. Only until it draws a card, rolls something random or shows you something new."
+	bar.add_child(_undo_btn)
 	_end_btn = Button.new()
 	_end_btn.text = "End turn"
 	_end_btn.custom_minimum_size = Vector2(150, 56)
@@ -339,6 +345,7 @@ func _rebuild() -> void:
 	_crash_btn.visible = combat.manual_crash
 	_crash_btn.disabled = _busy or not combat.can_shutdown()
 	_crash_btn.text = "Cancel" if _crash_mode else "Shut down"
+	_undo_btn.disabled = _busy or not combat.can_undo()
 	if _crash_mode:
 		_action_label.text = "Choose a daemon"
 
@@ -597,6 +604,25 @@ func _on_end_turn() -> void:
 	_act(func() -> void: combat.end_turn())
 
 
+func _on_undo() -> void:
+	if _busy or not combat.undo():
+		return
+	_selected = -1
+	_picks = []
+	_picks_for = -1
+	_crash_mode = false
+	_event_cursor = combat.events.size()
+	# Implant badges count presented events: recount them from the cut-back log.
+	_implant_tracker = ImplantTracker.new()
+	for event in combat.events:
+		_implant_tracker.consume(event)
+	for tv in _implant_views.values():
+		tv.tracker = _implant_tracker
+		tv.queue_redraw()
+	_rebuild()
+	UiKit.toast(self, "Undone", 1.2)
+
+
 func cheat_full_heal() -> void:
 	if _busy or combat.is_over():
 		return
@@ -618,6 +644,7 @@ func _act(f: Callable, hand_idx: int = -1, action: String = "Enemy turn") -> voi
 	_action_label.text = "Running program" if hand_idx >= 0 else action
 	_end_btn.disabled = true
 	_crash_btn.disabled = true
+	_undo_btn.disabled = true
 	for v in _views.values():
 		v.freeze()
 		v.targetable = false
