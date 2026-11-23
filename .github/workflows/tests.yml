@@ -26,3 +26,5 @@ jobs:
         run: GODOT=~/godot/godot scripts/test.sh
       - name: Balance sim
         run: GODOT=~/godot/godot scripts/sim.sh n=100
+      - name: Data Deck text check
+        run: GODOT=~/godot/godot scripts/browser.sh /tmp/data-deck
