@@ -175,7 +175,7 @@ func _open_menu() -> void:
 	var note := ""
 	if active_run:
 		if _resume.get("screen", "") == "node":
-			note = "Quitting here restarts this node when you resume (a fight starts over from turn 1)."
+			note = "Quitting here resumes this fight at the start of your current turn." if _screen is CombatScreen else "Quitting here restarts this node when you resume."
 		entries.append(["Save & quit to menu", func() -> void:
 			run = null
 			show_hub()])
@@ -345,7 +345,7 @@ func _resume_run() -> void:
 	var res: Dictionary = data["resume"]
 	match str(res.get("screen", "map")):
 		"node":
-			_play_node(run.current_node())
+			_play_node(run.current_node(), res.get("actions", []))
 		"reward":
 			_show_reward(res.get("lines", []), res.get("tals", []), res.get("choices", []), res.get("perks", []), res.get("kind", ""))
 		"perks":
@@ -888,10 +888,10 @@ func _enter_node(id: int) -> void:
 	_play_node(node)
 
 
-func _play_node(node: Dictionary) -> void:
+func _play_node(node: Dictionary, actions: Array = []) -> void:
 	match node.get("type", ""):
 		"fight", "elite", "boss", "vault":
-			_start_combat(node)
+			_start_combat(node, actions)
 		"rest":
 			_show_rest()
 		"shop":
@@ -904,13 +904,26 @@ func _play_node(node: Dictionary) -> void:
 			_show_message(Palette.w("treasure"), ["You pull %s from the cache." % db.talismans[tid]["name"] if tid != "" else "The cache is empty."], {"tals": [tid] if tid != "" else []})
 
 
-func _start_combat(node: Dictionary) -> void:
+## `actions`: a saved fight's moves (Combat.checkpoint) to replay, so a resumed run picks up
+## at the start of the turn it was closed on. If they no longer fit, the fight starts over.
+func _start_combat(node: Dictionary, actions: Array = []) -> void:
 	_tint(Palette.NODE[node["type"]] if node["type"] != "fight" else Color.TRANSPARENT)
 	_combat = run.start_combat(node["encounter"])
 	_combat.start()
+	if not actions.is_empty() and not _combat.replay(actions):
+		push_warning("Saved fight didn't replay; starting it over")
+		_combat = run.start_combat(node["encounter"])
+		_combat.start()
 	var s := CombatScreen.new().setup(_combat, run)
 	s.step_scale = anim_speed()
 	s.finished.connect(_on_combat_finished)
+	var fight := _combat
+	s.acted.connect(func() -> void:
+		# Save at each turn start: closing the app mid-fight resumes at that turn.
+		if fight == _combat and not fight.is_over() and fight.phase == Combat.Phase.PLAYER:
+			var cp := fight.checkpoint()
+			if cp.size() != (_resume.get("actions", []) as Array).size():
+				_save_run({"screen": "node", "actions": cp}))
 	_show(s)
 	if node.get("type", "") == "boss":
 		GameMusic.mood("boss")
