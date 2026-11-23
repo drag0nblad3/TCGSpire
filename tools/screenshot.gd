@@ -2,7 +2,7 @@ extends SceneTree
 ## Boots the real main scene, jumps to a screen, optionally auto-plays a few
 ## cards, and saves a PNG. Lets you review UI from the CLI without an emulator.
 ##   scripts/shot.sh [screen=hub|map|combat|reward|rest|shop|event|collection|picker|pack|end]
-##                   [out=/tmp/shot.png] [frames=30] [plays=2] [seed=1] [theme=archive] [end_turn=1] [give=sparring_dummy,drone_swarm]
+##                   [out=/tmp/shot.png] [frames=30] [plays=2] [seed=1] [theme=archive] [end_turn=1] [undo=1] [give=sparring_dummy,drone_swarm]
 ## Under --headless it still runs (smoke test for script errors) but writes no image.
 
 const SCREENS := ["hub", "hub_heat", "map", "combat", "reward", "rest", "shop", "event", "collection", "picker", "pack", "pack_open", "pack_shelf", "pack_premium", "pack_crew", "end", "boss", "inspect", "rules", "jobs", "rig", "perk", "tinker", "crew", "firmware", "recompile", "menu", "settings", "resume", "records", "exploits", "ice", "deep", "daily", "signal_result", "weekly", "weekly_map", "login", "tutorial", "coach", "map_walls", "map_jump", "foil", "lethal"]
@@ -83,6 +83,11 @@ func _initialize() -> void:
 							cs._on_enemy_pressed(null, c.enemies.find(c.living(c.enemies)[0]))
 						break
 				await _idle(cs)
+			if opts.get("undo", "0") == "1":
+				# undo=1: take back the last play (misclick undo).
+				main.get("_screen")._on_undo()
+				for f in 4:
+					await process_frame
 			if opts["end_turn"] == "1":
 				main.get("_screen")._on_end_turn()
 				await _idle(main.get("_screen"))

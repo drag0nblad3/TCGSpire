@@ -71,6 +71,10 @@ var daemon_hp := 0
 var daemon_hp_mult := 1.0
 ## Shared HP totals by pool name (BossRules "pool").
 var pools: Dictionary = {}
+## Undo (CombatUndo): state from just before your last action this turn, or {} when it can't be taken back.
+var undo_snap: Dictionary = {}
+## Off for the bot and sims (snapshots cost time); the combat screen turns it on.
+var undo_on := false
 
 
 ## deck: Array of CardInstance (copied, not mutated). hp < 0 means full HP.
@@ -265,6 +269,14 @@ func needs_ally(card: CardInstance) -> bool:
 func play_card(hand_idx: int, target_idx: int = -1, chosen: Array = []) -> bool:
 	if not can_play(hand_idx):
 		return false
+	var snap := CombatUndo.snapshot(self) if undo_on else {}
+	if not _play(hand_idx, target_idx, chosen):
+		return false
+	_keep_undo(snap)
+	return true
+
+
+func _play(hand_idx: int, target_idx: int, chosen: Array) -> bool:
 	var card: CardInstance = hand[hand_idx]
 	var target: Fighter = null
 	if needs_target(card):
@@ -408,6 +420,7 @@ func sync_origins() -> void:
 func end_turn() -> void:
 	if phase != Phase.PLAYER:
 		return
+	undo_snap = {}
 	_ending_turn = true
 	Talismans.fire(self, "turn_end")
 	if is_over():
@@ -596,7 +609,28 @@ func can_shutdown() -> bool:
 func shutdown_daemon(idx: int) -> bool:
 	if not can_shutdown() or idx < 0 or idx >= units.size():
 		return false
+	var snap := CombatUndo.snapshot(self) if undo_on else {}
 	crash_daemon(units[idx])
+	_keep_undo(snap)
+	return true
+
+
+## Undo: the last action can be taken back only if it revealed nothing (no draw, no random roll...).
+func _keep_undo(snap: Dictionary) -> void:
+	undo_snap = snap if not snap.is_empty() and not is_over() and CombatUndo.revealed_nothing(self, snap) else {}
+
+
+func can_undo() -> bool:
+	return not undo_snap.is_empty() and phase == Phase.PLAYER and not is_over()
+
+
+## Takes back your last program (or daemon shutdown) this turn. One step only: misclicks, not do-overs.
+func undo() -> bool:
+	if not can_undo():
+		return false
+	var snap := undo_snap
+	CombatUndo.restore(self, snap)
+	undo_snap = {}
 	return true
 
 
