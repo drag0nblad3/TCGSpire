@@ -54,6 +54,12 @@ func _ready() -> void:
 	v.add_child(done)
 
 
+## Android back: same as Done.
+func back() -> void:
+	queue_free()
+	closed.emit()
+
+
 const ANIM_NAMES := ["Normal", "Fast", "Very fast"]
 const ROW_W := 520.0
 

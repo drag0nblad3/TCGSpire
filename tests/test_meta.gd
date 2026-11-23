@@ -198,6 +198,25 @@ func test_profile_save_roundtrip() -> void:
 	eq(q.packs_unopened, 2)
 	eq(q.collection.counts, p.collection.counts)
 	DirAccess.remove_absolute(TMP)
+	DirAccess.remove_absolute(TMP + ".bak")
+
+
+func test_corrupt_profile_falls_back_to_backup() -> void:
+	var p := Profile.new_player(db)
+	p.collection.dust = 50
+	eq(p.save(TMP), OK, "first save")
+	p.collection.dust = 77
+	eq(p.save(TMP), OK, "second save keeps the first as .bak")
+	check(FileAccess.file_exists(TMP + ".bak"), "backup written")
+	var f := FileAccess.open(TMP, FileAccess.WRITE)
+	f.store_string("{ not json")
+	f.close()
+	var q := Profile.load_or_new(db, TMP)
+	eq(q.collection.dust, 50, "loaded the backup")
+	check(not FileAccess.file_exists(TMP), "corrupt file moved aside, not overwritten")
+	for n in DirAccess.get_files_at("user://"):
+		if n.begins_with("test_profile.json"):
+			DirAccess.remove_absolute("user://" + n)
 
 
 func test_run_uses_base_deck_plus_picks() -> void:

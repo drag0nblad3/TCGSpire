@@ -829,13 +829,37 @@ func save(path: String = DEFAULT_PATH) -> Error:
 		return FileAccess.get_open_error()
 	f.store_string(JSON.stringify(to_dict(), "\t"))
 	f.close()
-	# Write-then-rename so a crash mid-save never corrupts the profile.
+	# A write that came out empty or unreadable (full disk, killed app) never replaces a good save.
+	if not (JSON.parse_string(FileAccess.get_file_as_string(tmp)) is Dictionary):
+		DirAccess.remove_absolute(tmp)
+		return ERR_FILE_CORRUPT
+	# Keep the last good save as a backup, then write-then-rename so a crash mid-save
+	# never corrupts the profile.
+	if _readable(path):
+		DirAccess.copy_absolute(path, path + ".bak")
 	return DirAccess.rename_absolute(tmp, path)
 
 
+static func _readable(path: String) -> bool:
+	return FileAccess.file_exists(path) and JSON.parse_string(FileAccess.get_file_as_string(path)) is Dictionary
+
+
+## Loads the profile; falls back to the backup if the main file is unreadable. An unreadable
+## file is moved aside (profile.json.corrupt-<time>) rather than overwritten by the next save.
 static func load_or_new(db: CardDB, path: String = DEFAULT_PATH) -> Profile:
-	if not FileAccess.file_exists(path):
+	if not FileAccess.file_exists(path) and not FileAccess.file_exists(path + ".bak"):
 		return new_player(db)
+	if _readable(path):
+		return from_dict(JSON.parse_string(FileAccess.get_file_as_string(path)), db)
+	if FileAccess.file_exists(path):
+		var aside := "%s.corrupt-%d" % [path, int(Time.get_unix_time_from_system())]
+		DirAccess.rename_absolute(path, aside)
+		push_error("Corrupt profile at %s, moved to %s" % [path, aside])
+	if _readable(path + ".bak"):
+		push_warning("Loaded the backup profile %s.bak" % path)
+		return from_dict(JSON.parse_string(FileAccess.get_file_as_string(path + ".bak")), db)
+	push_error("No readable profile or backup at %s, starting fresh" % path)
+	return new_player(db)
 	var v: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
 	if v is Dictionary:
 		return from_dict(v, db)

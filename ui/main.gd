@@ -45,6 +45,66 @@ func _ready() -> void:
 	show_hub()
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		go_back()
+
+
+## Android back button (quit_on_go_back is off): closes the top overlay, else steps back
+## one screen. In a run it opens the pause menu; on the hub it asks before quitting.
+func go_back() -> void:
+	if _close_top_overlay():
+		return
+	if _screen is CombatScreen:
+		if run != null:
+			_open_menu()
+		return
+	if run != null and not run.over:
+		_open_menu()
+	elif _screen is HubScreen:
+		get_tree().root.add_child(GameMenu.new().setup("Quit TCG Spire?", [
+			["!Quit", func() -> void: get_tree().quit()],
+			["Stay", null]]))
+	elif run != null and run.over:
+		return  # the end-of-run screen has its own Continue button
+	else:
+		show_hub()
+
+
+## Closes the newest overlay: anything on the root above Main, a DeckOverlay picker
+## inside Main, or a screen's own detail panel (meta "back_overlay"). False if none.
+func _close_top_overlay() -> bool:
+	var root := get_tree().root
+	for i in range(root.get_child_count() - 1, -1, -1):
+		var n := root.get_child(i)
+		if n == self:
+			break
+		if n is Control and (n as Control).visible and not n.is_queued_for_deletion():
+			_close_overlay(n)
+			return true
+	for i in range(get_child_count() - 1, -1, -1):
+		var n := get_child(i)
+		if n == _screen:
+			break
+		if n is DeckOverlay and not n.is_queued_for_deletion():
+			_close_overlay(n)
+			return true
+	if _screen != null:
+		for i in range(_screen.get_child_count() - 1, -1, -1):
+			var n := _screen.get_child(i)
+			if n.has_meta("back_overlay") and not n.is_queued_for_deletion():
+				n.queue_free()
+				return true
+	return false
+
+
+func _close_overlay(n: Node) -> void:
+	if n.has_method("back"):
+		n.call("back")
+	else:
+		n.queue_free()
+
+
 ## Restyles everything: colors, fonts, frames, backdrop. Screens built after
 ## this call pick it up (call show_hub()/show_map() to rebuild the current one).
 func apply_theme(id: String) -> void:
