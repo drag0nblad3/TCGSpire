@@ -96,6 +96,20 @@ func test_map_has_a_walkable_shop_every_act() -> void:
 			check(m.nodes.any(func(n: Dictionary) -> bool: return n["type"] == "shop" and seen.has(n["id"])), "seed %d act %d has no shop" % [s, act])
 
 
+func test_map_never_stacks_rests_shops_or_elites() -> void:
+	for s in 80:
+		for act in [1, 2, 3]:
+			var m := RunMap.generate(db, GameRng.new(s), act)
+			var last: int = m.rows.size() - 2
+			for n in m.nodes:
+				if int(n["row"]) == last - 1:
+					check(n["type"] != "rest", "seed %d act %d: Safehouse under the last-row Safehouse" % [s, act])
+				if n["type"] not in RunMap.NO_REPEAT:
+					continue
+				for to in n["next"]:
+					check(m.node(to)["type"] != n["type"], "seed %d act %d: %s twice in a row" % [s, act, n["type"]])
+
+
 func test_jump_goes_up_through_walls_and_plays_the_node() -> void:
 	for s in 30:
 		var r := _run(s)
@@ -630,3 +644,22 @@ func test_scar_tissue_patches_every_third_hp_loss_without_chaining() -> void:
 	eq(c.player.hp, hp - 3, "no chain")
 	eq(c.player.ward, 8, "HP loss keeps the Firewall it skipped plus what the rule gave")
 	eq(Talismans.describe(db.talismans["scar_tissue"]), "Every 3 times you lose HP: Gain 2 Patch.", "text")
+
+
+func test_events_dont_repeat_and_fit_the_act_and_job() -> void:
+	var r := _run(5)
+	var seen := {}
+	var fits := 0
+	for id in db.events:
+		var ev: Dictionary = db.events[id]
+		if (not ev.has("acts") or 1 in ev["acts"]) and (not bool(ev.get("job", false)) or (r.job != "neutral" and not r.banned.is_empty())):
+			fits += 1
+	for i in fits:
+		r.floor_num = 100 + i
+		var ev := r.pick_event()
+		check(not seen.has(ev["id"]), "event %s repeated before all %d were seen" % [ev["id"], fits])
+		seen[ev["id"]] = true
+		check(not ev.has("acts") or r.act in ev["acts"], "event %s fits act %d" % [ev["id"], r.act])
+		check(not str(ev["title"]).contains("{"), "names filled in: %s" % ev["title"])
+	r.floor_num = 100
+	eq(r.pick_event()["id"], r.events_seen["0:1:100"], "same node, same event (resume-safe)")

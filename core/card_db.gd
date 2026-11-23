@@ -160,6 +160,15 @@ func validate() -> Array[String]:
 		errs.append_array(Weekly.validate(weekly[id]))
 	errs.append_array(Jobs.validate(self))
 	for id in events:
+		for k in events[id]:
+			if k not in ["id", "title", "text", "choices", "acts", "job"]:
+				errs.append("event '%s': unknown field '%s'" % [id, k])
+		for a in events[id].get("acts", []):
+			if int(a) < 1 or int(a) > int(balance.get("acts", 3)):
+				errs.append("event '%s': no act %s" % [id, a])
+		var personal := JSON.stringify(events[id]).contains("{client}") or JSON.stringify(events[id]).contains("{target}") or JSON.stringify(events[id]).contains("\"client\"")
+		if personal and not bool(events[id].get("job", false)):
+			errs.append("event '%s': uses {client}/{target} but isn't \"job\": true" % id)
 		for ch in events[id].get("choices", []):
 			for o in ch.get("outcomes", []):
 				errs.append_array(RunOutcomes.validate(o, "event '%s'" % id))

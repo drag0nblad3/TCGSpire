@@ -64,6 +64,8 @@ var tally: Dictionary = {}
 var clauses: Array = []
 ## ICE database counts gathered this run (enemy id -> {seen, crashed, lost}); Profile folds them in at run end.
 var ice: Dictionary = {}
+## Events met this run, "deep:act:floor" -> id (pick_event avoids repeats until every fitting event was seen).
+var events_seen: Dictionary = {}
 var daily := ""
 ## Weekly challenge: its week key ("" = not one) and modifier ids (data/weekly.json).
 ## A weekly run copies no rig ranks and no firmware: every program plays at base level.
@@ -704,11 +706,42 @@ func remove_card(deck_idx: int) -> bool:
 	return true
 
 
+## A random event that fits this act and job, preferring ones not seen yet this run.
+## Event fields: "acts" (only these acts), "job" (only on a crew job, needs a target),
+## text "{client}"/"{target}" (crew names), outcome "faction": "client" (the client crew).
 func pick_event() -> Dictionary:
-	var ids := db.events.keys()
-	ids.sort()
-	var id: String = rng.fork("event:%d" % floor_num).pick(ids)
-	return db.events[id]
+	var fits: Array = []
+	for id in db.events:
+		var ev: Dictionary = db.events[id]
+		if ev.has("acts") and act not in ev["acts"]:
+			continue
+		if bool(ev.get("job", false)) and (not Lexicon.FACTION.has(job) or job == "neutral" or banned.is_empty()):
+			continue
+		fits.append(id)
+	fits.sort()
+	# Keyed by where it was met, so re-entering the same node (a resumed run) gets the same event.
+	var here := "%d:%d:%d" % [deep, act, floor_num]
+	if events_seen.has(here) and db.events.has(str(events_seen[here])):
+		return _personal_event(db.events[str(events_seen[here])])
+	var seen := events_seen.values()
+	var fresh := fits.filter(func(id: String) -> bool: return id not in seen)
+	var pool: Array = fresh if not fresh.is_empty() else fits
+	var id: String = rng.fork("event:%d" % floor_num).pick(pool)
+	events_seen[here] = id
+	return _personal_event(db.events[id])
+
+
+func _personal_event(ev: Dictionary) -> Dictionary:
+	var out: Dictionary = ev.duplicate(true)
+	var target := str(banned[0]) if not banned.is_empty() else "neutral"
+	for k in ["title", "text"]:
+		out[k] = str(out.get(k, "")).replace("{client}", Lexicon.faction(client_crew())).replace("{target}", Lexicon.faction(target))
+	for ch in out.get("choices", []):
+		ch["label"] = str(ch.get("label", "")).replace("{client}", Lexicon.faction(client_crew())).replace("{target}", Lexicon.faction(target))
+		for o in ch.get("outcomes", []):
+			if str(o.get("faction", "")) == "client":
+				o["faction"] = client_crew()
+	return out
 
 
 func reroll_event(current_id: String) -> Dictionary:
@@ -751,7 +784,7 @@ const SAVED := ["seed_value", "hp", "max_hp", "gold", "floor_num", "heat", "tali
 	"combats_won", "elites_won", "boss_won", "act", "acts_cleared", "double_crossed", "over", "card_plays",
 	"remove_cost", "outcome_counter", "locked_talismans", "perks", "rig", "firmware", "firmware_mods",
 	"mods_installed", "job", "banned", "tally", "clauses", "daily", "weekly", "weekly_mods", "implant_activations",
-	"deep_ok", "deep", "deep_pending", "deep_cores", "ice"]
+	"deep_ok", "deep", "deep_pending", "deep_cores", "ice", "events_seen"]
 
 
 func to_dict() -> Dictionary:
