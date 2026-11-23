@@ -31,3 +31,5 @@ jobs:
           GODOT=~/godot/godot scripts/sim.sh mode=run n=30 job=all | tee sim.txt
           if grep -qE "SCRIPT ERROR|DATA ERROR|Parse Error" sim.txt; then echo "::error::sim hit an error"; exit 1; fi
           if grep -qE "stuck [1-9]" sim.txt; then echo "::error::bot got stuck in a run"; exit 1; fi
+      - name: Data Deck text check
+        run: GODOT=~/godot/godot scripts/browser.sh /tmp/data-deck
