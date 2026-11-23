@@ -258,6 +258,23 @@ func test_fighter_inspect_lists_statuses_and_taps_closed() -> void:
 	cs.free()
 
 
+func test_daemon_row_only_reserved_when_the_deck_has_daemons() -> void:
+	var root: Window = (Engine.get_main_loop() as SceneTree).root
+	var c := make_combat(["jab", "jab", "jab", "jab", "jab"], "mites")
+	c.start()
+	var cs := CombatScreen.new().setup(c, null)
+	cs.step_scale = 0.0
+	root.add_child(cs)
+	if cs._hand_row == null:
+		cs._ready()
+	cs._rebuild()
+	eq(cs._units_row.custom_minimum_size.y, 0.0, "no daemons in the deck: no daemon row")
+	c.draw_pile.append(db.instance(db.ids_where(func(d: CardDef) -> bool: return d.type == "unit")[0]))
+	cs._rebuild()
+	eq(cs._units_row.custom_minimum_size.y, 172.0, "a daemon in the deck keeps the row")
+	cs.free()
+
+
 func test_toast_fits_and_taps_away() -> void:
 	var root: Window = (Engine.get_main_loop() as SceneTree).root
 	var host := Control.new()
@@ -297,3 +314,4 @@ func test_inspector_shows_evolved_form() -> void:
 	check(back.size() == 2 and (back[0] as CardInstance).def.id == "script_kiddie" and back[1] == token, "a token shows where it came from")
 	check(CardInspector.glossary(token).any(func(l: String) -> bool: return l.begins_with("Evolved form:")), "token glossary names its base")
 	check(CardInspector.evolve_pair(db.instance("kindle")).is_empty(), "plain cards show one card")
+
