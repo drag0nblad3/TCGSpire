@@ -75,6 +75,10 @@ var pools: Dictionary = {}
 var undo_snap: Dictionary = {}
 ## Off for the bot and sims (snapshots cost time); the combat screen turns it on.
 var undo_on := false
+## Every player action so far, in order: ["play", hand_idx, target_idx, pick_idxs], ["shut", idx], ["end"].
+## Combat is deterministic from its seed, so replaying these on a fresh copy rebuilds the fight
+## (a resumed run picks up at the start of the turn it was closed on). Undo rolls it back with the rest.
+var actions: Array = []
 
 
 ## deck: Array of CardInstance (copied, not mutated). hp < 0 means full HP.
@@ -270,8 +274,11 @@ func play_card(hand_idx: int, target_idx: int = -1, chosen: Array = []) -> bool:
 	if not can_play(hand_idx):
 		return false
 	var snap := CombatUndo.snapshot(self) if undo_on else {}
+	var pool: Array = pick_request(hand_idx).get("cards", [])
+	var pick_idxs: Array = chosen.map(func(k: CardInstance) -> int: return pool.find(k))
 	if not _play(hand_idx, target_idx, chosen):
 		return false
+	actions.append(["play", hand_idx, target_idx, pick_idxs])
 	_keep_undo(snap)
 	return true
 
@@ -421,6 +428,7 @@ func end_turn() -> void:
 	if phase != Phase.PLAYER:
 		return
 	undo_snap = {}
+	actions.append(["end"])
 	_ending_turn = true
 	Talismans.fire(self, "turn_end")
 	if is_over():
@@ -611,7 +619,45 @@ func shutdown_daemon(idx: int) -> bool:
 		return false
 	var snap := CombatUndo.snapshot(self) if undo_on else {}
 	crash_daemon(units[idx])
+	actions.append(["shut", idx])
 	_keep_undo(snap)
+	return true
+
+
+## The actions up to the start of the current turn (everything through the last End turn).
+func checkpoint() -> Array:
+	var n := actions.size()
+	while n > 0 and str(actions[n - 1][0]) != "end":
+		n -= 1
+	return actions.slice(0, n).duplicate(true)
+
+
+## Replays saved actions on a freshly started copy of the same fight. False if one doesn't fit
+## (the data changed since the save), leaving the fight wherever replay stopped.
+func replay(saved: Array) -> bool:
+	for a in saved:
+		var ok := true
+		match str(a[0]):
+			"play":
+				var hand_idx := int(a[1])
+				if hand_idx < 0 or hand_idx >= hand.size():
+					return false
+				var pool: Array = pick_request(hand_idx).get("cards", [])
+				var chosen: Array = []
+				for i in a[3]:
+					if int(i) < 0 or int(i) >= pool.size():
+						return false
+					chosen.append(pool[int(i)])
+				ok = play_card(hand_idx, int(a[2]), chosen)
+			"shut":
+				ok = shutdown_daemon(int(a[1]))
+			"end":
+				ok = phase == Phase.PLAYER
+				end_turn()
+			_:
+				ok = false
+		if not ok:
+			return false
 	return true
 
 

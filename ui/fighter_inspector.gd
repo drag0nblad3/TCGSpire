@@ -52,7 +52,8 @@ func _ready() -> void:
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
-	var width := minf(620.0, get_viewport_rect().size.x - 40.0)
+	var view_w: float = get_viewport_rect().size.x if is_inside_tree() else float(ProjectSettings.get("display/window/size/viewport_width"))
+	var width := minf(620.0, view_w - 40.0)
 	var v := UiKit.vbox(10, BoxContainer.ALIGNMENT_BEGIN)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var f: Fighter = _view.fighter

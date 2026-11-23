@@ -213,7 +213,9 @@ func test_map_canvas_lets_drags_scroll() -> void:
 	var p := Profile.new()
 	var r := RunState.start(db, p, RunState.default_picks(db, p), 1, 0)
 	var ms := MapScreen.new().setup(r)
-	ms._ready()  # builds the canvas; the scroll-to-row step needs a running tree
+	(Engine.get_main_loop() as SceneTree).root.add_child(ms)  # _ready builds the canvas
+	if ms._canvas == null:
+		ms._ready()
 	eq(ms._canvas.mouse_filter, Control.MOUSE_FILTER_PASS, "map canvas filter")
 	# A tap on a lit node still picks it.
 	ms._canvas.size = Vector2(720, ms._canvas.custom_minimum_size.y)
@@ -256,6 +258,23 @@ func test_fighter_inspect_lists_statuses_and_taps_closed() -> void:
 	cs.free()
 
 
+func test_daemon_row_only_reserved_when_the_deck_has_daemons() -> void:
+	var root: Window = (Engine.get_main_loop() as SceneTree).root
+	var c := make_combat(["jab", "jab", "jab", "jab", "jab"], "mites")
+	c.start()
+	var cs := CombatScreen.new().setup(c, null)
+	cs.step_scale = 0.0
+	root.add_child(cs)
+	if cs._hand_row == null:
+		cs._ready()
+	cs._rebuild()
+	eq(cs._units_row.custom_minimum_size.y, 0.0, "no daemons in the deck: no daemon row")
+	c.draw_pile.append(db.instance(db.ids_where(func(d: CardDef) -> bool: return d.type == "unit")[0]))
+	cs._rebuild()
+	eq(cs._units_row.custom_minimum_size.y, 172.0, "a daemon in the deck keeps the row")
+	cs.free()
+
+
 func test_toast_fits_and_taps_away() -> void:
 	var root: Window = (Engine.get_main_loop() as SceneTree).root
 	var host := Control.new()
@@ -295,3 +314,4 @@ func test_inspector_shows_evolved_form() -> void:
 	check(back.size() == 2 and (back[0] as CardInstance).def.id == "script_kiddie" and back[1] == token, "a token shows where it came from")
 	check(CardInspector.glossary(token).any(func(l: String) -> bool: return l.begins_with("Evolved form:")), "token glossary names its base")
 	check(CardInspector.evolve_pair(db.instance("kindle")).is_empty(), "plain cards show one card")
+

@@ -461,6 +461,20 @@ func test_map_uses_target_crew_enemies() -> void:
 	check(seen.has("chrome"), "chrome enforcers appear")
 
 
+func test_map_spreads_encounters_out() -> void:
+	for s in 20:
+		for act in [1, 2, 3]:
+			var m := RunMap.generate(db, GameRng.new(s), act, ["chrome"])
+			var uses := {}
+			for n in m.nodes:
+				if n["type"] == "fight":
+					uses[n["encounter"]] = int(uses.get(n["encounter"], 0)) + 1
+			var most := 0
+			for id in uses:
+				most = maxi(most, uses[id])
+			check(most <= 5, "seed %d act %d: one fight placed %d times" % [s, act, most])
+
+
 func test_high_heat_adds_targets_with_one_client() -> void:
 	eq(Jobs.extra_targets(db, 0), 0)
 	for f in Jobs.board(db):

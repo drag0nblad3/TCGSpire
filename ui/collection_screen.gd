@@ -462,6 +462,7 @@ func _show_detail(id: String) -> void:
 	var overlay := ColorRect.new()
 	overlay.color = Color(Palette.PANEL_BG, 0.97)
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.set_meta("back_overlay", true)  # Android back closes it (Main.go_back)
 	add_child(overlay)
 	var parts := UiKit.screen(18)
 	overlay.add_child(parts[0])

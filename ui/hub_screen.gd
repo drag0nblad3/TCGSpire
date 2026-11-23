@@ -76,7 +76,14 @@ func _ready() -> void:
 	for sec in sections:
 		v.add_child(_gap())
 		v.add_child(sec)
-	outer.add_child(_tab_bar())
+	# A solid strip with a top rule, so content scrolling under the tabs reads as cut off by the bar
+	# rather than overlapped by it.
+	var strip := UiKit.panel(_tab_bar(), Color(Palette.PANEL_BG, 0.98))
+	var sb: StyleBoxFlat = strip.get_theme_stylebox("panel")
+	sb.set_content_margin_all(6)
+	sb.border_width_top = 2
+	sb.border_color = Color(Palette.ENERGY, 0.35)
+	outer.add_child(strip)
 
 
 ## Flexible spacer between hub sections: at least 10 px, takes a share of leftover height.
@@ -168,7 +175,7 @@ func _action(text: String, badge: String, info: String, sig: Signal, enabled: bo
 ## Daily breach and weekly challenge, side by side.
 func _challenges() -> Control:
 	var d := Records.daily(db, Records.today())
-	var done: bool = str(profile.daily.get("last", "")) == d["date"]
+	var done: bool = Records.daily_used(profile, d["date"])
 	var today_score := int(profile.daily.get("scores", {}).get(d["date"], 0))
 	var db_btn := UiKit.button(("Daily breach done · score %d\nA new one opens tomorrow" % today_score) if done else ("Daily breach: %s job · Heat %d\nDaily challenge run, one try" % [Lexicon.faction(d["job"]), d["heat"]]),
 		func() -> void: daily_pressed.emit(), Vector2(300, 68), 16)

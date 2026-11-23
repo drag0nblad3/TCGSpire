@@ -14,6 +14,8 @@ const CHIP_FONT := 15
 
 var fighter: Fighter
 var combat: Combat
+## Whose illustration this enemy uses: its own id, or the enemy def's "art" (a boss reusing another boss's art).
+var art_id := ""
 var kind := "enemy"  # enemy | unit | player
 var targetable := false:
 	set(v):
@@ -49,6 +51,7 @@ var _tap := Tap.new()
 
 func setup(f: Fighter, c: Combat, kind_in: String) -> FighterView:
 	fighter = f
+	art_id = f.def_id
 	combat = c
 	kind = kind_in
 	custom_minimum_size = Vector2(200, 290) if kind == "enemy" else (Vector2(176, 172) if kind == "unit" else Vector2(340, 84))
@@ -60,8 +63,10 @@ func setup(f: Fighter, c: Combat, kind_in: String) -> FighterView:
 				var lineup: Array = encounter.get("enemies", [])
 				# The lead enemy and any copies are elite. Escorts and summons keep their normal portraits.
 				elite = not lineup.is_empty() and fighter.def_id == lineup[0]
-		enemy_portrait = EnemyPortraits.ROSTER.get(fighter.def_id, [])
-		boss_profile = BossPresentation.PROFILES.get(fighter.def_id, {})
+		if combat != null and combat.db != null:
+			art_id = str(combat.db.enemies.get(fighter.def_id, {}).get("art", fighter.def_id))
+		enemy_portrait = EnemyPortraits.ROSTER.get(art_id, [])
+		boss_profile = BossPresentation.PROFILES.get(art_id, {})
 		if not boss_profile.is_empty():
 			boss_accent = Palette.faction(boss_profile["faction"])
 	if kind == "unit" and combat != null:
@@ -90,7 +95,7 @@ func set_enemy_width(width: float, room := 0.0) -> void:
 	if not enemy_portrait.is_empty() and boss_profile.is_empty():
 		# EnemyPortraits fits the 220 x 170 cell into (width - 18, art height x 0.94), both x 0.93.
 		art_need = art_width * EnemyPortraits.CELL.y / (EnemyPortraits.CELL.x * 0.94)
-	elif not boss_profile.is_empty() and not BossSupportArt.PROFILES.has(fighter.def_id):
+	elif not boss_profile.is_empty() and not BossSupportArt.PROFILES.has(art_id):
 		var portrait: Texture2D = boss_profile["portrait"]
 		art_need = (width - 20.0) * portrait.get_size().y / portrait.get_size().x
 	var need := base_height() - _base_art_height() + art_need
@@ -191,11 +196,11 @@ func _draw() -> void:
 		if kind == "unit":
 			portrait = daemon_art if daemon_art != null else DRONE
 		if not enemy_portrait.is_empty() and not boss:
-			var height := art_height if fighter.def_id == "burner_tagger" else art_height * 0.94
+			var height := art_height if art_id == "burner_tagger" else art_height * 0.94
 			var bounds := Vector2(w - 18.0, height) * (1.10 if elite else 0.93)
 			EnemyPortraits.draw(self, c, bounds, enemy_portrait, t + float(fighter.id.hash() % 29) * 0.11, elite)
-		elif kind == "enemy" and BossSupportArt.PROFILES.has(fighter.def_id):
-			BossSupportArt.draw(self, fighter.def_id, c, Vector2(w - 18.0, art_height), t + float(fighter.id.hash() % 29) * 0.11, boss_action, hp() > 0)
+		elif kind == "enemy" and BossSupportArt.PROFILES.has(art_id):
+			BossSupportArt.draw(self, art_id, c, Vector2(w - 18.0, art_height), t + float(fighter.id.hash() % 29) * 0.11, boss_action, hp() > 0)
 		elif portrait != null:
 			var art_size := portrait.get_size()
 			art_size *= minf((w - 20.0) / art_size.x, art_height / art_size.y)
@@ -203,8 +208,8 @@ func _draw() -> void:
 			if boss:
 				tint = Color.WHITE.lerp(heat.lightened(0.62), charge * 0.28)
 			var art_rect := Rect2(c - art_size * 0.5, art_size)
-			if boss and VirtualBossArt.supports(fighter.def_id) and hp() > 0:
-				VirtualBossArt.draw(self, portrait, art_rect, fighter.def_id, t, maxf(charge * 0.35, boss_action), tint, heat)
+			if boss and VirtualBossArt.supports(art_id) and hp() > 0:
+				VirtualBossArt.draw(self, portrait, art_rect, art_id, t, maxf(charge * 0.35, boss_action), tint, heat)
 			else:
 				draw_texture_rect(portrait, art_rect, false, tint)
 			if kind == "unit":

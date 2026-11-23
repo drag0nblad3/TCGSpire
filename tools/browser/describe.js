@@ -116,7 +116,7 @@
         if (String(e.pile || "hand") === "draw") return "Put " + cnt + " " + nm + " on top of your draw pile.";
         return cnt === 1 ? "Add " + nm + " to your hand." : "Add " + n + " " + nm + " to your hand.";
       }
-      case "spawn": return "Call in a " + enemyName(String(e.enemy !== undefined ? e.enemy : "?")) + ".";
+      case "spawn": return "Call in a " + enemyName(String(e.enemy !== undefined ? e.enemy : "?")) + ". It acts from the next enemy turn.";
       case "devour": {
         const boost = int(e.stacks || 0);
         return "Devour every helper it called in: repair " + n + " HP" + (boost > 0 ? " and gain " + boost + " " + status("might") : "") + " for each one eaten.";
@@ -163,7 +163,7 @@
         return t;
       }
       case "fuel":
-        return "Fuel " + Math.max(int(num(e.stacks, 1)), 1) + " " + (to === "self" ? "of your " : "") + status(String(e.status || "might")) +
+        return "Fuel " + Math.max(int(num(e.stacks, 1)), 1) + " " + status(String(e.status || "might")) + (to === "self" ? " on you" : "") +
           (to === "all_enemies" ? " (each enemy)" : "") + ": " + fx(e.effects);
       case "sacrifice": {
         const m3 = num(e.mult, 1.0);
@@ -198,7 +198,7 @@
       }
       if (trig.every !== undefined) {
         let noun = { card_played: "cards you play", turn_start: "turns", turn_end: "turns", kill: "crashed enemies",
-          daemon_closed: "daemons destroyed or refreshed", reshuffle: "reshuffles" }[on] || "times";
+          daemon_closed: "daemons destroyed or refreshed", reshuffle: "reshuffles", hp_lost: "times you lose HP" }[on] || "times";
         if (trig.card_type !== undefined) noun = typeName(String(trig.card_type)) + "s you play";
         when = "Every " + int(trig.every) + " " + noun;
         if (on === "loop") when = "Every " + int(trig.every) + " times a Loop program grows";

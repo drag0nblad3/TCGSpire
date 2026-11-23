@@ -14,7 +14,7 @@ func _check() -> void:
 	await process_frame
 	var screen: CombatScreen = main._screen
 	assert(screen._implant_views.size() == 12)
-	assert(screen._implant_views["oak_token"].status() == "USED")
+	assert(screen._implant_views["oak_token"].status() == "DONE")
 	assert(screen._implant_views["pressure_valve"].status() == "OFF")
 	assert(screen._implant_views["seed_pouch"].status() == "1/3")
 	assert(screen.get_combined_minimum_size().x <= 720, "implant strip must not widen combat")

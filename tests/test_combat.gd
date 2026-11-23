@@ -144,3 +144,26 @@ func test_enemy_spawned_mid_enemy_turn_waits() -> void:
 	c.phase = Combat.Phase.PLAYER
 	c.end_turn()
 	eq(c.enemies.back().arrived, false, "cleared once your next turn ends")
+
+
+func test_saved_fight_replays_to_the_same_turn() -> void:
+	var deck := ["jab", "jab", "jab", "brace", "brace", "jab", "brace", "jab", "jab", "brace"]
+	var c := make_combat(deck, "mites", 11)
+	c.start()
+	for t in 2:
+		Bot.play_turn(c)
+		if c.is_over():
+			break
+		c.end_turn()
+	if c.is_over():
+		return
+	var keys := func(arr: Array) -> Array: return arr.map(func(k: CardInstance) -> String: return k.key())
+	var want := [c.turn, c.player.hp, c.enemies.map(func(e: Fighter) -> int: return e.hp), keys.call(c.hand), c.energy]
+	c.play_card(0)  # mid-turn play: not part of the checkpoint
+	var cp := c.checkpoint()
+	eq(str(cp.back()[0]), "end", "checkpoint ends at a turn start")
+	var c2 := make_combat(deck, "mites", 11)
+	c2.start()
+	check(c2.replay(cp), "replays")
+	eq([c2.turn, c2.player.hp, c2.enemies.map(func(e: Fighter) -> int: return e.hp), keys.call(c2.hand), c2.energy], want, "same state at the turn start")
+	eq(c2.actions, cp, "action log rebuilt")

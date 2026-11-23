@@ -38,11 +38,72 @@ func _ready() -> void:
 	var music := GameMusic.new()
 	add_child(music)
 	music.configure(profile.settings)
+	Palette.apply_access(profile.settings)
 	apply_theme(str(profile.settings.get("theme", Themes.DEFAULT)))
 	_menu_btn = UiKit.button("Menu", _open_menu, Vector2(84, 40), 15)
 	_menu_btn.visible = false
 	add_child(_menu_btn)
 	show_hub()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		go_back()
+
+
+## Android back button (quit_on_go_back is off): closes the top overlay, else steps back
+## one screen. In a run it opens the pause menu; on the hub it asks before quitting.
+func go_back() -> void:
+	if _close_top_overlay():
+		return
+	if _screen is CombatScreen:
+		if run != null:
+			_open_menu()
+		return
+	if run != null and not run.over:
+		_open_menu()
+	elif _screen is HubScreen:
+		get_tree().root.add_child(GameMenu.new().setup("Quit TCG Spire?", [
+			["!Quit", func() -> void: get_tree().quit()],
+			["Stay", null]]))
+	elif run != null and run.over:
+		return  # the end-of-run screen has its own Continue button
+	else:
+		show_hub()
+
+
+## Closes the newest overlay: anything on the root above Main, a DeckOverlay picker
+## inside Main, or a screen's own detail panel (meta "back_overlay"). False if none.
+func _close_top_overlay() -> bool:
+	var root := get_tree().root
+	for i in range(root.get_child_count() - 1, -1, -1):
+		var n := root.get_child(i)
+		if n == self:
+			break
+		if n is Control and (n as Control).visible and not n.is_queued_for_deletion():
+			_close_overlay(n)
+			return true
+	for i in range(get_child_count() - 1, -1, -1):
+		var n := get_child(i)
+		if n == _screen:
+			break
+		if n is DeckOverlay and not n.is_queued_for_deletion():
+			_close_overlay(n)
+			return true
+	if _screen != null:
+		for i in range(_screen.get_child_count() - 1, -1, -1):
+			var n := _screen.get_child(i)
+			if n.has_meta("back_overlay") and not n.is_queued_for_deletion():
+				n.queue_free()
+				return true
+	return false
+
+
+func _close_overlay(n: Node) -> void:
+	if n.has_method("back"):
+		n.call("back")
+	else:
+		n.queue_free()
 
 
 ## Restyles everything: colors, fonts, frames, backdrop. Screens built after
@@ -58,6 +119,16 @@ func apply_theme(id: String) -> void:
 	_bg_mat.set_shader_parameter("bottom_color", b["bottom"])
 	_bg_mat.set_shader_parameter("glow_color", b["glow"])
 	_bg_mat.set_shader_parameter("glow2_color", b["glow2"])
+
+
+## Frame cap: fights and pack openings run at 60 fps, menus and the map at 30 (phones with
+## 90-120 Hz screens would otherwise draw every screen that fast). Battery saver: 30 fps
+## everywhere and a still backdrop.
+func _apply_power() -> void:
+	var saver := bool(profile.settings.get("battery_saver", false))
+	var smooth := _screen is CombatScreen or (_screen != null and _screen.has_meta("smooth"))
+	Engine.max_fps = 30 if saver or not smooth else 60
+	_bg_mat.set_shader_parameter("speed", 0.0 if saver else 1.0)
 
 
 func _save() -> void:
@@ -76,6 +147,7 @@ func _show(node: Control) -> void:
 	_bg_mat.set_shader_parameter("boss_entrance", -1.0)
 	_bg_mat.set_shader_parameter("glass_intensity", 1.45 if node is CombatScreen else 1.0)
 	add_child(node)
+	_apply_power()
 	if _menu_btn != null:
 		move_child(_menu_btn, -1)
 		_menu_btn.position = UiKit.corner_pos(self, _menu_btn.custom_minimum_size.x)
@@ -115,7 +187,7 @@ func _open_menu() -> void:
 	var note := ""
 	if active_run:
 		if _resume.get("screen", "") == "node":
-			note = "Quitting here restarts this node when you resume (a fight starts over from turn 1)."
+			note = "Quitting here resumes this fight at the start of your current turn." if _screen is CombatScreen else "Quitting here restarts this node when you resume."
 		entries.append(["Save & quit to menu", func() -> void:
 			run = null
 			show_hub()])
@@ -258,6 +330,18 @@ func _on_setting_changed(key: String, st: SettingsScreen) -> void:
 		"cheats":
 			if run == null:
 				_menu_btn.visible = _is_profile_cheat_screen(_screen)
+		"battery_saver":
+			_apply_power()
+		"colorblind", "no_shake":
+			Palette.apply_access(profile.settings)
+		"text_size":
+			Palette.apply_access(profile.settings)
+			if run == null:
+				show_hub()
+			elif _resume.get("screen", "") == "map":
+				show_map()
+			st.queue_free()
+			_open_settings()
 		_:
 			if is_instance_valid(GameAudio.instance):
 				GameAudio.instance.configure(profile.settings)
@@ -285,7 +369,7 @@ func _resume_run() -> void:
 	var res: Dictionary = data["resume"]
 	match str(res.get("screen", "map")):
 		"node":
-			_play_node(run.current_node())
+			_play_node(run.current_node(), res.get("actions", []))
 		"reward":
 			_show_reward(res.get("lines", []), res.get("tals", []), res.get("choices", []), res.get("perks", []), res.get("kind", ""))
 		"perks":
@@ -492,7 +576,7 @@ func _show_picker(heat: int, job: String = "", targets: Array = [], clauses: Arr
 ## Daily breach: today's fixed job, heat and seed. One attempt per day.
 func _start_daily() -> void:
 	var d := Records.daily(db, Records.today())
-	if str(profile.daily.get("last", "")) == d["date"]:
+	if Records.daily_used(profile, d["date"]):
 		show_hub()
 		return
 	var packs := Records.begin_daily(db, profile, d["date"])
@@ -600,210 +684,12 @@ func _show_pack(kind: String = "") -> void:
 		kind = owned[0]
 	var pulled := profile.open_pack(db, GameRng.new(int(Time.get_ticks_usec())), kind)
 	_save()
-	var parts := UiKit.screen(14)
-	var v: VBoxContainer = parts[1]
-	var head := UiKit.hbox(10)
-	head.alignment = BoxContainer.ALIGNMENT_CENTER
-	head.add_child(PackArt.new().setup(db, kind, 1).as_icon(64))
-	head.add_child(UiKit.label("%s: tap cards to reveal" % PackArt.title(db, kind), 24, PackArt.tint(kind)))
-	v.add_child(head)
-	var hot_text := "The last card is the hot slot: uncommon or better."
-	if Packs.odds_at_least(db, kind, "rare") >= 0.999:
-		hot_text = "The last card is the hot slot: rare or better. Every card has a %d%% glitch foil chance." % roundi(float(Packs.config(db, kind).get("foil_chance", 0)) * 100)
-	if Packs.crew_of(kind) != "":
-		hot_text = "Only %s programs. %s" % [Lexicon.faction(Packs.crew_of(kind)), hot_text]
-	v.add_child(UiKit.label(hot_text, 14, Palette.TEXT_DIM, true))
-	# Big cards in a 2 x 2 grid: the reveal is the moment, so it gets the screen.
-	var grid := GridContainer.new()
-	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 18)
-	grid.add_theme_constant_override("v_separation", 10)
-	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	var views: Array = []
-	var summary := UiKit.label("", 16, Palette.UPGRADED, true)
-	var revealed := [0]
-	var scrap_btns: Array = []
-	var on_reveal := func(view: CardView, p: Dictionary) -> void:
-		view.badge = _pack_badge(p)
-		view.pips = profile.copy_pips(db, p["id"])
-		view.fresh = p.get("new", false)
-		revealed[0] += 1
-		if revealed[0] >= pulled.size():
-			summary.text = _pack_summary(pulled)
-		# Quick scrap: a copy beyond the two a deck can hold.
-		var sb: Button = scrap_btns[views.find(view)]
-		sb.visible = Profile.can_quick_scrap(db, profile, p["id"])
-		sb.text = "Scrap +%d" % _quick_scrap_value(p)
-	for p in pulled:
-		var inst := db.instance(p["id"])
-		inst.foil = p["foil"]
-		var cv := CardView.new().setup(inst, PACK_ZOOM)
-		cv.face_down = true
-		cv.hot = p.get("hot", false)
-		cv.pressed.connect(func(view: CardView) -> void:
-			if view.face_down:
-				_reveal_pack_card(view, p, on_reveal))
-		views.append(cv)
-		var cell := UiKit.vbox(6, BoxContainer.ALIGNMENT_BEGIN)
-		cell.custom_minimum_size.y = CardView.SIZE.y * PACK_ZOOM + 46
-		cell.add_child(cv)
-		var sb := UiKit.button("", func() -> void: pass, Vector2(CardView.SIZE.x * PACK_ZOOM, 40), 15)
-		sb.visible = false
-		sb.tooltip_text = "Turn this copy into %s. You keep %d." % [Palette.w("dust").to_lower(), Profile.deck_limit(db)]
-		sb.pressed.connect(func() -> void:
-			var got := profile.quick_scrap(db, p["id"], p["foil"])
-			if got <= 0:
-				sb.visible = false
-				return
-			_save()
-			p["scrapped"] = true
-			sb.text = "Scrapped +%d" % got
-			sb.disabled = true
-			cv.pips = profile.copy_pips(db, p["id"])
-			cv.badge = _pack_badge(p)
-			cv.modulate.a = 0.45
-			# Other copies of the same program in this pack may have dropped to the limit.
-			for k in pulled.size():
-				if not scrap_btns[k].disabled and not views[k].face_down:
-					scrap_btns[k].visible = Profile.can_quick_scrap(db, profile, pulled[k]["id"]))
-		scrap_btns.append(sb)
-		cell.add_child(sb)
-		grid.add_child(cell)
-	v.add_child(grid)
-	v.add_child(summary)
-	v.add_child(UiKit.label(PackArt.odds_line(db, profile, kind), 14, Palette.TEXT_DIM, true))
-	var reveal_all := UiKit.button("Reveal all", func() -> void: pass)
-	reveal_all.pressed.connect(func() -> void:
-		reveal_all.disabled = true
-		for k in views.size():
-			if views[k].face_down:
-				_reveal_pack_card(views[k], pulled[k], on_reveal, k * 0.18))
-	v.add_child(UiKit.primary(reveal_all))
-	var left := profile.pack_count(kind)
-	if left > 0:
-		v.add_child(UiKit.button("Next %s (%d left)" % [PackArt.title(db, kind), left], func() -> void: _show_pack(kind)))
-	var others := profile.packs_unopened - left
-	v.add_child(UiKit.button("Cache shelf (%d more)" % others if others > 0 else "Done", func() -> void:
-		_show_pack_shelf() if profile.packs_unopened > 0 else show_hub(), Vector2(220, 52)))
-	_show(parts[0])
-	if not reveal_packs_now:
-		_play_pack_opening(parts[0], kind)
-	if reveal_packs_now:
-		for k in views.size():
-			views[k].face_down = false
-			on_reveal.call(views[k], pulled[k])
-
-
-const PACK_ZOOM := 1.55
-
-
-## Flips one pack card slowly. A rare or better gets a burst of light in its rarity color
-## first, so the good pulls announce themselves before they turn over.
-func _reveal_pack_card(view: CardView, p: Dictionary, on_reveal: Callable, delay: float = 0.0) -> void:
-	if view.has_meta("revealing"):
-		return
-	view.set_meta("revealing", true)
-	var rarity := db.instance(p["id"]).def.rarity
-	var big := rarity in ["rare", "mythic"]
-	var tw := view.create_tween()
-	if delay > 0.0:
-		tw.tween_interval(delay)
-	if big:
-		tw.tween_callback(func() -> void: _rarity_burst(view, Palette.rarity(rarity), rarity == "mythic"))
-		tw.tween_interval(0.45)
-	tw.tween_callback(func() -> void:
-		GameAudio.play(rarity)
-		view.flip_reveal(0.22)
-		on_reveal.call(view, p))
-
-
-## Light rays and an expanding ring behind a pack card (rare: rarity color; mythic: bigger).
-func _rarity_burst(view: CardView, col: Color, mythic: bool) -> void:
-	var fx := Control.new()
-	fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	fx.z_index = -1
-	fx.show_behind_parent = true
-	view.add_child(fx)
-	fx.size = view.size
-	var t := [0.0]
-	var reach := (1.0 if mythic else 0.75) * view.size.y
-	fx.draw.connect(func() -> void:
-		var c := fx.size / 2
-		var k: float = t[0]
-		var fade := 1.0 - k
-		for i in 12:
-			var a := TAU * i / 12.0 + k * 0.6
-			fx.draw_line(c, c + Vector2.from_angle(a) * reach * (0.4 + k * 0.6), Color(col, 0.55 * fade), 10.0 * fade + 2.0, true)
-		fx.draw_arc(c, reach * 0.3 + reach * 0.7 * k, 0, TAU, 48, Color(col, 0.9 * fade), 6.0, true)
-		fx.draw_circle(c, reach * 0.35 * (1.0 - k * 0.5), Color(col.lightened(0.5), 0.35 * fade)))
-	var tw := fx.create_tween()
-	tw.tween_method(func(x: float) -> void:
-		t[0] = x
-		fx.queue_redraw(), 0.0, 1.0, 1.1 if mythic else 0.8)
-	tw.tween_callback(fx.queue_free)
-	var pulse := view.create_tween()
-	pulse.tween_property(view, "scale", Vector2(1.08, 1.08), 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	pulse.tween_property(view, "scale", Vector2.ONE, 0.2)
-
-
-## A short encrypted-packet break, owned by the pack screen so navigation cancels it.
-func _play_pack_opening(host: Control, kind: String = Packs.NORMAL) -> void:
-	GameAudio.play("pack")
-	var overlay := Control.new()
-	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-	overlay.z_index = 10
-	host.add_child(overlay)
-	var progress := [0.0]
-	overlay.draw.connect(func() -> void:
-		var center := overlay.size * 0.5
-		var packet := Rect2(center - Vector2(90, 120), Vector2(180, 240))
-		overlay.draw_rect(Rect2(Vector2.ZERO, overlay.size), Color(Palette.PANEL_BG, 0.96))
-		var split := maxf(0.0, progress[0] - 0.45) * 180.0
-		PackArt.draw_packet(overlay, packet, kind, split, progress[0])
-		var scan_y: float = packet.position.y + progress[0] * packet.size.y
-		overlay.draw_line(Vector2(packet.position.x - 14 - split, scan_y), Vector2(packet.end.x + 14 + split, scan_y), PackArt.accent(kind), 3.0)
-	)
-	var tween := overlay.create_tween()
-	tween.tween_method(func(value: float) -> void:
-		progress[0] = value
-		overlay.queue_redraw(), 0.0, 1.0, 0.5)
-	tween.tween_property(overlay, "modulate:a", 0.0, 0.15)
-	tween.tween_callback(overlay.queue_free)
-
-
-## Collector pill on a revealed pack card: an available firmware level or its level (NEW is a ribbon, copies are pips).
-func _pack_badge(p: Dictionary) -> String:
-	if p.get("unlocked", false):
-		return "v%d available!" % (profile.firmware_level(p["id"]) + 1)
-	return profile.copy_badge(db, p["id"])
-
-
-## Scrap a pulled copy pays: its foil value if it was a foil.
-func _quick_scrap_value(p: Dictionary) -> int:
-	if p["foil"] and int(profile.collection.foils.get(p["id"], 0)) > 0:
-		return Collection.foil_value(p["id"], db)
-	var c := db.card(p["id"])
-	return int(db.balance.get("dust", {}).get("disenchant", {}).get(c.rarity, 0)) if c != null else 0
-
-
-## One line under a fully revealed pack: what it did for the collection.
-func _pack_summary(pulled: Array) -> String:
-	var bits: Array[String] = []
-	var fresh := pulled.filter(func(p: Dictionary) -> bool: return p.get("new", false)).size()
-	var unlocked := pulled.filter(func(p: Dictionary) -> bool: return p.get("unlocked", false)).size()
-	if fresh > 0:
-		bits.append("%d new program%s" % [fresh, "" if fresh == 1 else "s"])
-	if unlocked > 0:
-		bits.append("%d firmware upgrade%s available" % [unlocked, "" if unlocked == 1 else "s"])
-	var foils := pulled.filter(func(p: Dictionary) -> bool: return p["foil"]).size()
-	if foils > 0:
-		bits.append("%d glitch foil%s" % [foils, "" if foils == 1 else "s"])
-	bits.append("Library %d / %d" % CollectionScreen.library_progress(db, profile))
-	var ready := profile.ready_to_flash(db).size()
-	if ready > 0:
-		bits.append("%d ready to flash" % ready)
-	return "   ·   ".join(bits)
+	var screen := PackScreen.new().setup(db, profile, kind, pulled, reveal_packs_now)
+	screen.set_meta("smooth", true)  # 60 fps for the reveal animations
+	screen.changed.connect(_save)
+	screen.next_pack.connect(_show_pack)
+	screen.done.connect(func() -> void: _show_pack_shelf() if profile.packs_unopened > 0 else show_hub())
+	_show(screen)
 
 
 # --- map ------------------------------------------------------------------------
@@ -828,10 +714,10 @@ func _enter_node(id: int) -> void:
 	_play_node(node)
 
 
-func _play_node(node: Dictionary) -> void:
+func _play_node(node: Dictionary, actions: Array = []) -> void:
 	match node.get("type", ""):
 		"fight", "elite", "boss", "vault":
-			_start_combat(node)
+			_start_combat(node, actions)
 		"rest":
 			_show_rest()
 		"shop":
@@ -844,13 +730,26 @@ func _play_node(node: Dictionary) -> void:
 			_show_message(Palette.w("treasure"), ["You pull %s from the cache." % db.talismans[tid]["name"] if tid != "" else "The cache is empty."], {"tals": [tid] if tid != "" else []})
 
 
-func _start_combat(node: Dictionary) -> void:
+## `actions`: a saved fight's moves (Combat.checkpoint) to replay, so a resumed run picks up
+## at the start of the turn it was closed on. If they no longer fit, the fight starts over.
+func _start_combat(node: Dictionary, actions: Array = []) -> void:
 	_tint(Palette.NODE[node["type"]] if node["type"] != "fight" else Color.TRANSPARENT)
 	_combat = run.start_combat(node["encounter"])
 	_combat.start()
+	if not actions.is_empty() and not _combat.replay(actions):
+		push_warning("Saved fight didn't replay; starting it over")
+		_combat = run.start_combat(node["encounter"])
+		_combat.start()
 	var s := CombatScreen.new().setup(_combat, run)
 	s.step_scale = anim_speed()
 	s.finished.connect(_on_combat_finished)
+	var fight := _combat
+	s.acted.connect(func() -> void:
+		# Save at each turn start: closing the app mid-fight resumes at that turn.
+		if fight == _combat and not fight.is_over() and fight.phase == Combat.Phase.PLAYER:
+			var cp := fight.checkpoint()
+			if cp.size() != (_resume.get("actions", []) as Array).size():
+				_save_run({"screen": "node", "actions": cp}))
 	_show(s)
 	if node.get("type", "") == "boss":
 		GameMusic.mood("boss")

@@ -153,3 +153,14 @@ func test_quick_scrap_only_beyond_deck_limit() -> void:
 	eq(p.collection.dust, dust + int(db.balance["dust"]["disenchant"]["common"]))
 	p.collection.add(id, 1, true)
 	eq(p.quick_scrap(db, id, true), Collection.foil_value(id, db), "a foil pull scraps at foil value")
+
+
+func test_winding_the_clock_back_never_pays_again() -> void:
+	var p := Profile.new_player(db)
+	check(not LoginBonus.claim(db, p, "2026-11-23").is_empty(), "today pays")
+	check(not LoginBonus.claim(db, p, "2026-11-30").is_empty(), "a later date pays")
+	check(LoginBonus.claim(db, p, "2026-11-24").is_empty(), "an earlier date doesn't")
+	check(LoginBonus.claim(db, p, "2026-11-30").is_empty(), "the same date doesn't")
+	Records.begin_daily(db, p, "2026-11-30")
+	check(Records.daily_used(p, "2026-11-29"), "daily breach: earlier date counts as used")
+	check(not Records.daily_used(p, "2026-12-01"), "next day is open")

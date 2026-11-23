@@ -11,7 +11,9 @@ const CYCLE := 7
 
 
 static func can_claim(p: Profile, date: String) -> bool:
-	return str(p.login.get("last", "")) != date
+	# Only a date later than the last claim counts (ISO dates sort as text), so winding the
+	# device clock back and forth can't pay twice.
+	return date > str(p.login.get("last", ""))
 
 
 ## The cycle day the next claim pays (1-7).

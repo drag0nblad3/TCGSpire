@@ -54,6 +54,7 @@ static func generate(db: CardDB, rng: GameRng, act: int = 1, targets: Array = []
 	m.rows.append([boss["id"]])
 	m._link(rng)
 	m._build_walls(cfg.get("walls", {}), rng.fork("walls"))
+	m._spread_types(cfg, n_rows, rng.fork("spread"))  # after walls: they add a few diagonal links
 	m._ensure_shop(rng.fork("shop"))
 	m.act = act
 	m._assign_encounters(db, rng, targets, boss_faction)
@@ -73,6 +74,43 @@ func _pick_type(cfg: Dictionary, r: int, n_rows: int, rng: GameRng) -> String:
 	if r < 3:
 		w.erase("rest")
 	return rng.weighted(w)
+
+
+## Node types never repeat along a path: no Safehouse, Fixer or Black sentry straight after
+## another of the same kind, and no Safehouse on the row under the guaranteed last-row one.
+## A clash is rerolled from the row's weights without the clashing kinds.
+const NO_REPEAT := ["rest", "shop", "elite"]
+
+
+func _spread_types(cfg: Dictionary, n_rows: int, rng: GameRng) -> void:
+	var parents := {}
+	for n in nodes:
+		for to in n["next"]:
+			if not parents.has(to):
+				parents[to] = []
+			parents[to].append(n["id"])
+	for r in range(1, n_rows - 1):
+		if r == int(n_rows / 2.0):
+			continue  # the treasure row is fixed
+		for id in rows[r]:
+			var node: Dictionary = nodes[id]
+			var banned: Array = []
+			for pid in parents.get(id, []):
+				var pt: String = nodes[pid]["type"]
+				if pt in NO_REPEAT:
+					banned.append(pt)
+			if r == n_rows - 2:
+				banned.append("rest")
+			if node["type"] not in banned:
+				continue
+			var w: Dictionary = cfg.get("weights", {"fight": 1}).duplicate()
+			if r < int(cfg.get("elite_from_row", 4)):
+				w.erase("elite")
+			if r < 3:
+				w.erase("rest")
+			for b in banned:
+				w.erase(b)
+			node["type"] = rng.weighted(w) if not w.is_empty() else "fight"
 
 
 ## Each node links to the nearest node(s) in the next row by relative position.
@@ -354,6 +392,7 @@ func _add_link(node: Dictionary, to_id: int) -> void:
 
 func _assign_encounters(db: CardDB, rng: GameRng, targets: Array = [], boss_faction: String = "") -> void:
 	var jcfg: Dictionary = db.balance.get("jobs", {})
+	var used := {}  # encounter id -> times placed on this map
 	for node in nodes:
 		var kind := ""
 		match node["type"]:
@@ -390,9 +429,18 @@ func _assign_encounters(db: CardDB, rng: GameRng, targets: Array = [], boss_fact
 			node["encounter"] = str(rng.pick(forced))
 			continue
 		var share := float(jcfg.get("faction_boss_share" if kind == "boss" else "faction_encounter_share", 0.6))
+		if kind != "boss" and targets.size() <= 1:
+			share = float(jcfg.get("faction_encounter_share_one_target", share))
 		if not crew.is_empty() and (pool.is_empty() or rng.chance(share)):
 			pool = crew
+		# Spread fights out: pick among the encounters used least so far on this map.
+		var least := 1 << 30
+		for id in pool:
+			least = mini(least, int(used.get(id, 0)))
+		pool = pool.filter(func(id: String) -> bool: return int(used.get(id, 0)) == least)
 		node["encounter"] = str(rng.pick(pool)) if not pool.is_empty() else ""
+		if node["encounter"] != "":
+			used[node["encounter"]] = int(used.get(node["encounter"], 0)) + 1
 
 
 func start_nodes() -> Array:

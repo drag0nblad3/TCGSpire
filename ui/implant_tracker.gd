@@ -31,7 +31,7 @@ func badge(definition: Dictionary) -> String:
 	if not triggers.is_empty():
 		var times := int(counts.get(id, 0))
 		if triggers[0].get("on", "") == "combat_start" or triggers[0].has("turn"):
-			return "USED" if times > 0 else "READY"
+			return "DONE" if times > 0 else "READY"
 		return "×%d" % times
 	if definition.has("run"):
 		return "MAP"

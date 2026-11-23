@@ -25,7 +25,7 @@ func _ready() -> void:
 	add_child(bg)
 	var parts := UiKit.screen(18)
 	add_child(parts[0])
-	var v: VBoxContainer = parts[1]
+	var v: VBoxContainer = UiKit.scroll(parts[1])
 	var title := UiKit.label("Settings", 34, Palette.ENERGY)
 	title.mouse_filter = Control.MOUSE_FILTER_STOP
 	title.gui_input.connect(_on_title_input)
@@ -44,6 +44,15 @@ func _ready() -> void:
 		return ANIM_NAMES[i], func() -> void:
 		settings["anim_speed"] = (int(settings.get("anim_speed", 0)) + 1) % ANIM_NAMES.size()
 		changed.emit("anim_speed")))
+	v.add_child(_section("Accessibility"))
+	v.add_child(_cycle("Text size", func() -> String:
+		return str(Palette.TEXT_SCALES[clampi(int(settings.get("text_size", 0)), 0, Palette.TEXT_SCALES.size() - 1)][1]), func() -> void:
+		settings["text_size"] = (int(settings.get("text_size", 0)) + 1) % Palette.TEXT_SCALES.size()
+		changed.emit("text_size")))
+	v.add_child(_toggle("Colour-blind intents", "colorblind", false))
+	v.add_child(_toggle("Screen shake", "no_shake", true))
+	v.add_child(_section("Battery"))
+	v.add_child(_toggle("Battery saver (30 fps, still backdrop)", "battery_saver", false))
 	_cheat_row = _toggle("Testing cheats", "cheats", false)
 	_cheat_row.visible = bool(settings.get("cheats", false))
 	v.add_child(_cheat_row)
@@ -52,6 +61,12 @@ func _ready() -> void:
 		closed.emit(), Vector2(260, 60), 20)
 	UiKit.primary(done)
 	v.add_child(done)
+
+
+## Android back: same as Done.
+func back() -> void:
+	queue_free()
+	closed.emit()
 
 
 const ANIM_NAMES := ["Normal", "Fast", "Very fast"]

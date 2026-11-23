@@ -110,6 +110,11 @@ func _upgrade_note(src: CardInstance, shown: CardInstance) -> String:
 	return src.level_up_text()
 
 
+## Android back: same as the Close/Cancel button.
+func back() -> void:
+	_close(-1)
+
+
 func _close(i: int) -> void:
 	queue_free()
 	_on_pick.call(i)

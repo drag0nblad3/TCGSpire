@@ -170,7 +170,7 @@ func _ice() -> void:
 
 func _daily() -> void:
 	var d := Records.daily(db, Records.today())
-	var done: bool = str(profile.daily.get("last", "")) == d["date"]
+	var done: bool = Records.daily_used(profile, d["date"])
 	_line("Today (%s): a %s job at Heat %d against %s. Everyone gets the same Stack and seed, and you get one attempt a day with your default picks." % [
 		d["date"], Lexicon.faction(d["job"]), d["heat"], " + ".join(d["targets"].map(func(x: String) -> String: return Lexicon.faction(x)))], 15)
 	_line("Done today." if done else "Not run yet today. Start it from the hub.", 15, Palette.ENERGY)

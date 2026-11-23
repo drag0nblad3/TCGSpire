@@ -5,6 +5,18 @@ extends RefCounted
 ## in ui/themes.gd.
 
 static var theme_id := "glassnet"
+## Accessibility (Profile.settings, set by Main): text size multiplier, colour-blind-safe
+## intent colours, screen shake on hits, battery saver.
+static var text_scale := 1.0
+static var colorblind := false
+static var shake := true
+const TEXT_SCALES := [[1.0, "Normal"], [1.15, "Large"], [1.3, "Larger"]]
+
+
+static func apply_access(settings: Dictionary) -> void:
+	text_scale = float(TEXT_SCALES[clampi(int(settings.get("text_size", 0)), 0, TEXT_SCALES.size() - 1)][0])
+	colorblind = bool(settings.get("colorblind", false))
+	shake = not bool(settings.get("no_shake", false))
 
 ## Rajdhani SemiBold keeps the cyberpunk look at small card and combat sizes.
 const NAME_FONT := preload("res://assets/fonts/Rajdhani.ttf")

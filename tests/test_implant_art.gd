@@ -45,7 +45,7 @@ func test_tracker_startup_and_daemon_gates() -> void:
 	var tracker := ImplantTracker.new()
 	eq(tracker.badge(db.talismans["oak_token"]), "READY")
 	tracker.consume({"t": "talisman", "id": "oak_token"})
-	eq(tracker.badge(db.talismans["oak_token"]), "USED")
+	eq(tracker.badge(db.talismans["oak_token"]), "DONE")
 	eq(tracker.badge(db.talismans["pressure_valve"]), "OFF")
 	tracker.consume({"t": "summon", "target": "unit_1"})
 	tracker.consume({"t": "summon", "target": "unit_2"})

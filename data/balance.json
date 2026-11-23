@@ -380,7 +380,7 @@
   "rep_per_elite": 6,
   "rep_per_act": 15,
   "rep_boss": 30,
-  "faction_encounter_share": 0.6,
+  "faction_encounter_share": 0.6, "faction_encounter_share_one_target": 0.5,
   "rep_per_extra_target": 0.25,
   "faction_boss_share": 0.75,
   "rep_mult": 0.75
