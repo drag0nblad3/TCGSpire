@@ -16,6 +16,12 @@ Original design only: don't copy cards, names, characters or look from existing 
 - `scripts/sim_matrix.sh` — the standard balance check Tyler wants: 150 runs per cell, new heat 0-1, experienced 1-3, veteran 2-5, max 4-6.
 - `scripts/shot.sh screen=<name|all> out=/tmp/x.png [plays=2] [undo=1] [end_turn=1] [inspect_enemy=1] [log=1] [theme=archive] [hand=id,id] [pick=1] [touch=i [slide=j]]` — real render to PNG (xvfb). `hand=` sets the combat hand (picker: taps those programs in); `pick=1` opens the Dump/recover pick overlay, `log=1` the combat log; `touch=i [slide=j]` holds a finger on hand card i (then drags onto j) to show the touch highlight.
   Screens: hub hub_heat map combat reward rest shop event collection picker pack pack_open pack_shelf pack_premium pack_crew weekly weekly_map login signal_result ice deep end boss inspect rules jobs rig perk tinker crew firmware recompile menu settings resume tutorial coach foil lethal. Uses a throwaway profile.
+- `scripts/browser.sh [out_dir]` — builds the Data Deck page (`tools/browser/`: every card, enemy and implant, filters, search, editor) into one HTML file and checks
+  `describe.js` (JS port of the rules-text generators) word for word against the game; port any new op/text there too or the build fails.
+  Tyler's copy is the artifact https://claude.ai/artifact/Szni5dGmh4qAiFM93UoNBG: republish it from the build after data changes (Artifact tool, that `url`).
+  His saved edits live in its db collection `edits` (doc `card__<id>`/`enemy__<id>`/`implant__<id>`, `data` = the full entry as a JSON string, `file`, `note`, `isNew`).
+  To apply: read them with ArtifactData, write `{"edits": [...]}` with `data` parsed, run `node tools/browser/apply.js edits.json`, then `scripts/test.sh data`, open a PR,
+  and set each doc's `status` to "in PR #n"; delete the docs once merged and the page is republished.
 - Godot binary: `godot` on PATH, or set `GODOT=/path/to/godot`. Cloud sessions: download
   `Godot_v4.4.1-stable_linux.x86_64.zip` from the godotengine GitHub releases.
 
