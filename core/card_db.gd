@@ -140,6 +140,8 @@ func validate() -> Array[String]:
 		var d: Dictionary = enemies[id]
 		if d.get("moves", []).is_empty():
 			errs.append("enemy '%s': no moves" % id)
+		if d.has("art") and (not enemies.has(str(d["art"])) or enemies[str(d["art"])].has("art")):
+			errs.append("enemy '%s': art borrows from '%s', which isn't an enemy with its own art" % [id, d["art"]])
 		errs.append_array(BossRules.validate(self, id, d.get("rules", {})))
 		for mv in d.get("moves", []):
 			for e in mv.get("effects", []):

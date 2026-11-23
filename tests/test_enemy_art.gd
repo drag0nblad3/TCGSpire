@@ -15,6 +15,7 @@ func test_idle_motion_is_bounded_and_varies_for_every_profile() -> void:
 func test_non_boss_roster_has_unique_neon_cells_and_elite_layers() -> void:
 	var used := {}
 	for id in db.enemies:
+		if db.enemies[id].has("art"): continue  # borrows another enemy's art (checked by test_data)
 		if BossPresentation.PROFILES.has(id): continue
 		if BossSupportArt.PROFILES.has(id): continue
 		check(EnemyPortraits.ROSTER.has(id), "unmapped enemy: " + id)
