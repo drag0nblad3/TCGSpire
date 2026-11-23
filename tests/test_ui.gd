@@ -213,7 +213,9 @@ func test_map_canvas_lets_drags_scroll() -> void:
 	var p := Profile.new()
 	var r := RunState.start(db, p, RunState.default_picks(db, p), 1, 0)
 	var ms := MapScreen.new().setup(r)
-	ms._ready()  # builds the canvas; the scroll-to-row step needs a running tree
+	(Engine.get_main_loop() as SceneTree).root.add_child(ms)  # _ready builds the canvas
+	if ms._canvas == null:
+		ms._ready()
 	eq(ms._canvas.mouse_filter, Control.MOUSE_FILTER_PASS, "map canvas filter")
 	# A tap on a lit node still picks it.
 	ms._canvas.size = Vector2(720, ms._canvas.custom_minimum_size.y)

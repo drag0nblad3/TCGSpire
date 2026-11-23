@@ -295,7 +295,7 @@ func _rebuild() -> void:
 	var sep := 6 if n <= 1 else mini(6, int((avail - n * CardView.SIZE.x * zoom) / (n - 1)))
 	_hand_row.add_theme_constant_override("separation", sep)
 	if step_scale > 0.0 and not hand_was.is_empty():
-		_hand_row.sort_children.connect(_settle_hand.bind(hand_was), CONNECT_ONE_SHOT)
+		_queue_settle(hand_was)
 	_energy.queue_redraw()
 	_floor_label.text = ("Layer %d · Node %d   ·   %d creds   ·   Turn %d" % [run.act, run.floor_num, run.gold, combat.turn]) if run else "Practice fight   ·   Turn %d" % combat.turn
 	if run and run.act_start_eased():
@@ -989,9 +989,18 @@ func _hand_spots() -> Dictionary:
 
 
 ## Call just before cards leave the hand row: the cards left behind slide over to close the gap.
+## Glides the hand into place after its next layout. Only one glide waits at a time: the
+## first snapshot holds where the cards were before this change, so later ones are dropped.
+func _queue_settle(spots: Dictionary) -> void:
+	for c in _hand_row.sort_children.get_connections():
+		if (c["callable"] as Callable).get_method() == "_settle_hand":
+			return
+	_hand_row.sort_children.connect(_settle_hand.bind(spots), CONNECT_ONE_SHOT)
+
+
 func _glide_after_change() -> void:
 	if step_scale > 0.0:
-		_hand_row.sort_children.connect(_settle_hand.bind(_hand_spots()), CONNECT_ONE_SHOT)
+		_queue_settle(_hand_spots())
 
 
 ## Where a pile's button sits on screen (centre, global coordinates).
@@ -1101,11 +1110,15 @@ func _glide(cv: CardView, from: Vector2, from_scale: float, delay: float, dur: f
 	ghost.global_position = from - ghost.size * 0.5
 	ghost.modulate.a = 0.0 if fade_in else 1.0
 	cv.modulate.a = 0.0
+	# Hold the card by id, not by reference: the hand can be rebuilt mid-glide, and a lambda that
+	# captured a freed node logs an engine error on every tween step.
+	var cv_id := cv.get_instance_id()
 	var follow := func(t: float) -> void:
-		if not is_instance_valid(cv) or not cv.is_inside_tree():
+		var cv_now := instance_from_id(cv_id) as CardView
+		if cv_now == null or not cv_now.is_inside_tree():
 			return
 		var k := ease(t, 0.4)  # fast start, soft landing
-		ghost.global_position = from.lerp(cv.global_position + cv.size * 0.5, k) - ghost.size * 0.5
+		ghost.global_position = from.lerp(cv_now.global_position + cv_now.size * 0.5, k) - ghost.size * 0.5
 		var sc := lerpf(from_scale, 1.0, k)
 		ghost.scale = Vector2(sc, sc)
 		if fade_in:
@@ -1117,8 +1130,9 @@ func _glide(cv: CardView, from: Vector2, from_scale: float, delay: float, dur: f
 		tw.tween_callback(_bump_pile.bind(pile))
 	tw.tween_method(follow, 0.0, 1.0, dur * step_scale)
 	tw.tween_callback(func() -> void:
-		if is_instance_valid(cv):
-			cv.modulate.a = 1.0
+		var cv_end := instance_from_id(cv_id) as CardView
+		if cv_end != null:
+			cv_end.modulate.a = 1.0
 		ghost.queue_free())
 
 

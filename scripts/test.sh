@@ -16,11 +16,15 @@ if [ $# -eq 0 ]; then
   "$GODOT" --headless --path . -s res://tools/screenshot.gd -- screen=all plays=3 frames=5 >>"$LOG" 2>&1 || code=1
 fi
 if grep -qE "SCRIPT ERROR|Parse Error" "$LOG"; then code=1; fi
+# Any other engine error fails too, except the ones tests trigger on purpose and Godot's
+# exit-time leak report. Add a pattern here only for an error a test provokes deliberately.
+ALLOWED='exceeds owned copies|Corrupt profile at user://test|Parse JSON failed|leaked at exit|No readable profile'
+if grep -E "^ERROR:" "$LOG" | grep -vqE "$ALLOWED"; then code=1; fi
 if [ $code -eq 0 ]; then
   grep -E "^(ok |OK:)" "$LOG"
 else
   # Failures, script errors (deduped, with location), summary. Full log: $LOG
-  grep -E "^(FAIL|FAILED:|OK:)|SCRIPT ERROR|^ERROR:|^ +at: " "$LOG" | awk '!seen[$0]++' | head -40
+  grep -E "^(FAIL|FAILED:|OK:)|SCRIPT ERROR|^ERROR:|^ +at: " "$LOG" | grep -vE "$ALLOWED" | awk '!seen[$0]++' | head -40
   echo "(full log: $LOG)"
 fi
 exit $code
