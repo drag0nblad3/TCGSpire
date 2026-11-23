@@ -24,5 +24,10 @@ jobs:
           unzip -q g.zip && mv Godot_v${GODOT_VERSION}-stable_linux.x86_64 godot && rm g.zip
       - name: Test
         run: GODOT=~/godot/godot scripts/test.sh
-      - name: Balance sim
-        run: GODOT=~/godot/godot scripts/sim.sh n=100
+      - name: Run sim smoke check
+        # Bot plays whole runs on every crew. Fails on a script or data error, or a run the bot
+        # couldn't finish (stuck). Win rates are printed for reference, not checked.
+        run: |
+          GODOT=~/godot/godot scripts/sim.sh mode=run n=30 job=all | tee sim.txt
+          if grep -qE "SCRIPT ERROR|DATA ERROR|Parse Error" sim.txt; then echo "::error::sim hit an error"; exit 1; fi
+          if grep -qE "stuck [1-9]" sim.txt; then echo "::error::bot got stuck in a run"; exit 1; fi
