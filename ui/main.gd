@@ -576,7 +576,7 @@ func _show_picker(heat: int, job: String = "", targets: Array = [], clauses: Arr
 ## Daily breach: today's fixed job, heat and seed. One attempt per day.
 func _start_daily() -> void:
 	var d := Records.daily(db, Records.today())
-	if str(profile.daily.get("last", "")) == d["date"]:
+	if Records.daily_used(profile, d["date"]):
 		show_hub()
 		return
 	var packs := Records.begin_daily(db, profile, d["date"])

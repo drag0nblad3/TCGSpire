@@ -175,7 +175,7 @@ func _action(text: String, badge: String, info: String, sig: Signal, enabled: bo
 ## Daily breach and weekly challenge, side by side.
 func _challenges() -> Control:
 	var d := Records.daily(db, Records.today())
-	var done: bool = str(profile.daily.get("last", "")) == d["date"]
+	var done: bool = Records.daily_used(profile, d["date"])
 	var today_score := int(profile.daily.get("scores", {}).get(d["date"], 0))
 	var db_btn := UiKit.button(("Daily breach done · score %d\nA new one opens tomorrow" % today_score) if done else ("Daily breach: %s job · Heat %d\nDaily challenge run, one try" % [Lexicon.faction(d["job"]), d["heat"]]),
 		func() -> void: daily_pressed.emit(), Vector2(300, 68), 16)

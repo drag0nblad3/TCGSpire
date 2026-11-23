@@ -128,10 +128,15 @@ static func daily(db: CardDB, date: String) -> Dictionary:
 
 
 ## Daily score: nodes, sentries, layers, the final Core, and a little for clean fights.
+## Today's breach is used up, or the device clock was wound back to before the last one tried.
+static func daily_used(p: Profile, date: String) -> bool:
+	return date <= str(p.daily.get("last", ""))
+
+
 ## Starts today's attempt: marks it used and pays the daily pack up front, win or lose.
 ## Returns the packs granted (0 if today's attempt was already used).
 static func begin_daily(db: CardDB, p: Profile, date: String) -> int:
-	if str(p.daily.get("last", "")) == date:
+	if daily_used(p, date):
 		return 0
 	p.daily["last"] = date
 	var packs := int(db.balance.get("daily", {}).get("packs", 0))
