@@ -76,7 +76,14 @@ func _ready() -> void:
 	for sec in sections:
 		v.add_child(_gap())
 		v.add_child(sec)
-	outer.add_child(_tab_bar())
+	# A solid strip with a top rule, so content scrolling under the tabs reads as cut off by the bar
+	# rather than overlapped by it.
+	var strip := UiKit.panel(_tab_bar(), Color(Palette.PANEL_BG, 0.98))
+	var sb: StyleBoxFlat = strip.get_theme_stylebox("panel")
+	sb.set_content_margin_all(6)
+	sb.border_width_top = 2
+	sb.border_color = Color(Palette.ENERGY, 0.35)
+	outer.add_child(strip)
 
 
 ## Flexible spacer between hub sections: at least 10 px, takes a share of leftover height.

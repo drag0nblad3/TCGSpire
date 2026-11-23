@@ -5,6 +5,7 @@ shader_type canvas_item;
 uniform int style = 0;
 uniform float glass_intensity : hint_range(1.0, 2.0) = 1.0;
 uniform float boss_entrance = -1.0;
+uniform float speed = 1.0;  // 0 = still (battery saver)
 uniform vec4 boss_color : source_color = vec4(1.0, 0.5, 0.18, 1.0);
 uniform vec4 top_color : source_color = vec4(0.09, 0.07, 0.15, 1.0);
 uniform vec4 bottom_color : source_color = vec4(0.02, 0.02, 0.05, 1.0);
@@ -39,18 +40,19 @@ vec2 voronoi(vec2 p) {
 }
 
 void fragment() {
+	float T = TIME * speed;
 	vec2 uv = UV;
 	vec3 col = mix(top_color.rgb, bottom_color.rgb, uv.y);
 	if (style == 0) {
-		float n = noise(uv * vec2(3.0, 5.0) + vec2(TIME * 0.03, TIME * 0.02)) * 0.6
-				+ noise(uv * vec2(7.0, 12.0) - TIME * 0.04) * 0.4;
+		float n = noise(uv * vec2(3.0, 5.0) + vec2(T * 0.03, T * 0.02)) * 0.6
+				+ noise(uv * vec2(7.0, 12.0) - T * 0.04) * 0.4;
 		col += glow_color.rgb * pow(n, 3.0) * 0.45;
 		// Sparse twinkling stars.
 		vec2 sg = uv * vec2(60.0, 106.0);
 		vec2 cell = floor(sg);
 		vec2 jitter = vec2(hash(cell + 3.1), hash(cell + 7.7)) * 0.6 + 0.2;
 		float dot_ = smoothstep(0.16, 0.0, length(fract(sg) - jitter));
-		float s = step(0.975, hash(cell)) * dot_ * (0.55 + 0.45 * sin(TIME * 2.0 + hash(cell) * 40.0));
+		float s = step(0.975, hash(cell)) * dot_ * (0.55 + 0.45 * sin(T * 2.0 + hash(cell) * 40.0));
 		col += vec3(s) * 0.85;
 	} else if (style == 1) {
 		float grain = noise(uv * vec2(400.0, 700.0)) * 0.06 + noise(uv * vec2(8.0, 14.0)) * 0.08;
@@ -59,30 +61,30 @@ void fragment() {
 		col = mix(col, glow_color.rgb, stain * 0.12);
 	} else if (style == 2) {
 		vec2 g = uv * vec2(14.0, 24.0);
-		g.y += TIME * 0.4;
+		g.y += T * 0.4;
 		vec2 f = abs(fract(g) - 0.5);
 		float line = smoothstep(0.47, 0.5, max(f.x, f.y));
 		col += glow_color.rgb * line * (0.25 + 0.75 * uv.y) * 0.5;
 		col += glow_color.rgb * 0.15 * pow(1.0 - uv.y, 3.0);
 	} else if (style == 4) {
 		vec2 cells = vec2(5.0, 9.0);
-		vec2 p = uv * cells + vec2(0.0, TIME * 0.01);
+		vec2 p = uv * cells + vec2(0.0, T * 0.01);
 		vec2 v = voronoi(p);
 		float gap = v.y - v.x;
 		float id = hash(floor(p + v.x * 0.5));
 		// Panes: dark glass faintly tinted cyan or magenta, with a diagonal sheen.
 		vec3 tint = mix(glow_color.rgb, glow2_color.rgb, step(0.62, id));
-		float sheen = smoothstep(0.0, 1.0, sin((uv.x + uv.y * 0.6) * 7.0 + id * 9.0 + TIME * 0.15) * 0.5 + 0.5);
+		float sheen = smoothstep(0.0, 1.0, sin((uv.x + uv.y * 0.6) * 7.0 + id * 9.0 + T * 0.15) * 0.5 + 0.5);
 		vec3 pane = mix(col, tint, (0.03 + 0.05 * id + 0.03 * sheen) * glass_intensity);
 		// Digital rain inside a few panes.
-		vec2 rg = vec2(floor(uv.x * 90.0), floor(uv.y * 64.0 - TIME * (3.0 + 4.0 * hash(vec2(floor(uv.x * 90.0), 1.0)))));
+		vec2 rg = vec2(floor(uv.x * 90.0), floor(uv.y * 64.0 - T * (3.0 + 4.0 * hash(vec2(floor(uv.x * 90.0), 1.0)))));
 		float rain = step(0.93, hash(rg)) * step(0.7, id) * 0.5;
 		pane += tint * rain * 0.18 * glass_intensity;
 		// Cracks: heavy dark leading with a thin glowing core; pulses travel along it.
 		float lead = 1.0 - smoothstep(0.0, 0.07, gap);
 		float core = 1.0 - smoothstep(0.0, 0.018, gap);
-		float pulse = pow(0.5 + 0.5 * sin(TIME * 1.6 - (uv.y * 14.0 + uv.x * 6.0) + id * 6.28), 6.0);
-		vec3 neon = mix(glow_color.rgb, glow2_color.rgb, 0.5 + 0.5 * sin(uv.y * 3.0 + TIME * 0.3));
+		float pulse = pow(0.5 + 0.5 * sin(T * 1.6 - (uv.y * 14.0 + uv.x * 6.0) + id * 6.28), 6.0);
+		vec3 neon = mix(glow_color.rgb, glow2_color.rgb, 0.5 + 0.5 * sin(uv.y * 3.0 + T * 0.3));
 		col = mix(pane, vec3(0.0), lead * 0.85);
 		col += neon * core * (0.25 + 0.9 * pulse) * glass_intensity;
 		if (boss_entrance > -0.5) {
@@ -95,7 +97,7 @@ void fragment() {
 		vec2 v = voronoi(uv * vec2(6.0, 10.0));
 		float edge = 1.0 - smoothstep(0.0, 0.06, v.y - v.x);
 		float shade = hash(floor(uv * vec2(6.0, 10.0) + v.x));
-		vec3 glass = mix(col, glow_color.rgb, 0.035 + 0.09 * shade + 0.03 * sin(TIME * 0.5 + shade * 6.0));
+		vec3 glass = mix(col, glow_color.rgb, 0.035 + 0.09 * shade + 0.03 * sin(T * 0.5 + shade * 6.0));
 		col = mix(glass, vec3(0.0), edge * 0.85);
 	}
 	float vignette = smoothstep(1.2, 0.35, length((uv - vec2(0.5, 0.42)) * vec2(1.0, 0.8)));

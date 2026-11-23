@@ -38,6 +38,7 @@ func _ready() -> void:
 	var music := GameMusic.new()
 	add_child(music)
 	music.configure(profile.settings)
+	Palette.apply_access(profile.settings)
 	apply_theme(str(profile.settings.get("theme", Themes.DEFAULT)))
 	_menu_btn = UiKit.button("Menu", _open_menu, Vector2(84, 40), 15)
 	_menu_btn.visible = false
@@ -120,6 +121,16 @@ func apply_theme(id: String) -> void:
 	_bg_mat.set_shader_parameter("glow2_color", b["glow2"])
 
 
+## Frame cap: fights and pack openings run at 60 fps, menus and the map at 30 (phones with
+## 90-120 Hz screens would otherwise draw every screen that fast). Battery saver: 30 fps
+## everywhere and a still backdrop.
+func _apply_power() -> void:
+	var saver := bool(profile.settings.get("battery_saver", false))
+	var smooth := _screen is CombatScreen or (_screen != null and _screen.has_meta("smooth"))
+	Engine.max_fps = 30 if saver or not smooth else 60
+	_bg_mat.set_shader_parameter("speed", 0.0 if saver else 1.0)
+
+
 func _save() -> void:
 	if persist:
 		profile.save()
@@ -136,6 +147,7 @@ func _show(node: Control) -> void:
 	_bg_mat.set_shader_parameter("boss_entrance", -1.0)
 	_bg_mat.set_shader_parameter("glass_intensity", 1.45 if node is CombatScreen else 1.0)
 	add_child(node)
+	_apply_power()
 	if _menu_btn != null:
 		move_child(_menu_btn, -1)
 		_menu_btn.position = UiKit.corner_pos(self, _menu_btn.custom_minimum_size.x)
@@ -318,6 +330,18 @@ func _on_setting_changed(key: String, st: SettingsScreen) -> void:
 		"cheats":
 			if run == null:
 				_menu_btn.visible = _is_profile_cheat_screen(_screen)
+		"battery_saver":
+			_apply_power()
+		"colorblind", "no_shake":
+			Palette.apply_access(profile.settings)
+		"text_size":
+			Palette.apply_access(profile.settings)
+			if run == null:
+				show_hub()
+			elif _resume.get("screen", "") == "map":
+				show_map()
+			st.queue_free()
+			_open_settings()
 		_:
 			if is_instance_valid(GameAudio.instance):
 				GameAudio.instance.configure(profile.settings)
@@ -745,6 +769,7 @@ func _show_pack(kind: String = "") -> void:
 	var others := profile.packs_unopened - left
 	v.add_child(UiKit.button("Cache shelf (%d more)" % others if others > 0 else "Done", func() -> void:
 		_show_pack_shelf() if profile.packs_unopened > 0 else show_hub(), Vector2(220, 52)))
+	parts[0].set_meta("smooth", true)  # 60 fps for the reveal animations
 	_show(parts[0])
 	if not reveal_packs_now:
 		_play_pack_opening(parts[0], kind)

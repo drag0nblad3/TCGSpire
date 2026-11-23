@@ -275,6 +275,8 @@ func _rebuild() -> void:
 		_add_enemy_view(e, i)
 	for u in combat.units:
 		_add_unit_view(u)
+	# Only keep the daemon row's space when this fight can have daemons; otherwise the enemies get it.
+	_units_row.custom_minimum_size.y = 172 if _daemons_possible() else 0
 	for id in lingering:
 		if _views.has(id):
 			var view: FighterView = _views[id]
@@ -351,6 +353,16 @@ func _rebuild() -> void:
 
 
 const ENEMY_TILE_MAX := 340.0
+
+
+func _daemons_possible() -> bool:
+	if not combat.units.is_empty():
+		return true
+	for pile in [combat.hand, combat.draw_pile, combat.discard_pile]:
+		for c: CardInstance in pile:
+			if c.def.type == "unit":
+				return true
+	return false
 
 
 func _layout_width() -> float:
@@ -1183,6 +1195,8 @@ func _float_text(v: Control, text: String, col: Color, dy: float = 0.0, chip: bo
 
 
 func _shake(amount: float) -> void:
+	if not Palette.shake:
+		return
 	var tw := create_tween()
 	for i in 4:
 		tw.tween_property(self, "position", Vector2(randf_range(-amount, amount), randf_range(-amount, amount)), 0.03)

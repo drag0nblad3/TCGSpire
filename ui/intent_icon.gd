@@ -3,7 +3,14 @@ extends RefCounted
 ## Procedural intent glyphs (sword, shield, arrows, ...) drawn with canvas calls.
 
 
+## Okabe-Ito colours: tell apart with any common colour-blindness (Palette.colorblind).
+const SAFE := {"attack": "#e8590c", "purge": "#f0e442", "ward": "#56b4e9", "buff": "#009e73",
+	"debuff": "#e69f00", "curse": "#e69f00", "heal": "#cc79a7", "restore": "#cc79a7", "summon": "#f0e442", "interrupted": "#009e73"}
+
+
 static func color(kind: String) -> Color:
+	if Palette.colorblind and SAFE.has(kind):
+		return Color(SAFE[kind])
 	match kind:
 		"attack": return Palette.HP
 		"purge": return Palette.ENERGY
