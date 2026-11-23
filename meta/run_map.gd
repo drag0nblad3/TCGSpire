@@ -392,6 +392,7 @@ func _add_link(node: Dictionary, to_id: int) -> void:
 
 func _assign_encounters(db: CardDB, rng: GameRng, targets: Array = [], boss_faction: String = "") -> void:
 	var jcfg: Dictionary = db.balance.get("jobs", {})
+	var used := {}  # encounter id -> times placed on this map
 	for node in nodes:
 		var kind := ""
 		match node["type"]:
@@ -428,9 +429,18 @@ func _assign_encounters(db: CardDB, rng: GameRng, targets: Array = [], boss_fact
 			node["encounter"] = str(rng.pick(forced))
 			continue
 		var share := float(jcfg.get("faction_boss_share" if kind == "boss" else "faction_encounter_share", 0.6))
+		if kind != "boss" and targets.size() <= 1:
+			share = float(jcfg.get("faction_encounter_share_one_target", share))
 		if not crew.is_empty() and (pool.is_empty() or rng.chance(share)):
 			pool = crew
+		# Spread fights out: pick among the encounters used least so far on this map.
+		var least := 1 << 30
+		for id in pool:
+			least = mini(least, int(used.get(id, 0)))
+		pool = pool.filter(func(id: String) -> bool: return int(used.get(id, 0)) == least)
 		node["encounter"] = str(rng.pick(pool)) if not pool.is_empty() else ""
+		if node["encounter"] != "":
+			used[node["encounter"]] = int(used.get(node["encounter"], 0)) + 1
 
 
 func start_nodes() -> Array:
