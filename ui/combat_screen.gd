@@ -517,7 +517,9 @@ func _pick_cards(idx: int, req: Dictionary, chosen: Array) -> void:
 		_picks = next
 		_picks_for = idx
 		_continue_play(idx)
-	get_tree().root.add_child(DeckOverlay.new().setup(title, left, "Cancel", on_pick, true))
+	var overlay := DeckOverlay.new().setup(title, left, "Cancel", on_pick, true)
+	overlay.low = true
+	get_tree().root.add_child(overlay)
 
 
 ## Targeting (if the program needs one), then run it with any picks made.
