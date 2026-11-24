@@ -132,7 +132,7 @@ func get_text(upgraded: bool) -> String:
 	for k in get_keywords(upgraded):
 		parts.append(Lexicon.keyword(str(k)) + ".")
 	parts.append_array(extra_text(upgraded))
-	return " ".join(parts)
+	return "\n".join(parts)
 
 
 ## Rules text for the card-level abilities (When dumped, Evolve) that aren't effects.

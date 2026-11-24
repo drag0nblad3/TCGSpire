@@ -67,7 +67,28 @@ static func screen(sep: int = 20, align: BoxContainer.AlignmentMode = BoxContain
 		root.add_theme_constant_override("margin_" + side, 28)
 	var v := vbox(sep, align)
 	root.add_child(v)
+	root.ready.connect(func() -> void: _safe_margins(root))
+	root.resized.connect(func() -> void:
+		if root.is_inside_tree():
+			_safe_margins(root))
 	return [root, v]
+
+
+static func _safe_margins(root: MarginContainer) -> void:
+	var ins := safe_insets(root)
+	for side in ["left", "right", "top", "bottom"]:
+		var base := 16 if side in ["left", "right"] else 28
+		var margin := base + ceili(float(ins[side]))
+		if root.get_theme_constant("margin_" + side) != margin:
+			root.add_theme_constant_override("margin_" + side, margin)
+
+
+static func safe_offsets(node: Control, horizontal: float = 10.0, vertical: float = 20.0) -> void:
+	var ins := safe_insets(node)
+	node.offset_left = horizontal + float(ins["left"])
+	node.offset_right = -horizontal - float(ins["right"])
+	node.offset_top = vertical + float(ins["top"])
+	node.offset_bottom = -vertical - float(ins["bottom"])
 
 
 ## Vertical scroll area that expands to fill. Add children to the returned inner box.
@@ -99,17 +120,17 @@ static func panel(child: Control, col: Color = Palette.PANEL_BG) -> PanelContain
 static func safe_insets(node: CanvasItem) -> Dictionary:
 	var out := {"left": 0.0, "top": 0.0, "right": 0.0, "bottom": 0.0}
 	var win := Vector2(DisplayServer.window_get_size())
-	if win.x <= 0 or DisplayServer.get_name() == "headless":
+	if win.x <= 0 or win.y <= 0 or not OS.has_feature("mobile") or DisplayServer.get_name() == "headless":
 		return out
 	var pos := Vector2(DisplayServer.window_get_position())
 	var safe := Rect2(DisplayServer.get_display_safe_area())
 	if safe.size.x <= 0:
 		return out
-	var k := node.get_viewport_rect().size.x / win.x
-	out["left"] = maxf(0.0, safe.position.x - pos.x) * k
-	out["top"] = maxf(0.0, safe.position.y - pos.y) * k
-	out["right"] = maxf(0.0, (pos.x + win.x) - safe.end.x) * k
-	out["bottom"] = maxf(0.0, (pos.y + win.y) - safe.end.y) * k
+	var k := node.get_viewport_rect().size / win
+	out["left"] = maxf(0.0, safe.position.x - pos.x) * k.x
+	out["top"] = maxf(0.0, safe.position.y - pos.y) * k.y
+	out["right"] = maxf(0.0, (pos.x + win.x) - safe.end.x) * k.x
+	out["bottom"] = maxf(0.0, (pos.y + win.y) - safe.end.y) * k.y
 	return out
 
 

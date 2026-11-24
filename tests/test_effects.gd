@@ -496,3 +496,21 @@ func test_backlash_hits_back_whenever_you_lose_hp() -> void:
 	c.player.ward = 20
 	Effects.resolve(c, {"op": "damage", "amount": 5}, c.enemies[1], c.player)
 	eq(c.enemies[0].hp, hp - 9, "a hit Firewall fully blocks costs no HP")
+
+
+func test_null_pointer_limits_buff_removal() -> void:
+	var en: Fighter = c.enemies[0]
+	en.add_status("might", 5)
+	en.add_status("thorns", 1)
+	en.add_status("burn", 4)
+	c.play_card(give(c, "null_pointer"), 0)
+	eq(en.status("might"), 3)
+	eq(en.status("thorns"), 0)
+	eq(en.status("burn"), 4)
+
+
+func test_shriek_exposes_before_damage() -> void:
+	var en: Fighter = c.enemies[0]
+	c.play_card(give(c, "shriek"), 0)
+	eq(en.status("brittle"), 1)
+	eq(en.hp, 23)

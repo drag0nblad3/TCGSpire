@@ -817,3 +817,14 @@ func test_skipping_a_program_reward_pays_creds_by_fight_kind() -> void:
 	eq(r.gold, start + r.reward_skip_gold("normal") + r.reward_skip_gold("boss"))
 	check(r.reward_skip_gold("elite") > r.reward_skip_gold("normal") and r.reward_skip_gold("boss") > r.reward_skip_gold("elite"), "bigger fights pay more")
 	eq(r.skip_reward("shop"), 0, "only fight rewards pay")
+
+
+func test_rig_implant_reserve() -> void:
+	var baseline := _run(42, "chrome")
+	profile.rig = {"implant_reserve": 2}
+	var r := _run(42, "chrome")
+	eq(r.talismans.size(), baseline.talismans.size() + 2)
+	for id in r.talismans:
+		if id not in baseline.talismans:
+			eq(db.talismans[id]["rarity"], "common")
+			check(str(db.talismans[id].get("faction", "")) not in r.banned, "legal starter implant")

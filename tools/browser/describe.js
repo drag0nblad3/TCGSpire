@@ -66,13 +66,13 @@
     const where = { all_enemies: " to ALL enemies", all_allies: " to you and your daemons", front: " to the front enemy", daemon: " to your front daemon" }[to] || "";
     switch (op) {
       case "handshake":
-        return "Handshake — if you played " + cardName(String(e.card || "")) + " this turn: " + fx(e.effects);
+        return "Handshake (" + cardName(String(e.card || "")) + "): " + fx(e.effects);
       case "sequence":
-        return "Sequence — after " + (e.types || []).map(typeName).join(" → ") + ", in order this turn: " + fx(e.effects);
+        return "Sequence (" + (e.types || []).map(typeName).join(" → ") + "): " + fx(e.effects);
       case "cooldown": {
         const effect = String(e.effect || "damage");
         const base = _describe({ op: effect, amount: n, to: to });
-        return base + " Cooldown: discarded unplayed at turn end, charge +" + int(num(e.step, 4)) + " " + (effect === "ward" ? "Firewall" : "damage") + " (max +" + int(num(e.cap, 8)) + "). Playing resets charge.";
+        return base + "\nEmpower +" + int(num(e.step, 4)) + " " + (effect === "ward" ? "Firewall" : "damage") + " (max +" + int(num(e.cap, 8)) + ").";
       }
       case "relay_cashout":
         return "Consume this card's Relay: deal " + int(num(e.mult, 2)) + " damage per point. Keep its Firewall payout; do not pass it.";
@@ -147,10 +147,10 @@
         if (b > 0) return word + " " + whose + " " + st2 + " (" + (to === "self" ? "gain " + b : "apply " + b) + " if there is none).";
         return word + " " + whose + " " + st2 + ".";
       }
-      case "strip": return "Strip all helpful statuses from " + (to === "all_enemies" ? "ALL enemies" : "the target") + ".";
+      case "strip": return (n > 0 ? "Remove " + n + " stacks of each buff from " : "Strip all helpful statuses from ") + (to === "all_enemies" ? "ALL enemies" : "the target") + ".";
       case "dump":
-        if (n <= 0) return "Dump your hand: discard every other card in it.";
-        return "Dump " + n + ": discard " + (n === 1 ? "a card" : n + " cards") + " from your hand.";
+        if (n <= 0) return "Dump your hand.";
+        return "Dump " + n + ".";
       case "recover": {
         let from = String(e.from || "") === "wiped" ? "a Wiped program (not a Rootkit)" : "a program from your discard pile";
         if (Math.max(n, 1) > 1) from = from.replace("a Wiped program", n + " Wiped programs").replace("a program", n + " programs");
@@ -235,6 +235,7 @@
       case "daemon_ward": return "Your daemons start with " + n + " Firewall that blocks attacks and doesn't decay.";
       case "second_wind": return "Once per fight, the first hit that would flatline you leaves you at 1 HP and gives you " + n + " Firewall.";
       case "start_mods": return "Start runs with " + n + " random mod" + plural(n) + " installed.";
+      case "start_implants": return "Start runs with " + n + " extra random common implant" + plural(n) + ".";
       case "start_perks": return "Start runs with " + n + " random subroutine" + plural(n) + ".";
       case "rep_pct": return "+" + pct(v) + "% rep from jobs.";
       case "max_energy": return "+" + n + " RAM every turn.";
@@ -305,7 +306,7 @@
     const od = onDumpOf(c, up);
     if (od.length) parts.push("When dumped: " + fx(od));
     if (c.evolve && Object.keys(c.evolve).length) parts.push("Evolve " + int(num(c.evolve.after, 20)) + ": becomes " + cardName(String(c.evolve.into || "")) + ".");
-    return parts.join(" ");
+    return parts.join("\n");
   }
 
   function costLabel(c, up) { return String(costOf(c, up)); }

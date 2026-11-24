@@ -66,12 +66,11 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var col := VBoxContainer.new()
 	col.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	col.offset_left = 10
-	col.offset_right = -10
-	col.offset_top = 20
-	col.offset_bottom = -20
+
 	col.add_theme_constant_override("separation", 10)
 	add_child(col)
+	UiKit.safe_offsets(col)
+	resized.connect(func() -> void: UiKit.safe_offsets(col))
 
 	_floor_label = UiKit.label("", 14, Palette.TEXT_DIM)
 	col.add_child(_floor_label)
@@ -122,14 +121,15 @@ func _ready() -> void:
 
 	var bar := HBoxContainer.new()
 	bar.alignment = BoxContainer.ALIGNMENT_CENTER
-	bar.add_theme_constant_override("separation", 18)
+	bar.add_theme_constant_override("separation", 8)
 	_energy = Control.new()
 	_energy.custom_minimum_size = Vector2(64, 64)
 	_energy.tooltip_text = "RAM"
 	_energy.draw.connect(_draw_energy)
 	bar.add_child(_energy)
 	_hint = UiKit.label("", 15, Palette.TEXT_DIM)
-	_hint.custom_minimum_size.x = 250
+	_hint.custom_minimum_size.x = 0
+	_hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	bar.add_child(_hint)
 	_crash_btn = UiKit.button("Shut down", _on_crash_pressed, Vector2(118, 56), 15)
@@ -155,8 +155,8 @@ func _ready() -> void:
 	var piles := UiKit.hbox(8)
 	piles.alignment = BoxContainer.ALIGNMENT_CENTER
 	for p in ["draw", "discard", "exhaust", "deck"]:
-		var b := UiKit.button("", _show_pile.bind(p), Vector2(118, 46), 15)
-		b.pivot_offset = Vector2(118, 46) / 2
+		var b := UiKit.button("", _show_pile.bind(p), Vector2(100, 46), 15)
+		b.pivot_offset = Vector2(100, 46) / 2
 		_pile_btns[p] = b
 		piles.add_child(b)
 	piles.add_child(UiKit.button("Log", _show_log, Vector2(64, 46), 15))
@@ -348,6 +348,7 @@ func _rebuild() -> void:
 	_crash_btn.disabled = _busy or not combat.can_shutdown()
 	_crash_btn.text = "Cancel" if _crash_mode else "Shut down"
 	_undo_btn.disabled = _busy or not combat.can_undo()
+	_undo_btn.tooltip_text = "Undo unavailable after a reveal, random roll, or end turn." if _undo_btn.disabled else "Undo your last program or daemon shutdown."
 	if _crash_mode:
 		_action_label.text = "Choose a daemon"
 

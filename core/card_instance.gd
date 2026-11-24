@@ -187,7 +187,7 @@ func text() -> String:
 		for e in effects():
 			if e.get("op") == "cooldown" and e.get("effect", "damage") == "ward":
 				stat = "Firewall"
-		state.append("Charged: +%d %s." % [cooldown, stat])
+		state.append("Empowered: +%d %s." % [cooldown, stat])
 	if not compiled.is_empty():
 		state.append("Compiled: %s." % ", ".join(compiled.map(func(t: String) -> String: return Lexicon.type_name(t))))
 	if payload > 0:
@@ -199,7 +199,7 @@ func text() -> String:
 			state.append("Relay %d: gain Firewall, then consume for bonus damage." % relay)
 		else:
 			state.append("Relay: gain %d Firewall on play, then pass +1 (max %d) to the leftmost other card in hand." % [relay, relay_cap])
-	return base + (" " + " ".join(state) if not state.is_empty() else "")
+	return base + ("\n" + "\n".join(state) if not state.is_empty() else "")
 
 
 func _text() -> String:
@@ -212,7 +212,7 @@ func _text() -> String:
 	if mod.is_empty():
 		return def.get_text(upgraded)
 	if def.get_text(upgraded) != "" and (upgraded and def.upgrade.has("text") or not upgraded and def.text_override != ""):
-		return def.get_text(upgraded) + " " + CardMods.describe(mod)
+		return def.get_text(upgraded) + "\n" + CardMods.describe(mod)
 	return _generated_text()
 
 
@@ -223,7 +223,7 @@ func _generated_text() -> String:
 	for k in keywords():
 		parts.append(Lexicon.keyword(str(k)) + ".")
 	parts.append_array(def.extra_text(upgraded))
-	return " ".join(parts)
+	return "\n".join(parts)
 
 
 func key() -> String:

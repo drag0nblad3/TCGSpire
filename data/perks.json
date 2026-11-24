@@ -36,6 +36,7 @@
 {"id":"field_clinic","scope":"rig","faction":"bloom","name":"Field Clinic","max_rank":3,"cost":[60,110,230],"mods":{"combat_heal":[3,6,10]}},
 {"id":"ghost_routing","scope":"rig","faction":"void","name":"Ghost Routing","max_rank":2,"cost":[60,100],"mods":{"jumps":1}},
 {"id":"wider_menu","scope":"rig","faction":"void","name":"Wider Menu","max_rank":3,"cost":[60,110,230],"mods":{"perk_choices":1}},
+{"id":"implant_reserve","scope":"rig","faction":"chrome","name":"Implant Reserve","max_rank":2,"cost":[90,180],"mods":{"start_implants":1}},
 {"id":"hardpoint","scope":"rig","faction":"chrome","name":"Daemon Plating","max_rank":3,"cost":[45,85,170],"mods":{"daemon_ward":1}},
 {"id":"pirate_coupons","scope":"rig","faction":"noise","name":"Pirate Coupons","max_rank":3,"cost":[45,85,170],"mods":{"remove_discount_pct":0.15}},
 {"id":"thermal_runaway","scope":"rig","faction":"ember","capstone":true,"name":"Thermal Runaway","max_rank":1,"cost":[500],"text":"+1 RAM on each of your first 3 turns.","triggers":[{"on":"turn_start","turn":1,"effects":[{"op":"energy","amount":1}]},{"on":"turn_start","turn":2,"effects":[{"op":"energy","amount":1}]},{"on":"turn_start","turn":3,"effects":[{"op":"energy","amount":1}]}]},

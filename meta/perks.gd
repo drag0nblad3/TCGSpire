@@ -27,6 +27,7 @@ const MODS := {
 	"second_wind": "Survive a lethal hit once per fight",
 	"start_mods": "Random mods at run start",
 	"start_perks": "Random subroutines at run start",
+	"start_implants": "Extra common implants at run start",
 	"enemy_hp_pct": "Enemy HP",
 	"enemy_dmg_pct": "Enemy damage",
 	"rep_pct": "Rep from the job",
@@ -114,6 +115,8 @@ static func describe_mod(k: String, v: float) -> String:
 			return "Once per fight, the first hit that would flatline you leaves you at 1 HP and gives you %d %s." % [int(v), Lexicon.term("ward")]
 		"start_mods":
 			return "Start runs with %d random mod%s installed." % [int(v), "" if int(v) == 1 else "s"]
+		"start_implants":
+			return "Start runs with %d extra random common implant%s." % [int(v), "" if int(v) == 1 else "s"]
 		"start_perks":
 			return "Start runs with %d random subroutine%s." % [int(v), "" if int(v) == 1 else "s"]
 		"rep_pct":
