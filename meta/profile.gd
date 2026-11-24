@@ -486,15 +486,22 @@ func quick_scrap(db: CardDB, id: String, foil: bool = false) -> int:
 	return collection.dust - before
 
 
-## Non-starter cards whose next firmware level is ready to flash right now.
+## Cards whose next firmware level is ready to flash right now, including the base rig.
 func ready_to_flash(db: CardDB) -> Array:
-	return collection.owned_ids().filter(func(id: String) -> bool:
-		return db.card(id) != null and db.card(id).rarity != "starter" and firmware_block(db, id) == "")
+	return db.ids_where(func(c: CardDef) -> bool:
+		return c.rarity != "curse" and (c.rarity == "starter" or collection.owns(c.id)) and firmware_block(db, c.id) == "")
 
 
 ## Firmware status pill for a card: "v1 ready", "v2 max", "v1" or "" (copies show as pips).
 func copy_badge(db: CardDB, id: String) -> String:
 	var lvl := firmware_level(id)
+	var c := db.card(id)
+	if c != null and c.rarity == "starter":
+		if lvl >= firmware_max(db):
+			return "v%d max" % lvl
+		if firmware_block(db, id) == "":
+			return "v%d ready" % (lvl + 1)
+		return "v%d" % lvl if lvl > 0 else ""
 	if collection.count(id) <= 0:
 		return ""
 	if firmware_copies_needed(db, id) <= 0:

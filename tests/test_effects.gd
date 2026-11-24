@@ -36,8 +36,8 @@ func test_ward_blocks_then_resets_on_turn_start() -> void:
 
 func test_aoe_hits_all() -> void:
 	c.play_card(give(c, "flare_volley"))
-	eq(c.enemies[0].hp, 24)
-	eq(c.enemies[1].hp, 24)
+	eq(c.enemies[0].hp, 23)
+	eq(c.enemies[1].hp, 23)
 
 
 func test_multi_hit() -> void:

@@ -6,7 +6,7 @@ extends Control
 signal closed
 signal picks_confirmed(picks: Array)
 
-const FILTERS := ["all", "upgradable", "neutral", "ember", "tide", "bloom", "void", "chrome", "noise"]
+const FILTERS := ["all", "upgradable", "base", "neutral", "ember", "tide", "bloom", "void", "chrome", "noise"]
 
 var db: CardDB
 var profile: Profile
@@ -116,11 +116,13 @@ func _ready() -> void:
 	for f in FILTERS:
 		if pick_mode and f in targets:
 			continue
-		if pick_mode and f == "upgradable":
+		if pick_mode and f in ["upgradable", "base"]:
 			continue
-		var filter := UiKit.button({"all": "All", "upgradable": "Upgrades"}.get(f, Lexicon.faction(f)), func() -> void: _set_filter(f), Vector2(76, 44), 13)
+		var filter := UiKit.button({"all": "All", "upgradable": "Upgrades", "base": "Base"}.get(f, Lexicon.faction(f)), func() -> void: _set_filter(f), Vector2(76, 44), 13)
 		if f == "upgradable":
-			filter.tooltip_text = "Programs with enough copies for their next firmware level."
+			filter.tooltip_text = "Programs with enough copies for their next firmware level, plus base programs with firmware remaining."
+		elif f == "base":
+			filter.tooltip_text = "Permanent base-deck programs. Upgrade them with dust, no extra copies needed."
 		elif f != "all":
 			filter.icon = Symbols.texture(f)
 			filter.add_theme_constant_override("icon_max_width", 14)
@@ -297,7 +299,8 @@ func _set_filter(f: String) -> void:
 
 func _ids() -> Array:
 	var ids := db.ids_where(func(c: CardDef) -> bool:
-		return c.rarity not in ["starter", "curse"] and (_filter == "all" or c.is_of(_filter) or (_filter == "upgradable" and _copies_ready(c.id))) \
+		return c.rarity != "curse" and (not pick_mode or c.rarity != "starter") \
+			and (_filter == "all" or c.is_of(_filter) or (_filter == "base" and c.rarity == "starter") or (_filter == "upgradable" and _copies_ready(c.id))) \
 			and (not pick_mode or (profile.collection.owns(c.id) and not c.banned_by(targets))))
 	if _search != "":
 		ids = ids.filter(func(id: String) -> bool:
@@ -336,7 +339,7 @@ func _sort_key(id: String, order: Array, arrival: Dictionary) -> Array:
 
 ## Owns enough copies for the next firmware level (rep/dust may still be short).
 func _copies_ready(id: String) -> bool:
-	return profile.copies_ready(db, id)
+	return profile.firmware_level(id) < Profile.firmware_max(db) if db.card(id).rarity == "starter" else profile.copies_ready(db, id)
 
 
 ## [owned, total] collectible programs (no base programs or malware).
@@ -384,10 +387,10 @@ func _refresh() -> void:
 			# Slots full: cards you can't add any more fade (tap still swaps nothing in).
 			cv.playable = chosen > 0 or picks.size() < profile.starter_picks(db)
 		else:
-			cv.badge = (profile.copy_badge(db, id) + " " + stars).strip_edges()
+			cv.badge = (profile.copy_badge(db, id) + " " + ("Base" if inst.def.rarity == "starter" else stars)).strip_edges()
 			cv.pips = profile.copy_pips(db, id)
 			cv.fresh = profile.unseen.has(id)
-			cv.playable = n > 0
+			cv.playable = n > 0 or inst.def.rarity == "starter"
 		cv.pressed.connect(func(_v: CardView) -> void: _on_card(id))
 		_grid.add_child(cv)
 
@@ -480,6 +483,16 @@ func _show_detail(id: String) -> void:
 	var up := db.instance(id, true)
 	v.add_child(UiKit.label("Upgrade (+): " + c.upgrade_summary(), 15, Palette.UPGRADED, true))
 	v.add_child(UiKit.label("Upgraded text: " + up.text(), 13, Palette.TEXT_DIM, true))
+	if c.rarity == "starter":
+		var copies := 0
+		for base_id in profile.base_deck(db):
+			if str(base_id).trim_suffix("+") == id:
+				copies += 1
+		v.add_child(UiKit.label("Base rig: %d copies per run. Firmware upgrades all copies for dust only." % copies, 15, Palette.TEXT_DIM, true))
+		v.add_child(_firmware_row(id, overlay))
+		v.add_child(UiKit.button("Close", func() -> void: overlay.queue_free()))
+		UiKit.tap_to_close(overlay)
+		return
 	v.add_child(UiKit.label("Owned %d   ·   Foils %d   ·   Played %d times" % [col.count(id), int(col.foils.get(id, 0)), int(profile.mastery.get(id, 0))], 15, Palette.TEXT_DIM))
 	var mtiers: Array = db.balance.get("mastery", [])
 	var next_t := ""
