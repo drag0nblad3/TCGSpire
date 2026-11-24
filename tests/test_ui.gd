@@ -315,3 +315,20 @@ func test_inspector_shows_evolved_form() -> void:
 	check(CardInspector.glossary(token).any(func(l: String) -> bool: return l.begins_with("Evolved form:")), "token glossary names its base")
 	check(CardInspector.evolve_pair(db.instance("kindle")).is_empty(), "plain cards show one card")
 
+
+
+func test_base_programs_in_collection_not_picker() -> void:
+	var p := Profile.new_player(db)
+	p.collection.counts.clear()
+	var library := CollectionScreen.new().setup(db, p)
+	check("jab" in library._ids() and "brace" in library._ids(), "base cards always visible")
+	library._filter = "base"
+	eq(library._ids().size(), 2, "base filter")
+	library._filter = "upgradable"
+	check("jab" in library._ids(), "no extra copies required")
+	p.firmware["jab"] = Profile.firmware_max(db)
+	check("jab" not in library._ids(), "maxed base card hidden by upgrades filter")
+	library.free()
+	var picker := CollectionScreen.new().setup(db, p, true)
+	check("jab" not in picker._ids() and "brace" not in picker._ids(), "base cards do not consume picks")
+	picker.free()
