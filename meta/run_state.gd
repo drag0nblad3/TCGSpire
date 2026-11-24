@@ -122,6 +122,8 @@ static func start(db_in: CardDB, profile: Profile, picks: Array, seed_in: int, h
 	var start_t := str(db_in.balance.get("start_talisman", ""))
 	if start_t != "":
 		r.add_talisman(start_t)
+	for i in int(r.perk_mod("start_implants")):
+		r.add_talisman(r.roll_talisman("common", r.rng.fork("rig_implant:%d" % i), false))
 	var n_mods := int(r.perk_mod("start_mods"))
 	if n_mods > 0:
 		RunOutcomes.apply(r, {"op": "mod", "amount": n_mods, "rarity": "common"})

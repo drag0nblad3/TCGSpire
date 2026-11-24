@@ -3,13 +3,13 @@ extends RefCounted
 ## Physical-card memory and play-order rules. All state lasts for one combat.
 
 const DESCRIPTIONS := {
-	"dump": "Dump N: discard N other cards from your hand as part of running this program (you pick them). You need that many other cards in hand to run it. Dump your hand discards all of them, even none. Dumped cards go to the discard pile, Cooldown cards charge, and any \"When dumped\" effect fires.",
+	"dump": "Dump N: discard N other cards from your hand as part of running this program (you pick them). You need that many other cards in hand to run it. Dump your hand discards all of them, even none. Dumped cards go to the discard pile, Empower cards charge, and any \"When dumped\" effect fires.",
 	"recover": "Pick a program from that pile and shuffle it back into your draw pile (or onto the top). Rootkits can't come back from Wipe. Nothing happens if the pile is empty.",
 	"interrupt": "Names one or more enemy intents, such as Purge. If the target's next move holds that intent, that part is cancelled; the rest of the move still happens. Nothing happens if the intent isn't there, so read the icons first. Any \"If it cancels\" payoff fires once per enemy cut.",
 	"fuel": "Names an enemy buff, such as Boost. If the target has at least that many stacks, they are removed and the Fuel bonus fires. With fewer, nothing is removed and the card does only its normal effect. Fuel on ALL enemies pays once per enemy that had enough. \"Fuel N of your X\" burns your own debuff instead, and the bonus still goes to the card's target.",
 	"relay_cashout": "Gain this copy's normal Relay Firewall, then deal the listed damage per Relay point. Consume the signal: it does not pass to another card. Without Relay, there is no bonus damage.",
 	"handshake": "The named partner must have been played earlier this turn. Either order works, with a different payoff. Copies share the partner name, not temporary bonuses.",
-	"cooldown": "Charge this copy only when it is discarded unplayed at turn end. Cache and Volatile prevent that discard. Charge boosts the printed damage or Firewall effect. Charge survives shuffles, is capped, and resets on play.",
+	"cooldown": "When discarded unplayed (including Dump), this copy gains the listed damage or Firewall, up to its cap. The bonus survives shuffles and resets on play. Cache and Volatile prevent the normal end-turn discard.",
 	"compile": "Cache (Retain) keeps the compiler in hand. Each other card played while it is held records its type, up to capacity. Play it to execute the stored instructions in order and clear them. It cannot record itself or plays before it was drawn.",
 	"plant": "The top draw-pile card carries a one-use Firewall payload until drawn, even through shuffling. Empty draw pile: no payload. Multiple payloads use the strongest, not their sum.",
 	"sequence": "Your immediately preceding plays must match the listed types in order, within this turn. The payoff card itself is not part of that sequence.",

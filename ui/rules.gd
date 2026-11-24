@@ -94,7 +94,7 @@ static func sections(db: CardDB) -> Array:
 	out.append(["Keywords", "In a fight", kw])
 	var programs: Array = []
 	for op in CardPrograms.DESCRIPTIONS:
-		programs.append([op.capitalize(), CardPrograms.DESCRIPTIONS[op]])
+		programs.append(["Empower" if op == "cooldown" else op.capitalize(), CardPrograms.DESCRIPTIONS[op]])
 	out.append(["Program combos", "In a fight", programs])
 	var good: Array = []
 	var bad: Array = []

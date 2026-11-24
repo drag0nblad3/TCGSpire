@@ -33,7 +33,7 @@ const OPS := {
 	"lose_hp": ["amount", "to"],
 	"damage_per_status": ["status", "mult", "base", "consume", "to", "of"],
 	"amplify": ["status", "mult", "base", "to"],
-	"strip": ["to"],
+	"strip": ["to", "amount"],
 	"sacrifice": ["effect", "mult", "to"],
 	"interrupt": ["kinds", "effects", "to"],
 	"fuel": ["status", "stacks", "effects", "to"],
@@ -200,10 +200,17 @@ static func resolve(c: Combat, e: Dictionary, src: Fighter, target: Fighter) -> 
 		"strip":
 			for t in targets(c, e, src, target, "target"):
 				var gone: Array = t.statuses.keys().filter(func(k: String) -> bool: return not Statuses.DEFS.get(k, {}).get("debuff", true))
+				var removed: Array = []
 				for k in gone:
-					t.statuses.erase(k)
-				if not gone.is_empty():
-					c.emit("strip", {"target": t.id, "statuses": gone})
+					var before: int = t.status(k)
+					if n <= 0 or before <= n:
+						t.statuses.erase(k)
+						removed.append(k)
+					else:
+						t.add_status(k, -n)
+						c.emit("status", {"target": t.id, "status": k, "stacks": -n, "total": t.status(k)})
+				if not removed.is_empty():
+					c.emit("strip", {"target": t.id, "statuses": removed})
 		"sacrifice":
 			if c.units.is_empty():
 				return
@@ -407,13 +414,13 @@ static func _describe(e: Dictionary) -> String:
 			where = " to your front daemon"
 	match op:
 		"handshake":
-			return "Handshake — if you played %s this turn: %s" % [Lexicon.card_name(str(e.get("card", ""))), " ".join(e.get("effects", []).map(func(fx: Dictionary) -> String: return describe(fx)))]
+			return "Handshake (%s): %s" % [Lexicon.card_name(str(e.get("card", ""))), " ".join(e.get("effects", []).map(func(fx: Dictionary) -> String: return describe(fx)))]
 		"sequence":
-			return "Sequence — after %s, in order this turn: %s" % [" → ".join(e.get("types", []).map(func(t: String) -> String: return Lexicon.type_name(t))), " ".join(e.get("effects", []).map(func(fx: Dictionary) -> String: return describe(fx)))]
+			return "Sequence (%s): %s" % [" → ".join(e.get("types", []).map(func(t: String) -> String: return Lexicon.type_name(t))), " ".join(e.get("effects", []).map(func(fx: Dictionary) -> String: return describe(fx)))]
 		"cooldown":
 			var effect := str(e.get("effect", "damage"))
 			var base := _describe({"op": effect, "amount": n, "to": to})
-			return "%s Cooldown: discarded unplayed at turn end, charge +%d %s (max +%d). Playing resets charge." % [base, int(e.get("step", 4)), "Firewall" if effect == "ward" else "damage", int(e.get("cap", 8))]
+			return "%s\nEmpower +%d %s (max +%d)." % [base, int(e.get("step", 4)), "Firewall" if effect == "ward" else "damage", int(e.get("cap", 8))]
 		"relay_cashout":
 			return "Consume this card's Relay: deal %d damage per point. Keep its Firewall payout; do not pass it." % int(e.get("mult", 2))
 		"compile":
@@ -496,11 +503,14 @@ static func _describe(e: Dictionary) -> String:
 				return "%s %s %s (%s if there is none)." % [word, whose, st2, gain]
 			return "%s %s %s." % [word, whose, st2]
 		"strip":
-			return "Strip all helpful statuses from %s." % ("ALL enemies" if to == "all_enemies" else "the target")
+			var who := "ALL enemies" if to == "all_enemies" else "the target"
+			if n > 0:
+				return "Remove %d stacks of each buff from %s." % [n, who]
+			return "Strip all helpful statuses from %s." % who
 		"dump":
 			if n <= 0:
-				return "Dump your hand: discard every other card in it."
-			return "Dump %d: discard %s from your hand." % [n, "a card" if n == 1 else "%d cards" % n]
+				return "Dump your hand."
+			return "Dump %d." % n
 		"recover":
 			var from := "a Wiped program (not a Rootkit)" if str(e.get("from", "")) == "wiped" else "a program from your discard pile"
 			if maxi(n, 1) > 1:
@@ -571,6 +581,8 @@ static func validate(e: Dictionary, where: String) -> Array[String]:
 			errs.append_array(validate(fx, where))
 			if fx.get("op", "") in ["handshake", "sequence", "cooldown", "compile", "relay_cashout", "interrupt"]:
 				errs.append("%s: nested program condition" % where)
+	if op == "strip" and e.has("amount") and (not (e["amount"] is int or e["amount"] is float) or int(e["amount"]) <= 0):
+		errs.append("%s: strip amount must be positive" % where)
 	if op == "fuel":
 		if not Statuses.is_known(str(e.get("status", ""))) or int(e.get("stacks", 0)) <= 0:
 			errs.append("%s: fuel needs a known status and stacks" % where)

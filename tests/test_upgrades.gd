@@ -833,3 +833,14 @@ func test_base_firmware_without_collection_copies() -> void:
 	var jabs := r.deck.filter(func(c: CardInstance) -> bool: return c.def.id == "jab")
 	eq(jabs.size(), profile.base_deck(db).count("jab"))
 	check(jabs.all(func(c: CardInstance) -> bool: return c.fw == 2 and not c.upgraded), "every base copy uses firmware; in-run upgrade stays separate")
+
+
+func test_rig_implant_reserve() -> void:
+	var baseline := _run(42, "chrome")
+	profile.rig = {"implant_reserve": 2}
+	var r := _run(42, "chrome")
+	eq(r.talismans.size(), baseline.talismans.size() + 2)
+	for id in r.talismans:
+		if id not in baseline.talismans:
+			eq(db.talismans[id]["rarity"], "common")
+			check(str(db.talismans[id].get("faction", "")) not in r.banned, "legal starter implant")
