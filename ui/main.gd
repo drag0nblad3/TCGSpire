@@ -249,10 +249,8 @@ func _collection_cheats() -> Array:
 					profile.collection.add(id, missing)
 			_profile_cheat_done("All collectible cards are owned.")],
 		["Max all owned cards", func() -> void:
-			for id in profile.collection.owned_ids():
-				var c := db.card(id)
-				if c != null and c.rarity not in ["starter", "curse"]:
-					profile.firmware[id] = Profile.firmware_max(db)
+			for id in db.ids_where(func(c: CardDef) -> bool: return c.rarity != "curse" and (c.rarity == "starter" or profile.collection.owns(c.id))):
+				profile.firmware[id] = Profile.firmware_max(db)
 			_profile_cheat_done("Owned cards have maximum firmware.")],
 		["Add 1,000 dust", func() -> void:
 			profile.collection.dust += 1000

@@ -817,3 +817,19 @@ func test_skipping_a_program_reward_pays_creds_by_fight_kind() -> void:
 	eq(r.gold, start + r.reward_skip_gold("normal") + r.reward_skip_gold("boss"))
 	check(r.reward_skip_gold("elite") > r.reward_skip_gold("normal") and r.reward_skip_gold("boss") > r.reward_skip_gold("elite"), "bigger fights pay more")
 	eq(r.skip_reward("shop"), 0, "only fight rewards pay")
+
+
+func test_base_firmware_without_collection_copies() -> void:
+	profile.collection.counts.clear()
+	profile.collection.dust = 450
+	check("jab" in profile.ready_to_flash(db), "base firmware ready even after collection reset")
+	check(profile.flash_firmware(db, "jab"), "first firmware")
+	check(profile.flash_firmware(db, "jab"), "second firmware")
+	eq(profile.collection.dust, 0)
+	eq(profile.collection.count("jab"), 0, "no copies consumed or created")
+	eq(profile.copy_badge(db, "jab"), "v2 max")
+	check("jab" not in profile.ready_to_flash(db), "maxed")
+	var r := RunState.start(db, profile, [], 1)
+	var jabs := r.deck.filter(func(c: CardInstance) -> bool: return c.def.id == "jab")
+	eq(jabs.size(), profile.base_deck(db).count("jab"))
+	check(jabs.all(func(c: CardInstance) -> bool: return c.fw == 2 and not c.upgraded), "every base copy uses firmware; in-run upgrade stays separate")
