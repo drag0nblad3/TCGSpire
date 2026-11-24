@@ -6,6 +6,25 @@ const ANIMATED := ["kiln_mother", "undertow_broker", "chief_surgeon", "zero_prim
 
 # effect, body frequency, body amplitude, effect speed, anchor x/y, radius.
 const PROFILES := {
+	"torch_choir": ["crown", 2.0, 0.006, 0.7, 0.5, 0.5, 0.28],
+	"slag_matriarch": ["crown", 2.0, 0.006, 0.7, 0.5, 0.5, 0.28],
+	"pyre_saint": ["crown", 2.0, 0.006, 0.7, 0.5, 0.5, 0.28],
+	"ledger_kraken": ["vortex", 1.5, 0.01, 0.7, 0.5, 0.5, 0.28],
+	"margin_leviathan": ["vortex", 1.5, 0.01, 0.7, 0.5, 0.5, 0.28],
+	"clearing_house": ["vortex", 1.5, 0.01, 0.7, 0.5, 0.5, 0.28],
+	"graft_mother": ["cells", 1.2, 0.008, 0.5, 0.5, 0.5, 0.28],
+	"spore_cathedral": ["cells", 1.2, 0.008, 0.5, 0.5, 0.5, 0.28],
+	"chimera_prime": ["cells", 1.2, 0.008, 0.5, 0.5, 0.5, 0.28],
+	"hollow_saint": ["erase", 1.0, 0.014, 0.6, 0.5, 0.5, 0.28],
+	"null_choir": ["erase", 1.0, 0.014, 0.6, 0.5, 0.5, 0.28],
+	"event_collapse": ["erase", 1.0, 0.014, 0.6, 0.5, 0.5, 0.28],
+	"drill_sergeant": ["grid", 1.0, 0.004, 0.5, 0.5, 0.5, 0.28],
+	"siege_foundry": ["grid", 1.0, 0.004, 0.5, 0.5, 0.5, 0.28],
+	"orbital_command": ["grid", 1.0, 0.004, 0.5, 0.5, 0.5, 0.28],
+	"static_king": ["sound", 4.0, 0.009, 0.8, 0.5, 0.5, 0.28],
+	"mixing_desk": ["sound", 4.0, 0.009, 0.8, 0.5, 0.5, 0.28],
+	"signal_apocalypse": ["sound", 4.0, 0.009, 0.8, 0.5, 0.5, 0.28],
+
 	"bear_desk": ["vortex", 1.5, 0.006, -0.6, 0.5, 0.58, 0.28],
 	"bull_desk": ["vortex", 2.4, 0.008, 0.8, 0.5, 0.58, 0.28],
 	"surgeon_clone": ["cells", 2.0, 0.008, 0.5, 0.5, 0.65, 0.16],

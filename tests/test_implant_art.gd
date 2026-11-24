@@ -1,7 +1,7 @@
 extends TestCase
 
 ## New implants whose hardware art isn't drawn yet (they show the procedural sigil).
-const AWAITING_ART := ["scar_tissue"]
+const AWAITING_ART := []
 
 func test_every_implant_has_unique_art_and_motion() -> void:
 	var manifest := ImplantArt.regions()

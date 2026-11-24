@@ -4,6 +4,79 @@ extends RefCounted
 ## Combat and Intents remain the source of all effects and damage numbers.
 
 const PROFILES := {
+	"torch_choir": {
+		"portrait": preload("res://assets/combat/virtual/torch_choir.webp"),
+		"faction": "ember", "signature": "Crescendo",
+	},
+	"slag_matriarch": {
+		"portrait": preload("res://assets/combat/virtual/slag_matriarch.webp"),
+		"faction": "ember", "signature": "Brand Line",
+	},
+	"pyre_saint": {
+		"portrait": preload("res://assets/combat/virtual/pyre_saint.webp"),
+		"faction": "ember", "signature": "Pillar of Fire",
+	},
+	"ledger_kraken": {
+		"portrait": preload("res://assets/combat/virtual/ledger_kraken.webp"),
+		"faction": "tide", "signature": "Squeeze",
+	},
+	"margin_leviathan": {
+		"portrait": preload("res://assets/combat/virtual/margin_leviathan.webp"),
+		"faction": "tide", "signature": "Call an Agent",
+	},
+	"clearing_house": {
+		"portrait": preload("res://assets/combat/virtual/clearing_house.webp"),
+		"faction": "tide", "signature": "Default",
+	},
+	"graft_mother": {
+		"portrait": preload("res://assets/combat/virtual/graft_mother.webp"),
+		"faction": "bloom", "signature": "Pollen",
+	},
+	"spore_cathedral": {
+		"portrait": preload("res://assets/combat/virtual/spore_cathedral.webp"),
+		"faction": "bloom", "signature": "Crush",
+	},
+	"chimera_prime": {
+		"portrait": preload("res://assets/combat/virtual/chimera_prime.webp"),
+		"faction": "bloom", "signature": "Brood",
+	},
+	"hollow_saint": {
+		"portrait": preload("res://assets/combat/virtual/hollow_saint.webp"),
+		"faction": "void", "signature": "Silence",
+	},
+	"null_choir": {
+		"portrait": preload("res://assets/combat/virtual/null_choir.webp"),
+		"faction": "void", "signature": "Annul",
+	},
+	"event_collapse": {
+		"portrait": preload("res://assets/combat/virtual/event_collapse.webp"),
+		"faction": "void", "signature": "Delete",
+	},
+	"drill_sergeant": {
+		"portrait": preload("res://assets/combat/virtual/drill_sergeant.webp"),
+		"faction": "chrome", "signature": "Railshot",
+	},
+	"siege_foundry": {
+		"portrait": preload("res://assets/combat/virtual/siege_foundry.webp"),
+		"faction": "chrome", "signature": "Rivet Storm",
+	},
+	"orbital_command": {
+		"portrait": preload("res://assets/combat/virtual/orbital_command.webp"),
+		"faction": "chrome", "signature": "Kill Order",
+	},
+	"static_king": {
+		"portrait": preload("res://assets/combat/virtual/static_king.webp"),
+		"faction": "noise", "signature": "Air Horn",
+	},
+	"mixing_desk": {
+		"portrait": preload("res://assets/combat/virtual/mixing_desk.webp"),
+		"faction": "noise", "signature": "Encore",
+	},
+	"signal_apocalypse": {
+		"portrait": preload("res://assets/combat/virtual/signal_apocalypse.webp"),
+		"faction": "noise", "signature": "Overload",
+	},
+
 	"hollow_monarch": {
 		"portrait": preload("res://assets/combat/virtual/hollow_monarch.webp"),
 		"faction": "void", "signature": "Root Privilege",
