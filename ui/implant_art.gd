@@ -1,8 +1,8 @@
 class_name ImplantArt
 extends RefCounted
 ## Approved field-service hardware artwork, shared by every implant view.
-const ATLASES := [preload("res://assets/implants/hardware_1.webp"), preload("res://assets/implants/hardware_2.webp")]
-const ACTIVE := [preload("res://assets/implants/active_1.webp"), preload("res://assets/implants/active_2.webp")]
+const ATLASES := [preload("res://assets/implants/hardware_1.webp"), preload("res://assets/implants/hardware_2.webp"), preload("res://assets/implants/scar_tissue.webp")]
+const ACTIVE := [preload("res://assets/implants/active_1.webp"), preload("res://assets/implants/active_2.webp"), preload("res://assets/implants/scar_tissue_active.webp")]
 static var _regions: Dictionary = {}
 static var _textures: Dictionary = {}
 

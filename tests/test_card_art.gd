@@ -1,7 +1,6 @@
 extends TestCase
 
-## New cards whose illustration isn't painted yet (they draw the procedural fallback).
-const AWAITING_ART := ["backlash"]
+const AWAITING_ART := []
 
 func test_every_card_has_distinct_in_bounds_art() -> void:
 	var regions := CardArt.regions()

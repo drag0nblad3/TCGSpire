@@ -64,7 +64,7 @@ func setup(f: Fighter, c: Combat, kind_in: String) -> FighterView:
 				# The lead enemy and any copies are elite. Escorts and summons keep their normal portraits.
 				elite = not lineup.is_empty() and fighter.def_id == lineup[0]
 		if combat != null and combat.db != null:
-			art_id = str(combat.db.enemies.get(fighter.def_id, {}).get("art", fighter.def_id))
+			art_id = fighter.def_id if BossPresentation.PROFILES.has(fighter.def_id) else str(combat.db.enemies.get(fighter.def_id, {}).get("art", fighter.def_id))
 		enemy_portrait = EnemyPortraits.ROSTER.get(art_id, [])
 		boss_profile = BossPresentation.PROFILES.get(art_id, {})
 		if not boss_profile.is_empty():

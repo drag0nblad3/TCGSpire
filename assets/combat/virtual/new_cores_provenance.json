@@ -1,0 +1,29 @@
+{
+  "date": "2026-11-24",
+  "style": "Faceted virtual entities with faction wireframes; alpha preserved from generated sprite sheets.",
+  "ids": [
+    "torch_choir",
+    "slag_matriarch",
+    "pyre_saint",
+    "ledger_kraken",
+    "margin_leviathan",
+    "clearing_house",
+    "graft_mother",
+    "spore_cathedral",
+    "chimera_prime",
+    "hollow_saint",
+    "null_choir",
+    "event_collapse",
+    "drill_sergeant",
+    "siege_foundry",
+    "orbital_command",
+    "static_king",
+    "mixing_desk",
+    "signal_apocalypse"
+  ],
+  "dimensions": [
+    512,
+    400
+  ],
+  "animation": "VirtualBossArt faction profiles"
+}
